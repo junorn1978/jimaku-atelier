@@ -1,0 +1,28 @@
+# --- handoff / scratch notes (temporary, regenerate as needed) ---
+HANDOFF.md
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- editors / IDEs ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- in case anyone adds node tooling later ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- python (launch_chrome.bat spawns python -m http.server) ---
+__pycache__/
+*.pyc
+
+# --- local env overrides ---
+.env
+.env.local

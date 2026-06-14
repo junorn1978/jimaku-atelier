@@ -1,0 +1,185 @@
+/**
+ * @file ui-obs.js
+ * @description OBS tab UI: WebSocket enable toggle, URL/password inputs,
+ * drag links (drag onto OBS to create a browser source), and a one-click
+ * Auto Setup button.
+ */
+
+import { subscribe } from './store.js';
+import { applyTo, t } from './i18n.js';
+import { triggerAutoSetup, getOverlayUrl, onConnectionState } from './obs.js';
+
+export function mountObsTab(container) {
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="panel-cols">
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.connection">接続設定</h3>
+        <div class="form-row">
+          <span class="form-row-label" data-i18n="obs.enabled">WS 接続</span>
+          <label class="toggle">
+            <input type="checkbox" data-bind="obsEnabled">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+        <div class="obs-conn">
+          <p class="obs-conn-status" id="obs-conn-status" role="status" aria-live="polite" data-phase="disabled">
+            <span class="obs-conn-dot" aria-hidden="true"></span>
+            <span class="obs-conn-text"></span>
+          </p>
+          <p class="obs-conn-hint" id="obs-conn-hint"></p>
+        </div>
+
+        <div class="form-row">
+          <span class="form-row-label" data-i18n="obs.url">URL</span>
+          <input type="text" class="text-input" data-bind="obsUrl"
+                 placeholder="ws://127.0.0.1:4455"
+                 autocomplete="off" spellcheck="false" autocorrect="off">
+        </div>
+
+        <div class="form-row">
+          <span class="form-row-label" data-i18n="obs.password">Password</span>
+          <div class="secret-input-wrap" data-secret-visible="false">
+            <input type="text" class="text-input secret-input" data-bind="obsPassword"
+                   autocomplete="off" spellcheck="false" autocorrect="off"
+                   autocapitalize="off" inputmode="text">
+            <button type="button" class="icon-btn secret-toggle"
+                    title="表示" aria-label="Show password" aria-pressed="false">
+              <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                <path d="M1 1l22 22"/>
+              </svg>
+              <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.sources">ソース作成</h3>
+        <div class="obs-drag-grid">
+          <a class="btn obs-drag-link" id="obs-drag-all"
+             draggable="true" data-i18n="obs.drag.all"
+             data-i18n-title="obs.drag.all.tip">全表示</a>
+          <a class="btn obs-drag-link" id="obs-drag-source"
+             draggable="true" data-i18n="obs.drag.source"
+             data-i18n-title="obs.drag.source.tip">音声</a>
+          <a class="btn obs-drag-link" id="obs-drag-target1"
+             draggable="true" data-i18n="obs.drag.target1"
+             data-i18n-title="obs.drag.target1.tip">翻訳 1</a>
+          <a class="btn obs-drag-link" id="obs-drag-target2"
+             draggable="true" data-i18n="obs.drag.target2"
+             data-i18n-title="obs.drag.target2.tip">翻訳 2</a>
+        </div>
+        <button type="button" class="btn primary" id="obs-auto-setup"
+                data-i18n="obs.autoSetup">OBS 自動構築</button>
+        <p class="form-hint" data-i18n="obs.autoSetup.hint">
+          現在のシーンに4つの字幕ソースを自動で追加します。
+        </p>
+      </section>
+
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.help.title">使い方</h3>
+        <ol class="help-steps">
+          <li data-i18n="obs.help.step1">OBS で WebSocket Server を有効にします。</li>
+          <li data-i18n="obs.help.step2">URL とパスワードを確認し、WS 接続をオンにします。</li>
+          <li data-i18n="obs.help.step3">OBS 自動構築を押すか、上のリンクを OBS のソース一覧へドラッグします。</li>
+          <li data-i18n="obs.help.step4">音声認識を開始すると、字幕が OBS に同期されます。</li>
+        </ol>
+        <p class="form-hint" data-i18n="obs.help.note">
+          ソース作成は自動構築とドラッグのどちらか一方で十分です。
+        </p>
+      </section>
+    </div>
+  `;
+
+  /* Drag link hrefs depend on current URL/password; refresh when they change. */
+  const refreshDragLinks = () => {
+    container.querySelector('#obs-drag-all')    .href = getOverlayUrl('all');
+    container.querySelector('#obs-drag-source') .href = getOverlayUrl('source');
+    container.querySelector('#obs-drag-target1').href = getOverlayUrl('target1');
+    container.querySelector('#obs-drag-target2').href = getOverlayUrl('target2');
+  };
+  refreshDragLinks();
+  subscribe('obsUrl',      refreshDragLinks);
+  subscribe('obsPassword', refreshDragLinks);
+
+  container.querySelector('#obs-auto-setup').addEventListener('click', triggerAutoSetup);
+  wireSecretToggle(container);
+  wireConnStatus(container);
+
+  applyTo(container);
+}
+
+/* Live connection status shown beside the WS toggle, so the user can tell
+   whether the link to OBS actually works without opening the console. */
+function wireConnStatus(container) {
+  const el   = container.querySelector('#obs-conn-status');
+  const text = container.querySelector('.obs-conn-text');
+  const hint = container.querySelector('#obs-conn-hint');
+  if (!el || !text || !hint) return;
+
+  let current = { phase: 'disabled', code: null };
+
+  const render = () => {
+    el.dataset.phase = current.phase;
+    text.textContent = connStatusText(current);
+
+    /* Port-check guidance only helps when we can't reach the server — not for
+       a wrong-password failure (4009), which has nothing to do with the port.
+       The element keeps its reserved height even when empty, so showing/hiding
+       the text never pushes the rest of the tab up or down. */
+    const showHint = current.phase === 'retrying' && current.code !== 4009;
+    hint.textContent = showHint ? t('obs.status.hint.checkPort') : '';
+  };
+
+  onConnectionState((state) => { current = state; render(); });
+  /* Re-render in the new UI language without waiting for a state change. */
+  subscribe('uiLang', render);
+}
+
+/* Map a connection state to a localized message. The close code lets us tell
+   "server unreachable" (1006) from "wrong password" (4009) etc. */
+function connStatusText({ phase, code }) {
+  if (phase === 'disabled')   return t('obs.status.disabled');
+  if (phase === 'connecting') return t('obs.status.connecting');
+  if (phase === 'connected')  return t('obs.status.connected');
+
+  /* phase === 'retrying' — show why it failed plus that it keeps retrying. */
+  return `${failReason(code)} ${t('obs.status.retrying.suffix')}`;
+}
+
+function failReason(code) {
+  if (code === 'badurl') return t('obs.status.failed.badurl');
+  if (code === 1006)     return t('obs.status.failed.unreachable');
+  if (code === 4009)     return t('obs.status.failed.auth');
+  return `${t('obs.status.failed.generic')}${code != null ? ` (${code})` : ''}`;
+}
+
+function wireSecretToggle(container) {
+  const wrap = container.querySelector('.secret-input-wrap');
+  const btn = container.querySelector('.secret-toggle');
+  if (!wrap || !btn) return;
+
+  syncSecretToggleLabel(wrap, btn);
+  subscribe('uiLang', () => syncSecretToggleLabel(wrap, btn));
+  btn.addEventListener('click', () => {
+    const visible = wrap.dataset.secretVisible === 'true';
+    wrap.dataset.secretVisible = visible ? 'false' : 'true';
+    btn.setAttribute('aria-pressed', String(!visible));
+    syncSecretToggleLabel(wrap, btn);
+  });
+}
+
+function syncSecretToggleLabel(wrap, btn) {
+  const visible = wrap.dataset.secretVisible === 'true';
+  const label = t(visible ? 'obs.password.hide' : 'obs.password.show');
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+}

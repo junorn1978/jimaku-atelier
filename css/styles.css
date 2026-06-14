@@ -1,0 +1,1281 @@
+/* =========================================
+   字幕アトリエ — main stylesheet
+   Organized with @layer to control cascade order.
+   ========================================= */
+
+@layer reset, tokens, base, layout, components, utilities;
+
+/* ============ reset ============ */
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body, h1, h2, h3, h4, p, ul, ol, figure { margin: 0; padding: 0; }
+  ul, ol { list-style: none; }
+  button { font: inherit; cursor: pointer; background: none; border: 0; color: inherit; }
+  input, select, textarea { font: inherit; color: inherit; }
+  img, svg { display: block; max-width: 100%; }
+  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+
+/* ============ tokens ============ */
+@layer tokens {
+  :root {
+    color-scheme: dark;
+
+    /* --- typography --- */
+    --font-ui:       "Huninn", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
+    --font-subtitle: var(--font-ui);
+
+    /* --- UI palette (dark) --- */
+    --color-bg:        #161719;
+    --color-surface:   #1f2024;
+    --color-surface-2: #2a2c31;
+    --color-border:    #383a40;
+    --color-text:      #e8e9ec;
+    --color-text-dim:  #9a9ca3;
+    --color-accent:    #4b8ce2;
+    --color-danger:    #e25b5b;
+
+    /* --- layout sizing --- */
+    --header-h:        56px;
+    --control-panel-h: 260px;     /* bottom control panel; manual panel matches it */
+    --radius-sm:       4px;
+    --radius-md:       6px;
+    --radius-lg:       10px;
+    --space-xs:        4px;
+    --space-sm:        8px;
+    --space-md:        5px;
+    --space-lg:        16px;
+    --space-xl:        24px;
+
+    /* --- subtitle settings (driven from JS) --- */
+    --sub-bg:                #00FF00;
+    --sub-align:             center;
+    --sub-overflow:          normal;        /* normal | shrink (max 2 lines) */
+
+    --sub-source-color:      #FFFFFF;
+    --sub-source-stroke:     #000000;
+    --sub-source-stroke-w:   4px;
+    --sub-source-size:       24px;
+
+    --sub-target1-color:     #FFFFFF;
+    --sub-target1-stroke:    #000000;
+    --sub-target1-stroke-w:  4px;
+    --sub-target1-size:      22px;
+
+    --sub-target2-color:     #FFFFFF;
+    --sub-target2-stroke:    #000000;
+    --sub-target2-stroke-w:  4px;
+    --sub-target2-size:      22px;
+  }
+}
+
+/* ============ base ============ */
+@layer base {
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--font-ui);
+    background: var(--color-bg);
+    color: var(--color-text);
+    min-width: 1000px;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: var(--header-h) 1fr;
+  }
+}
+
+/* ============ layout ============ */
+@layer layout {
+
+  .app-header {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--space-md);
+    padding: 0 var(--space-lg);
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+
+      .app-icon { width: 28px; height: 28px; }
+
+      .app-version {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--color-text-dim);
+        background: var(--color-surface-2);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-sm);
+        padding: 1px 6px;
+        letter-spacing: 0.3px;
+      }
+
+      h1 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        letter-spacing: 0.2px;
+      }
+    }
+
+    .header-info {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-sm);
+      color: var(--color-text-dim);
+      font-size: 0.85rem;
+      min-width: 0;
+
+      .header-speech {
+        display: flex;
+        align-items: center;
+        gap: var(--space-sm);
+        flex-shrink: 0;
+
+        .btn { padding: var(--space-xs) var(--space-md); }
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+  }
+
+  .app-main {
+    /* Two stacked rows: the subtitle preview on top and the control panel
+       below. Collapsing the bottom panel (.panel-collapsed) removes it from
+       flow so the green preview grows to fill the window — handy for OBS
+       window capture. The manual-translate tool is an overlay over the preview
+       (see .manual-translate-panel) so opening it never resizes the green box. */
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    position: relative;
+    min-height: 0;
+  }
+
+  .preview-pane {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    background: var(--sub-bg);
+    min-width: 0;
+    min-height: 0;
+
+    .subtitle-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: var(--space-xl);
+      gap: var(--space-md);
+      min-height: 0;
+
+      .subtitle-line {
+        text-align: var(--sub-align);
+        font-family: var(--font-subtitle);
+        width: 100%;
+        line-height: 1.3;
+        word-break: break-word;
+        /* webkit text stroke produces sharper, OBS-friendly outlines */
+        paint-order: stroke fill;
+
+        /* Placeholder shown when element has no live text. Inherits the
+           same color/stroke as real text so the user sees a true preview
+           when adjusting style. -webkit-text-stroke is not inherited by
+           ::before, so each line re-applies it below. */
+        &:empty::before {
+          content: attr(data-placeholder);
+        }
+      }
+
+      .source {
+        color: var(--sub-source-color);
+        font-size: var(--sub-source-size);
+        -webkit-text-stroke: var(--sub-source-stroke-w) var(--sub-source-stroke);
+
+        &:empty::before {
+          -webkit-text-stroke: var(--sub-source-stroke-w) var(--sub-source-stroke);
+        }
+      }
+      .target-1 {
+        color: var(--sub-target1-color);
+        font-size: var(--sub-target1-size);
+        -webkit-text-stroke: var(--sub-target1-stroke-w) var(--sub-target1-stroke);
+
+        &:empty::before {
+          -webkit-text-stroke: var(--sub-target1-stroke-w) var(--sub-target1-stroke);
+        }
+      }
+      .target-2 {
+        color: var(--sub-target2-color);
+        font-size: var(--sub-target2-size);
+        -webkit-text-stroke: var(--sub-target2-stroke-w) var(--sub-target2-stroke);
+
+        &:empty::before {
+          -webkit-text-stroke: var(--sub-target2-stroke-w) var(--sub-target2-stroke);
+        }
+      }
+    }
+
+  }
+
+  /* Manual text-translation slide-up overlay. Anchored to the bottom of
+     .app-main (not the preview) so it rises from the very bottom of the window
+     and covers the control panel. Hidden by default (translated fully below its
+     own height); .manual-open slides it into view. */
+  .manual-translate-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--control-panel-h);
+    z-index: 20;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: var(--space-sm);
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
+    padding: var(--space-md) var(--space-lg);
+    min-height: 0;
+    transform: translateY(100%);
+    transition: transform 0.2s ease;
+  }
+
+  .manual-panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    .manual-panel-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+  }
+
+  .settings-pane {
+    /* Bottom control panel (the settings tabs). In normal flow as app-main's
+       second row; .panel-collapsed removes it so the preview grows. */
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: var(--control-panel-h);
+    min-height: 0;
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--color-border);
+
+      button {
+        flex: 1;
+        padding: var(--space-md) var(--space-sm);
+        color: var(--color-text-dim);
+        font-size: 0.9rem;
+        border-bottom: 2px solid transparent;
+        transition: color 0.15s, border-color 0.15s;
+
+        &:hover { color: var(--color-text); }
+
+        &[aria-selected="true"] {
+          color: var(--color-text);
+          border-bottom-color: var(--color-accent);
+        }
+      }
+    }
+
+    .tab-panels {
+      overflow-y: auto;
+
+      .tab-panel {
+        padding: var(--space-lg);
+
+        &[hidden] { display: none; }
+      }
+    }
+  }
+}
+
+/* ============ components ============ */
+@layer components {
+
+  /* --- generic buttons --- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xs);
+    padding: var(--space-sm) var(--space-lg);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font-size: 0.9rem;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in oklab, var(--color-surface-2) 60%, white);
+    }
+
+    &:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    &.primary {
+      background: var(--color-accent);
+      color: white;
+
+      &:hover:not(:disabled) {
+        background: color-mix(in oklab, var(--color-accent) 85%, white);
+      }
+    }
+
+    &.danger {
+      background: var(--color-danger);
+      color: white;
+    }
+  }
+
+  /* --- icon-only button (32×32) --- */
+  .icon-btn {
+    width: 36px;
+    height: 36px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--radius-md);
+    color: var(--color-text-dim);
+    transition: background 0.15s, color 0.15s;
+
+    &:hover { background: var(--color-surface-2); color: var(--color-text); }
+
+    /* pressed/active state (e.g. layout toggle while its panel is collapsed) */
+    &.is-active {
+      background: var(--color-accent);
+      color: white;
+
+      &:hover { background: color-mix(in oklab, var(--color-accent) 85%, white); color: white; }
+    }
+
+    svg { width: 20px; height: 20px; }
+  }
+
+  /* --- segmented switch (button-based for i18n switcher,
+         radio-based for settings via <label><input><span></label>) --- */
+  .seg-switch {
+    /* Positioning context so the visually-hidden (position:absolute) radios
+       below stay contained here instead of escaping to the viewport — an
+       escaped radio gets focus-scrolled into view, scrolling the whole page
+       and pushing the header off-screen. */
+    position: relative;
+    display: inline-flex;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    background: var(--color-bg);
+
+    /* button-based variant (i18n switcher) */
+    button {
+      padding: var(--space-xs) var(--space-md);
+      color: var(--color-text-dim);
+      font-size: 0.82rem;
+      letter-spacing: 0.5px;
+      transition: background 0.15s, color 0.15s;
+
+      &:hover { color: var(--color-text); }
+
+      &.is-active {
+        background: var(--color-accent);
+        color: white;
+      }
+
+      & + button { border-left: 1px solid var(--color-border); }
+    }
+
+    /* radio-based variant (settings) */
+    label {
+      display: inline-flex;
+      cursor: pointer;
+    }
+
+    input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    label > span {
+      padding: var(--space-xs) var(--space-md);
+      color: var(--color-text-dim);
+      font-size: 0.85rem;
+      transition: background 0.15s, color 0.15s;
+      user-select: none;
+    }
+
+    label:hover > span { color: var(--color-text); }
+
+    input[type="radio"]:checked + span {
+      background: var(--color-accent);
+      color: white;
+    }
+
+    input[type="radio"]:focus-visible + span {
+      outline: 2px solid var(--color-accent);
+      outline-offset: -2px;
+    }
+
+    label + label > span { border-left: 1px solid var(--color-border); }
+
+    /* Engine option whose backend is unavailable (e.g. Chrome AI not ready). */
+    label.is-disabled { cursor: not-allowed; }
+    label.is-disabled > span { opacity: 0.4; }
+    label.is-disabled:hover > span { color: var(--color-text-dim); }
+  }
+
+  /* full-width variant (e.g., overflow control) */
+  .seg-switch-stretch {
+    display: flex;
+    width: 100%;
+
+    label { flex: 1; }
+    label > span { width: 100%; text-align: center; }
+  }
+
+  /* icon-only variant (e.g., alignment switch) — fixed square cells */
+  .seg-switch-icons {
+    label > span {
+      display: inline-grid;
+      place-items: center;
+      padding: 6px 8px;
+    }
+    svg { display: block; }
+  }
+
+  .style-align-control {
+    justify-self: start;
+  }
+
+  /* --- dialog (native <dialog>) --- */
+  .app-dialog {
+    border: 0;
+    padding: 0;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+    color: var(--color-text);
+    min-width: 480px;
+    max-width: min(90vw, 720px);
+    max-height: 86vh;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+    &::backdrop {
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(2px);
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md) var(--space-lg);
+      border-bottom: 1px solid var(--color-border);
+
+      h2 { font-size: 1rem; font-weight: 600; }
+    }
+
+    .dialog-body {
+      padding: var(--space-lg);
+      overflow-y: auto;
+      max-height: calc(86vh - 56px);
+    }
+  }
+
+  /* --- manual text translation tool --- */
+  .manual-translate-texts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+    min-height: 0;
+  }
+
+  .manual-field {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--space-xs);
+    min-width: 0;
+    min-height: 0;
+
+    > span {
+      color: var(--color-text-dim);
+      font-size: 0.82rem;
+    }
+  }
+
+  .manual-textarea {
+    resize: none;
+    min-height: 0;
+    height: 100%;
+    line-height: 1.45;
+  }
+
+  .manual-textarea[readonly] {
+    background: color-mix(in oklab, var(--color-bg) 86%, var(--color-surface-2));
+  }
+
+  .manual-translate-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .manual-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-sm);
+    min-width: 0;
+
+    .manual-target {
+      width: min(240px, 45%);
+      min-width: 160px;
+    }
+  }
+
+  .manual-status {
+    min-height: 1.2em;
+    color: var(--color-text-dim);
+    font-size: 0.78rem;
+    line-height: 1.2;
+
+    &[data-type="error"] {
+      color: color-mix(in oklab, var(--color-danger) 85%, white);
+    }
+  }
+
+  /* --- app settings dialog --- */
+  .dialog-section {
+    &:not(:first-child) {
+      margin-top: var(--space-lg);
+      padding-top: var(--space-lg);
+      border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+    }
+
+    h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: var(--space-xs);
+    }
+
+    p {
+      color: var(--color-text-dim);
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+  }
+
+  .dialog-setting-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-lg);
+  }
+
+  .about-list {
+    display: grid;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+
+    > div {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: var(--space-md);
+      align-items: baseline;
+    }
+
+    dt {
+      color: var(--color-text-dim);
+      font-size: 0.82rem;
+    }
+
+    dd {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.35;
+    }
+  }
+
+  /* --- form rows (used inside tabs) --- */
+  .form-row {
+    display: grid;
+    grid-template-columns: 130px 1fr;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-xs) 0;
+
+    .form-row-label {
+      color: var(--color-text-dim);
+      font-size: 0.88rem;
+    }
+  }
+
+  /* one-column row, control spans full width (no label cell) */
+  .form-row-full {
+    grid-template-columns: 1fr;
+  }
+
+  /* select on the left taking remaining space, a compact action (toggle) on
+     the right. Used in the Languages tab for "source lang + show toggle". */
+  .form-row-select-toggle {
+    grid-template-columns: 1fr auto;
+  }
+
+  /* offline pack: label + download button on one line (button pushed to the
+     right so a long, multi-word label has the full width to lay out), with the
+     status message spanning the full width on its own line below. */
+  .offline-pack-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md);
+
+    .btn { flex-shrink: 0; }
+  }
+
+  .offline-pack-info {
+    color: var(--color-text-dim);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  /* two-line layout (label above control) */
+  .form-row-stack {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
+  }
+
+  /* two-column row: two label+control cells side by side, split by a thin
+     vertical divider. Each cell stacks its label above its control. */
+  .form-row-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+    padding: var(--space-xs) 0;
+
+    > * {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-xs);
+      min-width: 0;
+    }
+
+    > *:first-child  { padding-right: var(--space-md); }
+    > * + * {
+      padding-left: var(--space-md);
+      border-left: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+    }
+  }
+
+  /* --- section header inside tabs --- */
+  .section-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-dim);
+    margin-bottom: var(--space-sm);
+  }
+
+  /* --- generic horizontal column layout (Languages / Style tabs) --- */
+  .panel-cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: var(--space-lg);
+
+    /* two-column variant (e.g. Filter tab: replace rules | blacklist) */
+    &.cols-2 { grid-template-columns: 1fr 1fr; }
+
+    /* a second row of columns in the same tab gets a separating rule above */
+    & + & {
+      margin-top: var(--space-md);
+      padding-top: var(--space-md);
+      border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+    }
+  }
+
+  .panel-col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+    min-width: 0;
+
+    /* thin divider between columns */
+    & + & {
+      padding-left: var(--space-lg);
+      border-left: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+    }
+
+    /* a second section heading in a column (e.g. 翻訳 2) gets breathing room */
+    .section-title:not(:first-child) {
+      margin-top: var(--space-sm);
+    }
+  }
+
+  /* custom-URL input + "examples & help" trigger, inside the engine column */
+  .lang-url-row {
+    margin-top: var(--space-sm);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .url-examples-toggle {
+    align-self: flex-start;
+    anchor-name: --url-examples-anchor;
+  }
+
+  /* bubble shown above the trigger via the native Popover API + CSS anchor
+     positioning (Chrome/Edge). Flips below if there isn't room above. */
+  .url-popover {
+    position-anchor: --url-examples-anchor;
+    position-area: top span-inline-end;
+    position-try-fallbacks: flip-block;
+    inset: auto;
+    margin: var(--space-sm) 0;
+
+    width: max-content;
+    max-width: min(320px, 80vw);
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    padding: var(--space-md);
+    color: var(--color-text);
+
+    .format-help-examples { margin-top: 0; }
+  }
+
+  /* --- form inputs (dark theme) --- */
+
+  .select,
+  .text-input {
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    width: 100%;
+    min-width: 0;
+    transition: border-color 0.15s;
+
+    &:hover { border-color: color-mix(in oklab, var(--color-border) 50%, var(--color-text-dim)); }
+    &:focus { border-color: var(--color-accent); outline: none; }
+  }
+
+  .select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239a9ca3' stroke-width='2'><path d='M5 8l5 5 5-5'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 28px;
+  }
+
+  /* native <option>s — give the popup a dark background where possible */
+  .select option {
+    background: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .secret-input-wrap {
+    position: relative;
+    display: grid;
+    min-width: 0;
+
+    .secret-input {
+      padding-right: 42px;
+    }
+
+    &[data-secret-visible="false"] .secret-input {
+      -webkit-text-security: disc;
+    }
+
+    .secret-toggle {
+      position: absolute;
+      top: 50%;
+      right: 3px;
+      width: 30px;
+      height: 30px;
+      transform: translateY(-50%);
+    }
+
+    .icon-eye { display: none; }
+
+    &[data-secret-visible="true"] {
+      .icon-eye { display: block; }
+      .icon-eye-off { display: none; }
+    }
+  }
+
+  .color-input {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    width: 95px;
+    height: 28px;
+    padding: 0;
+    background: var(--color-bg);
+    cursor: pointer;
+
+    &::-webkit-color-swatch-wrapper { padding: 2px; }
+    &::-webkit-color-swatch { border: 0; border-radius: 3px; }
+    &::-moz-color-swatch    { border: 0; border-radius: 3px; }
+  }
+
+  /* --- toggle switch (checkbox styled as iOS-style track + thumb) --- */
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+
+    input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .toggle-track {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      background: var(--color-surface-2);
+      border-radius: 10px;
+      transition: background 0.18s;
+    }
+
+    .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: var(--color-text-dim);
+      border-radius: 50%;
+      transition: transform 0.18s, background 0.18s;
+    }
+
+    input[type="checkbox"]:checked + .toggle-track {
+      background: color-mix(in oklab, var(--color-accent) 70%, var(--color-bg));
+    }
+
+    input[type="checkbox"]:checked + .toggle-track .toggle-thumb {
+      transform: translateX(16px);
+      background: white;
+    }
+
+    input[type="checkbox"]:focus-visible + .toggle-track {
+      outline: 2px solid var(--color-accent);
+      outline-offset: 2px;
+    }
+  }
+
+  /* --- filter tab rule list --- */
+  .filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+    margin-bottom: var(--space-md);
+  }
+
+  .filter-row {
+    display: grid;
+    grid-template-columns: 1fr 16px 1fr 28px;
+    align-items: center;
+    gap: var(--space-xs);
+
+    .filter-arrow {
+      color: var(--color-text-dim);
+      font-size: 0.85rem;
+      text-align: center;
+    }
+
+    .text-input {
+      padding: 4px 8px;
+      font-size: 0.85rem;
+    }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+
+      svg { width: 14px; height: 14px; }
+    }
+  }
+
+  .filter-add {
+    width: 100%;
+    justify-content: center;
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    color: var(--color-text-dim);
+
+    &:hover:not(:disabled) {
+      border-color: var(--color-accent);
+      color: var(--color-text);
+      background: transparent;
+    }
+  }
+
+  /* blacklist rows: single word input + delete (no replacement target) */
+  .blacklist-row {
+    grid-template-columns: 1fr 28px;
+  }
+
+  .blacklist-actions {
+    display: flex;
+    gap: var(--space-xs);
+
+    .filter-add { flex: 1; }
+  }
+
+  .blacklist-defaults {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* --- OBS tab: live connection status beside the WS toggle --- */
+  /* Status line + hint share one fixed-height box that scrolls as a single
+     unit, so neither (both can wrap to several lines) ever pushes the rest of
+     the tab down. ~3 lines tall; anything beyond scrolls inside. */
+  .obs-conn {
+    margin-top: var(--space-xs);
+    height: calc(0.78rem * 1.3 * 3);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .obs-conn-status {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    min-height: 1.2em;
+    color: var(--color-text-dim);
+    font-size: 0.78rem;
+    line-height: 1.3;
+  }
+
+  .obs-conn-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-text-dim);
+  }
+
+  .obs-conn-status[data-phase="connecting"] .obs-conn-dot { background: #e2b04b; }
+  .obs-conn-status[data-phase="connected"]  .obs-conn-dot { background: #4be27a; }
+  .obs-conn-status[data-phase="retrying"]   .obs-conn-dot { background: var(--color-danger); }
+
+  .obs-conn-status[data-phase="connected"] { color: var(--color-text); }
+  .obs-conn-status[data-phase="retrying"]  { color: color-mix(in oklab, var(--color-danger) 85%, white); }
+
+  .obs-conn-hint {
+    margin: var(--space-xs) 0 0;
+    color: var(--color-text-dim);
+    font-size: 0.75rem;
+    line-height: 1.4;
+  }
+
+  /* --- OBS tab: drag-link grid + hint text --- */
+  .obs-drag-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-xs);
+  }
+
+  .obs-drag-link {
+    cursor: grab;
+    text-decoration: none;
+    user-select: none;
+
+    &:active { cursor: grabbing; }
+  }
+
+  .form-hint {
+    margin-top: var(--space-sm);
+    color: var(--color-text-dim);
+    font-size: 0.78rem;
+    line-height: 1.4;
+  }
+
+  .help-steps {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding-left: 1.3em;
+    color: var(--color-text-dim);
+    font-size: 0.8rem;
+    line-height: 1.45;
+  }
+
+  /* --- range slider + readout --- */
+  .slider-group {
+    display: grid;
+    grid-template-columns: 1fr 28px;
+    align-items: center;
+    gap: var(--space-sm);
+
+    .slider-value {
+      color: var(--color-text-dim);
+      font-size: 0.8rem;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--color-surface-2);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+
+    &::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--color-accent);
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform 0.1s;
+
+      &:hover { transform: scale(1.15); }
+    }
+
+    &::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      background: var(--color-accent);
+      border: 0;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+  }
+
+  /* --- custom URL format help (Languages tab) --- */
+  .format-help {
+    margin-top: var(--space-sm);
+    padding: var(--space-md);
+    background: color-mix(in oklab, var(--color-bg) 60%, var(--color-surface));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--color-text-dim);
+
+    p {
+      margin-top: var(--space-sm);
+    }
+
+    ul.format-help-list {
+      list-style: disc;
+      padding-left: var(--space-lg);
+      margin-top: var(--space-xs);
+
+      li { margin-top: 2px; }
+    }
+
+    code {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: 0.85em;
+      background: var(--color-bg);
+      color: var(--color-text);
+      padding: 1px 4px;
+      border-radius: var(--radius-sm);
+    }
+
+    pre {
+      margin-top: var(--space-xs);
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm);
+      padding: var(--space-sm) var(--space-md);
+      max-height: 220px;
+      overflow-y: auto;
+      overflow-x: hidden;
+
+      code {
+        background: none;
+        padding: 0;
+        color: var(--color-text);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-size: 0.78rem;
+        line-height: 1.45;
+      }
+    }
+  }
+
+  .format-help-examples {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    margin-top: var(--space-md);
+
+    /* Label takes a full line so the buttons sit below it in a single row. */
+    > span {
+      flex-basis: 100%;
+      color: var(--color-text-dim);
+      font-size: 0.82rem;
+    }
+
+    .btn {
+      padding: var(--space-xs) var(--space-md);
+      font-size: 0.82rem;
+    }
+  }
+
+  /* --- code block in example dialog --- */
+  .example-steps {
+    font-size: 0.85rem;
+    color: var(--color-text-dim);
+    margin-bottom: var(--space-md);
+
+    .example-steps-title {
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: var(--space-xs);
+    }
+
+    ol {
+      list-style: decimal;
+      padding-left: var(--space-lg);
+
+      li {
+        margin-top: var(--space-xs);
+        line-height: 1.6;
+      }
+    }
+
+    code {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: 0.82em;
+      background: var(--color-bg);
+      color: var(--color-text);
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+      margin-left: 6px;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .code-block {
+    position: relative;
+
+    pre {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-md);
+      padding-right: 96px; /* room for copy button */
+      max-height: 60vh;
+      overflow: auto;
+      margin: 0;
+    }
+
+    code {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: 0.82rem;
+      line-height: 1.5;
+      color: var(--color-text);
+      white-space: pre;
+    }
+  }
+
+  .code-copy-btn {
+    position: absolute;
+    top: var(--space-sm);
+    right: var(--space-sm);
+    padding: var(--space-xs) var(--space-md);
+    font-size: 0.8rem;
+
+    &.is-copied {
+      background: var(--color-accent);
+      color: white;
+    }
+  }
+}
+
+/* ============ utilities ============ */
+@layer utilities {
+  /* Capture mode: hide a panel so the subtitle preview is unobstructed.
+     Driven by body classes toggled from the header buttons (js/ui-layout.js).
+     Both the control panel and the manual overlay are fully manual — nothing is
+     auto-hidden while recognising. The header always stays so the toggles (and
+     start/stop) remain reachable. */
+
+  /* Collapsing the bottom control panel removes it from flow entirely so the
+     green preview grows to fill the window. */
+  .panel-collapsed .settings-pane { display: none; }
+
+  /* Manual text-translation overlay: slide it up into view over the preview. */
+  .manual-open .manual-translate-panel { transform: translateY(0); }
+
+  /* The HTML [hidden] attribute defaults to `display: none` via the UA
+     stylesheet, but any author rule with `display: <other>` (e.g. grid/flex
+     on .form-row) wins by source order. Re-asserting it in a later layer
+     (utilities > components) restores the expected behavior cleanly. */
+  [hidden] { display: none; }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* source line hidden when user opts out (Style tab → "show source" toggle). */
+  [data-sub-show-source="false"] .source { display: none; }
+
+  /* Target slot set to "don't translate" — hide the line entirely so the
+     empty space (and its placeholder) doesn't show. */
+  [data-target1-lang="none"] .target-1 { display: none; }
+  [data-target2-lang="none"] .target-2 { display: none; }
+
+  /* During recording the placeholder hint is suppressed — once the user has
+     hit Start, an empty line should read as "no subtitle right now", not as
+     stale preview text. */
+  .subtitle-display.is-recording .subtitle-line:empty::before { content: none; }
+
+  /* subtitle overflow strategies, driven by [data-sub-overflow] on .subtitle-display.
+     Mirrors overlay.html so the preview matches OBS. */
+  [data-sub-overflow="shrink"] .target-1,
+  [data-sub-overflow="shrink"] .target-2 {
+    height: 2.6em;     /* two lines (line-height: 1.3) */
+    overflow: hidden;  /* JS cinema-scrolls through anything beyond 2 lines */
+  }
+
+  /* source (STT) limited to one visible line: clip to a single line height and
+     let JS scroll to the bottom so the latest line stays in view. */
+  [data-sub-source-single="true"] .source {
+    height: 1.3em;
+    overflow: hidden;
+  }
+}

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>字幕アトリエ — Overlay</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+
+  <style>
+    :root { --text-align: center; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      height: 100%;
+      font-family: "Huninn", Arial, sans-serif;
+    }
+
+    body {
+      padding: 10px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: var(--text-align);
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+
+    .subtitle-container {
+      display: flex;
+      flex-direction: column;
+      align-items: var(--text-align);
+      text-align: var(--text-align);
+      gap: 6px;
+      width: 100%;
+      padding-top: 10px;
+    }
+
+    .text-line {
+      font-weight: bold;
+      line-height: 1.3em;
+      paint-order: stroke fill;
+      animation: fadeIn 0.18s ease-out forwards;
+      flex-shrink: 0;
+    }
+    .text-line:empty { display: none; }
+    .text-line[data-hidden="1"] { display: none; }
+
+    /* overflow strategies, mirror styles.css */
+    .overflow-normal { overflow: visible; }
+    .overflow-shrink {
+      display: block;
+      width: 100%;
+      height: 2.6em;
+      overflow: hidden;
+      word-break: break-word;
+    }
+    /* source (STT) limited to one visible line: stretch to the container width
+       so text wraps (and can overflow), clip to one line, JS scrolls to bottom */
+    .source-1line {
+      display: block;
+      width: 100%;
+      height: 1.3em;
+      overflow: hidden;
+      word-break: break-word;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    #status-msg {
+      color: #ffaa00;
+      font-size: 14px;
+      font-weight: normal;
+    }
+  </style>
+</head>
+<body>
+  <div class="subtitle-container" id="container">
+    <div id="source"   class="text-line"></div>
+    <div id="target-1" class="text-line"></div>
+    <div id="target-2" class="text-line"></div>
+    <div id="status-msg"></div>
+  </div>
+
+  <script>
+    /* Hash params: #url=...&pwd=...&mode=all|source|target1|target2 */
+    const hashParams  = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const queryParams = new URLSearchParams(location.search);
+    const wsUrl = hashParams.get('url')  || queryParams.get('url')  || 'ws://127.0.0.1:4455';
+    const wsPwd = hashParams.get('pwd')  || queryParams.get('pwd')  || '';
+    const mode  = hashParams.get('mode') || queryParams.get('mode') || 'all';
+
+    /* Per-mode hiding: a "target1-only" overlay shouldn't show the source line. */
+    const HIDE_MAP = {
+      source:  '#target-1,#target-2',
+      target1: '#source,#target-2',
+      target2: '#source,#target-1',
+    };
+    if (HIDE_MAP[mode]) {
+      const s = document.createElement('style');
+      s.textContent = HIDE_MAP[mode] + '{display:none!important}';
+      document.head.appendChild(s);
+    }
+
+    const sourceEl = document.getElementById('source');
+    const t1El     = document.getElementById('target-1');
+    const t2El     = document.getElementById('target-2');
+    const statusEl = document.getElementById('status-msg');
+
+    function setStatus(text) { statusEl.textContent = text || ''; }
+
+    // === translation cinema scroll (shrink / 2-line mode); mirrors preview ===
+    const SCROLL_READ_DELAY_MS    = 3000;
+    const SCROLL_STEP_INTERVAL_MS = 2000;
+    const SCROLL_STEP_ANIM_MS     = 800;
+    let lastOverflow = 'normal';
+
+    function smoothScrollToSlowly(el, to, duration) {
+      const start = el.scrollTop;
+      const change = to - start;
+      const t0 = performance.now();
+      const tick = (now) => {
+        const t = Math.min(1, (now - t0) / duration);
+        el.scrollTop = start + change * (t * (2 - t));
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }
+
+    function setupCinemaScroll(el) {
+      let session = null;
+      const step = () => {
+        if (lastOverflow !== 'shrink') return;
+        const cs = getComputedStyle(el);
+        const lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3;
+        const max = el.scrollHeight - el.clientHeight;
+        if (el.scrollTop < max - 1) {
+          smoothScrollToSlowly(el, Math.min(el.scrollTop + lineH, max), SCROLL_STEP_ANIM_MS);
+          session = setTimeout(step, SCROLL_STEP_INTERVAL_MS);
+        }
+      };
+      const reeval = () => {
+        clearTimeout(session);
+        session = null;
+        if (lastOverflow === 'shrink' && el.scrollHeight > el.clientHeight) {
+          session = setTimeout(step, SCROLL_READ_DELAY_MS);
+        } else {
+          el.scrollTop = 0;
+        }
+      };
+      new MutationObserver(reeval).observe(el, { childList: true, characterData: true, subtree: true });
+      return reeval;
+    }
+
+    const targetReevals = [t1El, t2El].map(setupCinemaScroll);
+
+    /* OBS WebSocket v5 auth = base64(sha256(base64(sha256(pwd+salt))+challenge)) */
+    function toBase64(bytes) {
+      let s = '';
+      for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+      return btoa(s);
+    }
+    async function sha256Base64(text) {
+      const data = new TextEncoder().encode(text);
+      const buf  = await crypto.subtle.digest('SHA-256', data);
+      return toBase64(new Uint8Array(buf));
+    }
+    async function buildAuthToken(password, salt, challenge) {
+      if (!password || !salt || !challenge) return '';
+      const secret = await sha256Base64(password + salt);
+      return sha256Base64(secret + challenge);
+    }
+
+    function applyStyle(el, style) {
+      if (!style) return;
+      if (style.color) el.style.color = style.color;
+      if (style.strokeSize && style.strokeColor) {
+        el.style.webkitTextStroke = `${style.strokeSize} ${style.strokeColor}`;
+      }
+      if (style.fontSize) el.style.fontSize = style.fontSize;
+    }
+
+    function applyOverflow(el, ov) {
+      el.classList.remove('overflow-normal', 'overflow-shrink');
+      el.classList.add(ov === 'shrink' ? 'overflow-shrink' : 'overflow-normal');
+    }
+
+    function updateText(el, txt) {
+      const next = txt || '';
+      if (el.textContent !== next) el.textContent = next;
+    }
+
+    let socket = null;
+    let connected = false;
+
+    function connect() {
+      if (!connected) setStatus(`Connecting to ${wsUrl} ...`);
+      try {
+        socket = new WebSocket(wsUrl);
+      } catch (err) {
+        setStatus(`WebSocket error: ${err.message}`);
+        setTimeout(connect, 3000);
+        return;
+      }
+
+      socket.onmessage = (event) => {
+        let msg;
+        try { msg = JSON.parse(event.data); } catch { return; }
+        const op = msg.op;
+        const d  = msg.d;
+
+        if (op === 0) {
+          /* hello → identify, requesting general events (1) so we get CustomEvent. */
+          const auth = d.authentication;
+          if (!auth) {
+            socket.send(JSON.stringify({ op: 1, d: { rpcVersion: 1, eventSubscriptions: 1 } }));
+          } else {
+            buildAuthToken(wsPwd, auth.salt, auth.challenge).then(token => {
+              socket.send(JSON.stringify({
+                op: 1,
+                d: { rpcVersion: 1, authentication: token, eventSubscriptions: 1 },
+              }));
+            });
+          }
+          return;
+        }
+
+        if (op === 2) {
+          connected = true;
+          setStatus('');
+          return;
+        }
+
+        if (op === 5
+            && d.eventType === 'CustomEvent'
+            && d.eventData?.type === 'rtl_subtitle_update') {
+          const data = d.eventData;
+
+          if (data.alignment) {
+            const flexAlign = data.alignment === 'left'  ? 'flex-start'
+                            : data.alignment === 'right' ? 'flex-end'
+                                                         : 'center';
+            document.documentElement.style.setProperty('--text-align', flexAlign);
+            document.getElementById('container').style.textAlign = data.alignment;
+          }
+
+          if (data.overflow) {
+            applyOverflow(t1El, data.overflow);
+            applyOverflow(t2El, data.overflow);
+            /* Only re-arm the scroll on an actual mode change. Doing it on every
+               broadcast would keep clearing the read-delay timer (source interim
+               updates broadcast many times per second) so it could never fire.
+               Text changes are handled by the MutationObserver instead. */
+            if (data.overflow !== lastOverflow) {
+              lastOverflow = data.overflow;
+              targetReevals.forEach(fn => fn());
+            }
+          }
+
+          if (data.showSource !== undefined) {
+            sourceEl.dataset.hidden = data.showSource ? '' : '1';
+          }
+
+          if (data.sourceSingleLine !== undefined) {
+            sourceEl.classList.toggle('source-1line', data.sourceSingleLine);
+          }
+
+          updateText(sourceEl, data.source);
+          updateText(t1El,     data.target1);
+          updateText(t2El,     data.target2);
+
+          applyStyle(sourceEl, data.styles?.source);
+          applyStyle(t1El,     data.styles?.target1);
+          applyStyle(t2El,     data.styles?.target2);
+
+          /* In single-line mode keep the latest line of the source in view. */
+          if (sourceEl.scrollHeight > sourceEl.clientHeight) {
+            sourceEl.scrollTo({ top: sourceEl.scrollHeight, behavior: 'smooth' });
+          } else {
+            sourceEl.scrollTop = 0;
+          }
+        }
+      };
+
+      socket.onerror = () => {
+        if (!connected) setStatus(`Cannot connect to ${wsUrl}`);
+      };
+
+      socket.onclose = () => {
+        socket = null;
+        if (connected) {
+          connected = false;
+          setStatus('Reconnecting...');
+        }
+        setTimeout(connect, 3000);
+      };
+    }
+
+    connect();
+  </script>
+</body>
+</html>
