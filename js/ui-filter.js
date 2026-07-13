@@ -1,7 +1,9 @@
 /**
  * @file ui-filter.js
- * @description Filter tab UI, split into two columns: word-replacement rules
+ * @description Word-replacement UI, split into two columns: replacement rules
  * on the left and the blacklist on the right, each with its own enable toggle.
+ * Appended into its own tab panel (#tab-filter) as a `.filter-section`; the
+ * section fills the panel and only the rule lists scroll (see styles.css).
  *
  * Each rule row is rendered as (source input, →, target input, delete).
  * On every keystroke we write a fresh array back to settings.filterRules so
@@ -27,7 +29,9 @@ const TRASH_SVG = `
 export function mountFilterTab(container) {
   if (!container) return;
 
-  container.innerHTML = `
+  const section = document.createElement('div');
+  section.className = 'filter-section';
+  section.innerHTML = `
     <div class="panel-cols cols-2">
       <section class="panel-col">
         <div class="form-row">
@@ -60,8 +64,10 @@ export function mountFilterTab(container) {
     </div>
   `;
 
-  const listEl = container.querySelector('#filter-rules-list');
-  const addBtn = container.querySelector('#filter-add-rule');
+  container.appendChild(section);
+
+  const listEl = section.querySelector('#filter-rules-list');
+  const addBtn = section.querySelector('#filter-add-rule');
 
   renderRules(listEl);
 
@@ -74,9 +80,9 @@ export function mountFilterTab(container) {
   });
 
   /* --- blacklist --- */
-  const blEl       = container.querySelector('#blacklist-list');
-  const blAddBtn   = container.querySelector('#blacklist-add');
-  const blLoadBtn  = container.querySelector('#blacklist-load-defaults');
+  const blEl       = section.querySelector('#blacklist-list');
+  const blAddBtn   = section.querySelector('#blacklist-add');
+  const blLoadBtn  = section.querySelector('#blacklist-load-defaults');
 
   renderBlacklist(blEl);
 

@@ -1,6 +1,16 @@
 /* =========================================
    字幕アトリエ — main stylesheet
    Organized with @layer to control cascade order.
+
+   Design system (dark, Apple-inspired aesthetic):
+   - surfaces climb from --color-bg (page) → surface-1 (chrome: header,
+     panel, dialogs) → surface-2 (inputs, inset tracks) → surface-3
+     (hover / raised chips); separation prefers hairlines + elevation
+     over solid borders.
+   - text hierarchy is white at three opacity levels (≈88/55/30%).
+   - spacing uses a numeric 4/8/12/16/24 scale (--space-1..5).
+   - type collapses onto a 4-step scale (--text-xs..lg).
+   - focus is a soft accent ring (--focus-ring) everywhere.
    ========================================= */
 
 @layer reset, tokens, base, layout, components, utilities;
@@ -13,7 +23,7 @@
   button { font: inherit; cursor: pointer; background: none; border: 0; color: inherit; }
   input, select, textarea { font: inherit; color: inherit; }
   img, svg { display: block; max-width: 100%; }
-  :focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  :focus-visible { outline: none; box-shadow: var(--focus-ring); }
 }
 
 /* ============ tokens ============ */
@@ -25,27 +35,52 @@
     --font-ui:       "Huninn", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
     --font-subtitle: var(--font-ui);
 
-    /* --- UI palette (dark) --- */
-    --color-bg:        #161719;
-    --color-surface:   #1f2024;
-    --color-surface-2: #2a2c31;
-    --color-border:    #383a40;
-    --color-text:      #e8e9ec;
-    --color-text-dim:  #9a9ca3;
-    --color-accent:    #4b8ce2;
-    --color-danger:    #e25b5b;
+    --text-xs: 0.72rem;
+    --text-sm: 0.8rem;
+    --text-md: 0.875rem;
+    --text-lg: 1rem;
+
+    /* --- UI palette (dark, Apple system colors) --- */
+    --color-bg:            #151517;
+    --color-surface-1:     #1d1d20;   /* header, control panel, dialogs */
+    --color-surface-2:     #27272b;   /* inputs, inset tracks */
+    --color-surface-3:     #323238;   /* hover states, raised segments */
+    --color-border:        rgba(255, 255, 255, 0.08);   /* hairline */
+    --color-border-strong: rgba(255, 255, 255, 0.16);
+    --color-text:          rgba(255, 255, 255, 0.88);
+    --color-text-dim:      rgba(255, 255, 255, 0.55);
+    --color-text-faint:    rgba(255, 255, 255, 0.30);
+    --color-accent:        #0a84ff;
+    --color-accent-hover:  #2f94ff;
+    --color-accent-soft:   color-mix(in oklab, var(--color-accent) 20%, transparent);
+    --color-danger:        #ff453a;
+    --color-success:       #32d74b;
+    --color-warning:       #ffd60a;
+
+    /* --- material fills (translucent, read over any surface) --- */
+    --fill-1: rgba(255, 255, 255, 0.09);   /* resting controls */
+    --fill-2: rgba(255, 255, 255, 0.14);   /* hovered controls */
+    --fill-3: rgba(255, 255, 255, 0.22);   /* raised / selected chips */
+
+    /* --- elevation / focus (soft, two-layer Apple shadows) --- */
+    --shadow-1:       0 1px 2.5px rgba(0, 0, 0, 0.3);
+    --shadow-2:       0 4px 16px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
+    --focus-ring:     0 0 0 3px color-mix(in oklab, var(--color-accent) 40%, transparent);
 
     /* --- layout sizing --- */
-    --header-h:        56px;
-    --control-panel-h: 260px;     /* bottom control panel; manual panel matches it */
-    --radius-sm:       4px;
-    --radius-md:       6px;
-    --radius-lg:       10px;
-    --space-xs:        4px;
-    --space-sm:        8px;
-    --space-md:        5px;
-    --space-lg:        16px;
-    --space-xl:        24px;
+    --header-h:        52px;
+    --control-panel-h: 300px;     /* bottom control panel (36px tab bar + content);
+                                     the manual panel matches it */
+    --radius-sm:       6px;
+    --radius-md:       10px;
+    --radius-lg:       16px;
+    --radius-full:     999px;
+    --space-1:         4px;
+    --space-2:         8px;
+    --space-3:         12px;
+    --space-4:         16px;
+    --space-5:         24px;
 
     /* --- subtitle settings (driven from JS) --- */
     --sub-bg:                #00FF00;
@@ -67,6 +102,12 @@
     --sub-target2-stroke-w:  4px;
     --sub-target2-size:      22px;
   }
+
+  /* 日文 UI 時改用日文圓體。Huninn 內含假名與台灣字形漢字，
+     無法靠 fallback 順序讓日文掉到日文字體，必須在此明確覆寫。 */
+  :root:lang(ja) {
+    --font-ui: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  }
 }
 
 /* ============ base ============ */
@@ -82,6 +123,27 @@
     display: grid;
     grid-template-rows: var(--header-h) 1fr;
   }
+
+  /* slim scrollbars for the few internal scroll areas (Chrome-only app) */
+  .filter-list::-webkit-scrollbar,
+  .obs-conn::-webkit-scrollbar,
+  .tab-panel::-webkit-scrollbar,
+  .dialog-body::-webkit-scrollbar { width: 8px; height: 8px; }
+
+  .filter-list::-webkit-scrollbar-thumb,
+  .obs-conn::-webkit-scrollbar-thumb,
+  .tab-panel::-webkit-scrollbar-thumb,
+  .dialog-body::-webkit-scrollbar-thumb {
+    background: var(--color-surface-3);
+    border-radius: var(--radius-sm);
+
+    &:hover { background: var(--color-border-strong); }
+  }
+
+  .filter-list::-webkit-scrollbar-track,
+  .obs-conn::-webkit-scrollbar-track,
+  .tab-panel::-webkit-scrollbar-track,
+  .dialog-body::-webkit-scrollbar-track { background: transparent; }
 }
 
 /* ============ layout ============ */
@@ -91,33 +153,33 @@
     display: grid;
     grid-template-columns: auto 1fr auto;
     align-items: center;
-    gap: var(--space-md);
-    padding: 0 var(--space-lg);
-    background: var(--color-surface);
+    gap: var(--space-3);
+    padding: 0 var(--space-4);
+    background: var(--color-surface-1);
     border-bottom: 1px solid var(--color-border);
 
     .app-title {
       display: flex;
       align-items: center;
-      gap: var(--space-sm);
+      gap: var(--space-2);
 
       .app-icon { width: 28px; height: 28px; }
 
       .app-version {
-        font-size: 0.7rem;
+        font-size: var(--text-xs);
         font-weight: 600;
-        color: var(--color-text-dim);
+        color: var(--color-text-faint);
         background: var(--color-surface-2);
         border: 1px solid var(--color-border);
-        border-radius: var(--radius-sm);
-        padding: 1px 6px;
+        border-radius: var(--radius-full);
+        padding: 1px 8px;
         letter-spacing: 0.3px;
       }
 
       h1 {
-        font-size: 1.05rem;
+        font-size: var(--text-lg);
         font-weight: 600;
-        letter-spacing: 0.2px;
+        letter-spacing: -0.01em;   /* larger text wants tighter tracking */
       }
     }
 
@@ -125,25 +187,63 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: var(--space-sm);
+      gap: var(--space-2);
       color: var(--color-text-dim);
-      font-size: 0.85rem;
+      font-size: var(--text-sm);
       min-width: 0;
 
+      /* start/stop live in a grouped pill so they read as one control */
       .header-speech {
         display: flex;
         align-items: center;
-        gap: var(--space-sm);
+        gap: 2px;
         flex-shrink: 0;
+        padding: 3px;
+        background: rgba(0, 0, 0, 0.22);   /* inset track, matches .seg-switch */
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-full);
 
-        .btn { padding: var(--space-xs) var(--space-md); }
+        .btn {
+          padding: 3px 14px;
+          border: 0;
+          border-radius: var(--radius-full);
+          background: transparent;
+
+          &:not(.primary):hover:not(:disabled) { background: var(--color-surface-3); }
+        }
+      }
+
+      /* Recording state, CSS-only: speech.js enables Stop exactly while
+         recognition is active, so the Start button flips into a pulsing
+         REC badge without any JS involvement. */
+      .header-speech:has(#btn-stop:not(:disabled)) #btn-start {
+        opacity: 1;
+        background: color-mix(in oklab, var(--color-danger) 20%, transparent);
+        color: color-mix(in oklab, var(--color-danger) 70%, white);
+
+        svg { animation: rec-pulse 1.4s ease-in-out infinite; }
       }
     }
 
     .header-actions {
       display: flex;
       align-items: center;
-      gap: var(--space-sm);
+      gap: var(--space-2);
+
+      /* thin divider between the UI-language switch and the icon buttons */
+      > .seg-switch {
+        margin-right: var(--space-2);
+
+        &::after {
+          content: "";
+          position: absolute;
+          right: -9px;
+          top: 15%;
+          height: 70%;
+          width: 1px;
+          background: var(--color-border);
+        }
+      }
     }
   }
 
@@ -171,8 +271,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      padding: var(--space-xl);
-      gap: var(--space-md);
+      padding: var(--space-5);
+      gap: var(--space-2);
       min-height: 0;
 
       .subtitle-line {
@@ -237,11 +337,11 @@
     z-index: 20;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto auto;
-    gap: var(--space-sm);
-    background: var(--color-surface);
+    gap: var(--space-2);
+    background: var(--color-surface-1);
     border-top: 1px solid var(--color-border);
-    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
-    padding: var(--space-md) var(--space-lg);
+    box-shadow: var(--shadow-overlay);
+    padding: var(--space-3) var(--space-5);
     min-height: 0;
     transform: translateY(100%);
     transition: transform 0.2s ease;
@@ -253,49 +353,69 @@
     justify-content: space-between;
 
     .manual-panel-title {
-      font-size: 0.9rem;
+      font-size: var(--text-md);
       font-weight: 600;
     }
   }
 
   .settings-pane {
-    /* Bottom control panel (the settings tabs). In normal flow as app-main's
-       second row; .panel-collapsed removes it so the preview grows. */
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
+    /* Bottom control panel: a tab bar (言語 / スタイル / 単語置換 / OBS) over
+       the active tab's panel. In normal flow as app-main's second row;
+       .panel-collapsed removes it so the preview grows. Tab switching is
+       wired by js/ui-tabs.js. */
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
+    background: var(--color-surface-1);
+    border-top: 1px solid var(--color-border);
     height: var(--control-panel-h);
     min-height: 0;
 
-    .tab-bar {
+    .settings-tabs {
       display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-3);
       border-bottom: 1px solid var(--color-border);
 
-      button {
-        flex: 1;
-        padding: var(--space-md) var(--space-sm);
+      /* Apple-style pill tabs: the active tab is a raised material chip,
+         matching the segmented switches in the header. */
+      .tab-btn {
+        padding: 4px 14px;
+        font-size: var(--text-md);
         color: var(--color-text-dim);
-        font-size: 0.9rem;
-        border-bottom: 2px solid transparent;
-        transition: color 0.15s, border-color 0.15s;
+        border-radius: var(--radius-full);
+        transition: color 0.15s, background 0.15s;
 
-        &:hover { color: var(--color-text); }
-
-        &[aria-selected="true"] {
+        &:hover {
           color: var(--color-text);
-          border-bottom-color: var(--color-accent);
+          background: var(--fill-1);
+        }
+
+        &.is-active {
+          color: var(--color-text);
+          background: var(--fill-2);
         }
       }
     }
 
-    .tab-panels {
-      overflow-y: auto;
+    .settings-body {
+      min-height: 0;
+      overflow: hidden;
+      padding: var(--space-4) var(--space-5);
 
+      /* Tabs are designed to fit without scrolling (the Filter tab scrolls
+         inside its rule lists instead); overflow-y is a graceful fallback
+         for edge cases like very long engine status text. */
       .tab-panel {
-        padding: var(--space-lg);
-
-        &[hidden] { display: none; }
+        height: 100%;
+        min-height: 0;
+        overflow-y: auto;
+        /* Reserve the scrollbar's width even while nothing overflows, so a
+           tab growing taller (e.g. the custom-URL row appearing) doesn't
+           shift the whole layout when the scrollbar pops in; the padding
+           keeps content from sitting flush against the scrollbar. */
+        scrollbar-gutter: stable;
+        padding-right: var(--space-2);
       }
     }
   }
@@ -304,65 +424,80 @@
 /* ============ components ============ */
 @layer components {
 
-  /* --- generic buttons --- */
+  /* --- generic buttons: borderless material capsules; feedback is
+         instant on press (scale), Apple-style --- */
   .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: var(--space-xs);
-    padding: var(--space-sm) var(--space-lg);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-2);
+    gap: var(--space-1);
+    padding: 5px var(--space-4);
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--fill-1);
     color: var(--color-text);
-    font-size: 0.9rem;
-    transition: background 0.15s;
+    font-size: var(--text-sm);
+    transition: background 0.15s, color 0.15s, transform 0.1s ease-out;
 
     &:hover:not(:disabled) {
-      background: color-mix(in oklab, var(--color-surface-2) 60%, white);
+      background: var(--fill-2);
     }
 
-    &:disabled { opacity: 0.4; cursor: not-allowed; }
+    &:active:not(:disabled) { transform: scale(0.97); }
+
+    &:disabled { opacity: 0.45; cursor: not-allowed; }
 
     &.primary {
       background: var(--color-accent);
       color: white;
 
       &:hover:not(:disabled) {
-        background: color-mix(in oklab, var(--color-accent) 85%, white);
+        background: var(--color-accent-hover);
       }
     }
 
     &.danger {
       background: var(--color-danger);
       color: white;
+
+      &:hover:not(:disabled) {
+        background: color-mix(in oklab, var(--color-danger) 85%, white);
+      }
     }
   }
 
   /* --- icon-only button (32×32) --- */
   .icon-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     display: inline-grid;
     place-items: center;
     border-radius: var(--radius-md);
     color: var(--color-text-dim);
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, transform 0.1s ease-out;
 
-    &:hover { background: var(--color-surface-2); color: var(--color-text); }
+    &:hover { background: var(--fill-1); color: var(--color-text); }
 
-    /* pressed/active state (e.g. layout toggle while its panel is collapsed) */
+    &:active { transform: scale(0.94); }
+
+    /* pressed/active state (e.g. layout toggle while its panel is collapsed):
+       a quiet accent tint rather than a full accent fill */
     &.is-active {
-      background: var(--color-accent);
-      color: white;
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
 
-      &:hover { background: color-mix(in oklab, var(--color-accent) 85%, white); color: white; }
+      &:hover {
+        background: color-mix(in oklab, var(--color-accent) 28%, transparent);
+        color: var(--color-accent-hover);
+      }
     }
 
-    svg { width: 20px; height: 20px; }
+    svg { width: 18px; height: 18px; }
   }
 
   /* --- segmented switch (button-based for i18n switcher,
-         radio-based for settings via <label><input><span></label>) --- */
+         radio-based for settings via <label><input><span></label>).
+         An inset track; the active segment is a raised chip. --- */
   .seg-switch {
     /* Positioning context so the visually-hidden (position:absolute) radios
        below stay contained here instead of escaping to the viewport — an
@@ -370,27 +505,28 @@
        and pushing the header off-screen. */
     position: relative;
     display: inline-flex;
+    gap: 2px;
+    padding: 2px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    overflow: hidden;
-    background: var(--color-bg);
+    background: rgba(0, 0, 0, 0.22);   /* inset track, darker than its chrome */
 
     /* button-based variant (i18n switcher) */
     button {
-      padding: var(--space-xs) var(--space-md);
+      padding: 3px 10px;
+      border-radius: calc(var(--radius-md) - 3px);
       color: var(--color-text-dim);
-      font-size: 0.82rem;
+      font-size: var(--text-sm);
       letter-spacing: 0.5px;
       transition: background 0.15s, color 0.15s;
 
       &:hover { color: var(--color-text); }
 
       &.is-active {
-        background: var(--color-accent);
-        color: white;
+        background: var(--fill-3);
+        color: var(--color-text);
+        box-shadow: var(--shadow-1);
       }
-
-      & + button { border-left: 1px solid var(--color-border); }
     }
 
     /* radio-based variant (settings) */
@@ -406,9 +542,10 @@
     }
 
     label > span {
-      padding: var(--space-xs) var(--space-md);
+      padding: 3px 10px;
+      border-radius: calc(var(--radius-md) - 3px);
       color: var(--color-text-dim);
-      font-size: 0.85rem;
+      font-size: var(--text-sm);
       transition: background 0.15s, color 0.15s;
       user-select: none;
     }
@@ -416,16 +553,14 @@
     label:hover > span { color: var(--color-text); }
 
     input[type="radio"]:checked + span {
-      background: var(--color-accent);
-      color: white;
+      background: var(--fill-3);
+      color: var(--color-text);
+      box-shadow: var(--shadow-1);
     }
 
     input[type="radio"]:focus-visible + span {
-      outline: 2px solid var(--color-accent);
-      outline-offset: -2px;
+      box-shadow: var(--focus-ring);
     }
-
-    label + label > span { border-left: 1px solid var(--color-border); }
 
     /* Engine option whose backend is unavailable (e.g. Chrome AI not ready). */
     label.is-disabled { cursor: not-allowed; }
@@ -447,7 +582,7 @@
     label > span {
       display: inline-grid;
       place-items: center;
-      padding: 6px 8px;
+      padding: 5px 8px;
     }
     svg { display: block; }
   }
@@ -458,35 +593,36 @@
 
   /* --- dialog (native <dialog>) --- */
   .app-dialog {
-    border: 0;
+    border: 1px solid var(--color-border);
     padding: 0;
     border-radius: var(--radius-lg);
-    background: var(--color-surface);
+    background: var(--color-surface-1);
     color: var(--color-text);
     min-width: 480px;
     max-width: min(90vw, 720px);
     max-height: 86vh;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--shadow-overlay);
 
     &::backdrop {
-      background: rgba(0, 0, 0, 0.55);
-      backdrop-filter: blur(2px);
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(8px);
     }
 
     .dialog-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: var(--space-md) var(--space-lg);
+      min-height: 48px;
+      padding: var(--space-2) var(--space-4);
       border-bottom: 1px solid var(--color-border);
 
-      h2 { font-size: 1rem; font-weight: 600; }
+      h2 { font-size: var(--text-lg); font-weight: 600; }
     }
 
     .dialog-body {
-      padding: var(--space-lg);
+      padding: var(--space-4);
       overflow-y: auto;
-      max-height: calc(86vh - 56px);
+      max-height: calc(86vh - 48px);
     }
   }
 
@@ -494,20 +630,20 @@
   .manual-translate-texts {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-md);
+    gap: var(--space-3);
     min-height: 0;
   }
 
   .manual-field {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
-    gap: var(--space-xs);
+    gap: var(--space-1);
     min-width: 0;
     min-height: 0;
 
     > span {
       color: var(--color-text-dim);
-      font-size: 0.82rem;
+      font-size: var(--text-sm);
     }
   }
 
@@ -519,7 +655,7 @@
   }
 
   .manual-textarea[readonly] {
-    background: color-mix(in oklab, var(--color-bg) 86%, var(--color-surface-2));
+    background: color-mix(in oklab, var(--color-bg) 70%, var(--color-surface-2));
   }
 
   .manual-translate-toolbar {
@@ -532,7 +668,7 @@
     display: flex;
     align-items: center;
     justify-content: flex-end;
-    gap: var(--space-sm);
+    gap: var(--space-2);
     min-width: 0;
 
     .manual-target {
@@ -544,7 +680,7 @@
   .manual-status {
     min-height: 1.2em;
     color: var(--color-text-dim);
-    font-size: 0.78rem;
+    font-size: var(--text-sm);
     line-height: 1.2;
 
     &[data-type="error"] {
@@ -555,20 +691,20 @@
   /* --- app settings dialog --- */
   .dialog-section {
     &:not(:first-child) {
-      margin-top: var(--space-lg);
-      padding-top: var(--space-lg);
+      margin-top: var(--space-4);
+      padding-top: var(--space-4);
       border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
     }
 
     h3 {
-      font-size: 0.95rem;
+      font-size: var(--text-md);
       font-weight: 600;
-      margin-bottom: var(--space-xs);
+      margin-bottom: var(--space-1);
     }
 
     p {
       color: var(--color-text-dim);
-      font-size: 0.84rem;
+      font-size: var(--text-sm);
       line-height: 1.45;
     }
   }
@@ -577,29 +713,29 @@
     display: grid;
     grid-template-columns: 1fr auto;
     align-items: center;
-    gap: var(--space-lg);
+    gap: var(--space-4);
   }
 
   .about-list {
     display: grid;
-    gap: var(--space-sm);
-    margin-top: var(--space-md);
+    gap: var(--space-2);
+    margin-top: var(--space-3);
 
     > div {
       display: grid;
       grid-template-columns: 96px 1fr;
-      gap: var(--space-md);
+      gap: var(--space-3);
       align-items: baseline;
     }
 
     dt {
       color: var(--color-text-dim);
-      font-size: 0.82rem;
+      font-size: var(--text-sm);
     }
 
     dd {
       margin: 0;
-      font-size: 0.9rem;
+      font-size: var(--text-md);
       line-height: 1.35;
     }
   }
@@ -609,48 +745,38 @@
     display: grid;
     grid-template-columns: 130px 1fr;
     align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-xs) 0;
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
 
     .form-row-label {
       color: var(--color-text-dim);
-      font-size: 0.88rem;
+      font-size: var(--text-md);
     }
-  }
-
-  /* one-column row, control spans full width (no label cell) */
-  .form-row-full {
-    grid-template-columns: 1fr;
-  }
-
-  /* select on the left taking remaining space, a compact action (toggle) on
-     the right. Used in the Languages tab for "source lang + show toggle". */
-  .form-row-select-toggle {
-    grid-template-columns: 1fr auto;
-  }
-
-  /* offline pack: label + download button on one line (button pushed to the
-     right so a long, multi-word label has the full width to lay out), with the
-     status message spanning the full width on its own line below. */
-  .offline-pack-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-md);
-
-    .btn { flex-shrink: 0; }
   }
 
   .offline-pack-info {
     color: var(--color-text-dim);
-    font-size: 0.78rem;
+    font-size: var(--text-sm);
     line-height: 1.4;
   }
 
   /* two-line layout (label above control) */
   .form-row-stack {
     grid-template-columns: 1fr;
-    gap: var(--space-xs);
+    gap: var(--space-1);
+  }
+
+  /* Toggle rows read as one full-width unit, System Settings-style: the
+     label fills the row and the switch sits on the trailing edge. Also
+     prevents long labels from wrapping into orphans against the fixed
+     130px label column. */
+  .form-row:has(> .toggle) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+
+    .form-row-label { flex: 1; }
   }
 
   /* two-column row: two label+control cells side by side, split by a thin
@@ -659,47 +785,47 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     align-items: stretch;
-    padding: var(--space-xs) 0;
+    padding: var(--space-1) 0;
 
     > * {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: var(--space-xs);
+      gap: var(--space-1);
       min-width: 0;
     }
 
-    > *:first-child  { padding-right: var(--space-md); }
+    > *:first-child  { padding-right: var(--space-3); }
     > * + * {
-      padding-left: var(--space-md);
+      padding-left: var(--space-3);
       border-left: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
     }
   }
 
   /* --- section header inside tabs --- */
   .section-title {
-    font-size: 0.78rem;
+    font-size: var(--text-xs);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.8px;
     color: var(--color-text-dim);
-    margin-bottom: var(--space-sm);
+    margin-bottom: var(--space-2);
   }
 
-  /* --- generic horizontal column layout (Languages / Style tabs) --- */
+  /* --- generic horizontal column layout (Style / OBS tabs) --- */
   .panel-cols {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: var(--space-lg);
+    gap: var(--space-4);
 
     /* two-column variant (e.g. Filter tab: replace rules | blacklist) */
     &.cols-2 { grid-template-columns: 1fr 1fr; }
 
     /* a second row of columns in the same tab gets a separating rule above */
     & + & {
-      margin-top: var(--space-md);
-      padding-top: var(--space-md);
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
       border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
     }
   }
@@ -707,27 +833,27 @@
   .panel-col {
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-2);
     min-width: 0;
 
     /* thin divider between columns */
     & + & {
-      padding-left: var(--space-lg);
+      padding-left: var(--space-4);
       border-left: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
     }
 
     /* a second section heading in a column (e.g. 翻訳 2) gets breathing room */
     .section-title:not(:first-child) {
-      margin-top: var(--space-sm);
+      margin-top: var(--space-2);
     }
   }
 
   /* custom-URL input + "examples & help" trigger, inside the engine column */
   .lang-url-row {
-    margin-top: var(--space-sm);
+    margin-top: var(--space-2);
     display: flex;
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: var(--space-2);
   }
 
   .url-examples-toggle {
@@ -735,22 +861,24 @@
     anchor-name: --url-examples-anchor;
   }
 
-  /* bubble shown above the trigger via the native Popover API + CSS anchor
-     positioning (Chrome/Edge). Flips below if there isn't room above. */
+  /* bubble shown beside the trigger via the native Popover API + CSS anchor
+     positioning (Chrome/Edge). Sits to the right of the button (growing
+     upward if tall) so it appears where the user just clicked; flips to the
+     left if there isn't room. */
   .url-popover {
     position-anchor: --url-examples-anchor;
-    position-area: top span-inline-end;
-    position-try-fallbacks: flip-block;
+    position-area: span-top right;
+    position-try-fallbacks: flip-inline;
     inset: auto;
-    margin: var(--space-sm) 0;
+    margin: 0 var(--space-2);
 
     width: max-content;
     max-width: min(320px, 80vw);
     background: var(--color-surface-2);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-md);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-    padding: var(--space-md);
+    box-shadow: var(--shadow-2);
+    padding: var(--space-3);
     color: var(--color-text);
 
     .format-help-examples { margin-top: 0; }
@@ -760,33 +888,106 @@
 
   .select,
   .text-input {
-    background: var(--color-bg);
+    background: var(--color-surface-2);
     color: var(--color-text);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    padding: 6px 10px;
-    font-size: 0.9rem;
+    padding: 5px 10px;
+    font-size: var(--text-md);
     width: 100%;
     min-width: 0;
     transition: border-color 0.15s;
 
-    &:hover { border-color: color-mix(in oklab, var(--color-border) 50%, var(--color-text-dim)); }
-    &:focus { border-color: var(--color-accent); outline: none; }
+    &:hover { border-color: var(--color-border-strong); }
+    &:focus { border-color: var(--color-accent); outline: none; box-shadow: var(--focus-ring); }
   }
 
   .select {
     appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239a9ca3' stroke-width='2'><path d='M5 8l5 5 5-5'/></svg>");
+    /* macOS pop-up button: paired up/down chevrons on the trailing edge */
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-opacity='0.6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M4.5 6.2 8 2.8l3.5 3.4M4.5 9.8 8 13.2l3.5-3.4'/></svg>");
     background-repeat: no-repeat;
     background-position: right 8px center;
-    background-size: 16px;
+    background-size: 14px;
     padding-right: 28px;
   }
 
   /* native <option>s — give the popup a dark background where possible */
   .select option {
-    background: var(--color-surface);
+    background: var(--color-surface-1);
     color: var(--color-text);
+  }
+
+  /* compact, fixed-width select for the language rows — the full-width default
+     is far wider than the short language names need. Must come after .select so
+     it wins on the (equal-specificity) width. */
+  .select-compact {
+    width: 150px;
+    flex-shrink: 0;
+  }
+
+  /* --- language controls: source side | translation side --- */
+  .lang-grid {
+    display: grid;
+    grid-template-columns: minmax(280px, 1fr) 1.4fr;
+    height: 100%;
+  }
+
+  .lang-side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+
+    /* thin divider between the source and translation sides */
+    &.lang-side-source { padding-right: var(--space-4); }
+
+    & + & {
+      padding-left: var(--space-4);
+      border-left: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+    }
+  }
+
+  /* one control line: inline label + select (+ source extras) */
+  .lang-field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .lang-field-label {
+    color: var(--color-text-dim);
+    font-size: var(--text-md);
+    white-space: nowrap;
+  }
+
+  /* the two target rows sit side by side on one line */
+  .lang-targets {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-4);
+    row-gap: var(--space-2);
+  }
+
+  /* download status / info, stacked under the source row. Capped so a long
+     info sentence wraps instead of stretching the source side wider. */
+  .lang-sub {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    max-width: 380px;
+  }
+
+  /* engine picker, stacked under the target rows */
+  .lang-engine {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+
+    /* segmented control hugs its content (Apple-style) instead of being
+       stretched to the column width by the flex container */
+    > .seg-switch { align-self: flex-start; }
   }
 
   .secret-input-wrap {
@@ -806,8 +1007,8 @@
       position: absolute;
       top: 50%;
       right: 3px;
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       transform: translateY(-50%);
     }
 
@@ -824,15 +1025,18 @@
     -webkit-appearance: none;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    width: 95px;
+    width: 64px;
     height: 28px;
     padding: 0;
-    background: var(--color-bg);
+    background: var(--color-surface-2);
     cursor: pointer;
+    transition: border-color 0.15s;
 
-    &::-webkit-color-swatch-wrapper { padding: 2px; }
-    &::-webkit-color-swatch { border: 0; border-radius: 3px; }
-    &::-moz-color-swatch    { border: 0; border-radius: 3px; }
+    &:hover { border-color: var(--color-border-strong); }
+
+    &::-webkit-color-swatch-wrapper { padding: 3px; }
+    &::-webkit-color-swatch { border: 0; border-radius: var(--radius-sm); }
+    &::-moz-color-swatch    { border: 0; border-radius: var(--radius-sm); }
   }
 
   /* --- toggle switch (checkbox styled as iOS-style track + thumb) --- */
@@ -848,13 +1052,15 @@
       pointer-events: none;
     }
 
+    /* iOS proportions: the thumb is white in both states; only the
+       track color flips. */
     .toggle-track {
       position: relative;
       display: inline-block;
-      width: 36px;
-      height: 20px;
-      background: var(--color-surface-2);
-      border-radius: 10px;
+      width: 38px;
+      height: 22px;
+      background: var(--fill-3);
+      border-radius: var(--radius-full);
       transition: background 0.18s;
     }
 
@@ -862,51 +1068,73 @@
       position: absolute;
       top: 2px;
       left: 2px;
-      width: 16px;
-      height: 16px;
-      background: var(--color-text-dim);
+      width: 18px;
+      height: 18px;
+      background: white;
       border-radius: 50%;
-      transition: transform 0.18s, background 0.18s;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+      transition: transform 0.18s;
     }
 
     input[type="checkbox"]:checked + .toggle-track {
-      background: color-mix(in oklab, var(--color-accent) 70%, var(--color-bg));
+      background: var(--color-accent);
     }
 
     input[type="checkbox"]:checked + .toggle-track .toggle-thumb {
       transform: translateX(16px);
-      background: white;
     }
 
     input[type="checkbox"]:focus-visible + .toggle-track {
-      outline: 2px solid var(--color-accent);
-      outline-offset: 2px;
+      box-shadow: var(--focus-ring);
     }
   }
 
-  /* --- filter tab rule list --- */
+  /* --- word-replacement tab: two side-by-side rule lists. The section fills
+     its tab panel and only the lists themselves scroll, so the toggles and
+     add buttons always stay in reach. --- */
+  .filter-section {
+    height: 100%;
+    min-height: 0;
+
+    .panel-cols.cols-2 {
+      height: 100%;
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    /* toggle row / title-or-hint / scrolling list / add buttons */
+    .panel-col {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      gap: var(--space-2);
+      min-height: 0;
+    }
+  }
+
+  /* --- word-replacement rule list --- */
   .filter-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs);
-    margin-bottom: var(--space-md);
+    gap: var(--space-1);
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 
   .filter-row {
     display: grid;
     grid-template-columns: 1fr 16px 1fr 28px;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--space-1);
 
     .filter-arrow {
-      color: var(--color-text-dim);
-      font-size: 0.85rem;
+      color: var(--color-text-faint);
+      font-size: var(--text-sm);
       text-align: center;
     }
 
     .text-input {
-      padding: 4px 8px;
-      font-size: 0.85rem;
+      padding: 3px 8px;
+      font-size: var(--text-sm);
     }
 
     .icon-btn {
@@ -921,7 +1149,7 @@
     width: 100%;
     justify-content: center;
     background: transparent;
-    border: 1px dashed var(--color-border);
+    border: 1px dashed var(--color-border-strong);
     color: var(--color-text-dim);
 
     &:hover:not(:disabled) {
@@ -938,7 +1166,7 @@
 
   .blacklist-actions {
     display: flex;
-    gap: var(--space-xs);
+    gap: var(--space-1);
 
     .filter-add { flex: 1; }
   }
@@ -948,13 +1176,21 @@
     white-space: nowrap;
   }
 
+  /* --- OBS tab: URL + password side by side (labels stacked above),
+         so the connection column stays within the panel height --- */
+  .obs-conn-fields {
+    display: grid;
+    grid-template-columns: 3fr 2fr;
+    gap: var(--space-2);
+  }
+
   /* --- OBS tab: live connection status beside the WS toggle --- */
   /* Status line + hint share one fixed-height box that scrolls as a single
      unit, so neither (both can wrap to several lines) ever pushes the rest of
      the tab down. ~3 lines tall; anything beyond scrolls inside. */
   .obs-conn {
-    margin-top: var(--space-xs);
-    height: calc(0.78rem * 1.3 * 3);
+    margin-top: var(--space-1);
+    height: calc(var(--text-sm) * 1.3 * 3);
     overflow-y: auto;
     scrollbar-gutter: stable;
   }
@@ -963,10 +1199,10 @@
     margin: 0;
     display: flex;
     align-items: center;
-    gap: var(--space-xs);
+    gap: var(--space-1);
     min-height: 1.2em;
     color: var(--color-text-dim);
-    font-size: 0.78rem;
+    font-size: var(--text-sm);
     line-height: 1.3;
   }
 
@@ -975,20 +1211,26 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--color-text-dim);
+    background: var(--color-text-faint);
   }
 
-  .obs-conn-status[data-phase="connecting"] .obs-conn-dot { background: #e2b04b; }
-  .obs-conn-status[data-phase="connected"]  .obs-conn-dot { background: #4be27a; }
+  .obs-conn-status[data-phase="connecting"] .obs-conn-dot {
+    background: var(--color-warning);
+    animation: dot-pulse 1.2s ease-in-out infinite;
+  }
+  .obs-conn-status[data-phase="connected"]  .obs-conn-dot {
+    background: var(--color-success);
+    box-shadow: 0 0 6px color-mix(in oklab, var(--color-success) 60%, transparent);
+  }
   .obs-conn-status[data-phase="retrying"]   .obs-conn-dot { background: var(--color-danger); }
 
   .obs-conn-status[data-phase="connected"] { color: var(--color-text); }
   .obs-conn-status[data-phase="retrying"]  { color: color-mix(in oklab, var(--color-danger) 85%, white); }
 
   .obs-conn-hint {
-    margin: var(--space-xs) 0 0;
+    margin: var(--space-1) 0 0;
     color: var(--color-text-dim);
-    font-size: 0.75rem;
+    font-size: var(--text-xs);
     line-height: 1.4;
   }
 
@@ -996,7 +1238,7 @@
   .obs-drag-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: var(--space-xs);
+    gap: var(--space-1);
   }
 
   .obs-drag-link {
@@ -1008,9 +1250,9 @@
   }
 
   .form-hint {
-    margin-top: var(--space-sm);
+    margin-top: var(--space-2);
     color: var(--color-text-dim);
-    font-size: 0.78rem;
+    font-size: var(--text-sm);
     line-height: 1.4;
   }
 
@@ -1020,7 +1262,7 @@
     margin: 0;
     padding-left: 1.3em;
     color: var(--color-text-dim);
-    font-size: 0.8rem;
+    font-size: var(--text-sm);
     line-height: 1.45;
   }
 
@@ -1029,22 +1271,24 @@
     display: grid;
     grid-template-columns: 1fr 28px;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-2);
 
     .slider-value {
       color: var(--color-text-dim);
-      font-size: 0.8rem;
+      font-size: var(--text-sm);
       text-align: right;
       font-variant-numeric: tabular-nums;
     }
   }
 
+  /* macOS-style slider: accent-filled progress on the left of a dark
+     inset track, white round knob with a soft shadow. */
   input[type="range"] {
     appearance: none;
     -webkit-appearance: none;
     width: 100%;
     height: 4px;
-    background: var(--color-surface-2);
+    background: rgba(0, 0, 0, 0.3);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
@@ -1052,46 +1296,47 @@
     &::-webkit-slider-thumb {
       appearance: none;
       -webkit-appearance: none;
-      width: 14px;
-      height: 14px;
-      background: var(--color-accent);
-      border: 0;
+      width: 15px;
+      height: 15px;
+      background: white;
       border-radius: 50%;
+      box-shadow: 0 0.5px 2.5px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
       cursor: pointer;
       transition: transform 0.1s;
 
-      &:hover { transform: scale(1.15); }
+      &:hover { transform: scale(1.1); }
     }
 
     &::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
-      background: var(--color-accent);
+      width: 15px;
+      height: 15px;
+      background: white;
       border: 0;
       border-radius: 50%;
+      box-shadow: 0 0.5px 2.5px rgba(0, 0, 0, 0.5);
       cursor: pointer;
     }
   }
 
   /* --- custom URL format help (Languages tab) --- */
   .format-help {
-    margin-top: var(--space-sm);
-    padding: var(--space-md);
-    background: color-mix(in oklab, var(--color-bg) 60%, var(--color-surface));
+    margin-top: var(--space-2);
+    padding: var(--space-3);
+    background: color-mix(in oklab, var(--color-bg) 60%, var(--color-surface-1));
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    font-size: 0.82rem;
+    font-size: var(--text-sm);
     line-height: 1.5;
     color: var(--color-text-dim);
 
     p {
-      margin-top: var(--space-sm);
+      margin-top: var(--space-2);
     }
 
     ul.format-help-list {
       list-style: disc;
-      padding-left: var(--space-lg);
-      margin-top: var(--space-xs);
+      padding-left: var(--space-4);
+      margin-top: var(--space-1);
 
       li { margin-top: 2px; }
     }
@@ -1106,11 +1351,11 @@
     }
 
     pre {
-      margin-top: var(--space-xs);
+      margin-top: var(--space-1);
       background: var(--color-bg);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-sm);
-      padding: var(--space-sm) var(--space-md);
+      padding: var(--space-2) var(--space-3);
       max-height: 220px;
       overflow-y: auto;
       overflow-x: hidden;
@@ -1121,7 +1366,7 @@
         color: var(--color-text);
         white-space: pre-wrap;
         overflow-wrap: anywhere;
-        font-size: 0.78rem;
+        font-size: var(--text-sm);
         line-height: 1.45;
       }
     }
@@ -1131,40 +1376,40 @@
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
-    gap: var(--space-sm);
-    margin-top: var(--space-md);
+    gap: var(--space-2);
+    margin-top: var(--space-3);
 
     /* Label takes a full line so the buttons sit below it in a single row. */
     > span {
       flex-basis: 100%;
       color: var(--color-text-dim);
-      font-size: 0.82rem;
+      font-size: var(--text-sm);
     }
 
     .btn {
-      padding: var(--space-xs) var(--space-md);
-      font-size: 0.82rem;
+      padding: 3px 10px;
+      font-size: var(--text-sm);
     }
   }
 
   /* --- code block in example dialog --- */
   .example-steps {
-    font-size: 0.85rem;
+    font-size: var(--text-sm);
     color: var(--color-text-dim);
-    margin-bottom: var(--space-md);
+    margin-bottom: var(--space-3);
 
     .example-steps-title {
       font-weight: 600;
       color: var(--color-text);
-      margin-bottom: var(--space-xs);
+      margin-bottom: var(--space-1);
     }
 
     ol {
       list-style: decimal;
-      padding-left: var(--space-lg);
+      padding-left: var(--space-4);
 
       li {
-        margin-top: var(--space-xs);
+        margin-top: var(--space-1);
         line-height: 1.6;
       }
     }
@@ -1188,7 +1433,7 @@
       background: var(--color-bg);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-md);
-      padding: var(--space-md);
+      padding: var(--space-3);
       padding-right: 96px; /* room for copy button */
       max-height: 60vh;
       overflow: auto;
@@ -1197,7 +1442,7 @@
 
     code {
       font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
-      font-size: 0.82rem;
+      font-size: var(--text-sm);
       line-height: 1.5;
       color: var(--color-text);
       white-space: pre;
@@ -1206,15 +1451,107 @@
 
   .code-copy-btn {
     position: absolute;
-    top: var(--space-sm);
-    right: var(--space-sm);
-    padding: var(--space-xs) var(--space-md);
-    font-size: 0.8rem;
+    top: var(--space-2);
+    right: var(--space-2);
+    padding: 3px 10px;
+    font-size: var(--text-sm);
 
     &.is-copied {
       background: var(--color-accent);
+      border-color: transparent;
       color: white;
     }
+  }
+
+  /* --- Style tab: compact vertical rhythm ---
+     Both column-rows must stay compact so the tab fits the panel without
+     scrolling; the loose, shared form spacing is trimmed here only (Languages /
+     Filter / OBS keep the roomier defaults). Titles lean on the column gap and
+     rows drop their vertical padding, so spacing reflects the control height. */
+  .style-section {
+    padding-block: var(--space-1);
+
+    .panel-col { gap: var(--space-2); }
+
+    .section-title { margin-bottom: 0; }
+
+    .form-row { padding-block: 0; }
+
+    /* the two stacked column-rows sit a little apart, with a lighter divider */
+    .panel-cols + .panel-cols {
+      margin-top: var(--space-2);
+      padding-top: var(--space-2);
+    }
+  }
+
+  /* Style-tab subject controls: a 2×2 layout per subtitle line. The two color
+     swatches stack down the left, each paired on the same row with its slider
+     (text color↔size, stroke color↔width). Sliders get a fixed, modest width —
+     full-width ones were just dead space — and the colour group sits apart from
+     the slider group so each cell breathes without growing taller. */
+  .style-section .style-controls {
+    display: grid;
+    grid-template-columns: auto auto;
+    justify-content: start;
+    align-items: center;
+    column-gap: var(--space-4);
+    row-gap: var(--space-2);
+  }
+
+  .style-section .style-control {
+    display: grid;
+    align-items: center;
+    gap: var(--space-1);
+
+    .form-row-label {
+      color: var(--color-text-dim);
+      font-size: var(--text-sm);
+      white-space: nowrap;
+    }
+
+    /* narrow slider track so the colour group and slider group both fit
+       inside one subtitle column without the value spilling over. */
+    .slider-group {
+      grid-template-columns: 80px 24px;
+      gap: var(--space-1);
+    }
+  }
+
+  /* Fixed label columns give every swatch (and every slider) a shared left edge,
+     so the colour pickers line up cleanly down each subtitle column. The two
+     control types size their own label column to their own longest label. */
+  .style-section .style-control:has(.color-input)  { grid-template-columns: 3.5em auto; }
+  .style-section .style-control:has(.slider-group) { grid-template-columns: 4.2em auto; }
+
+  /* Source column: the wrap symbols sit inline to the right of the heading, in
+     two small (~2–3 char) boxes; the single-line limit drops onto its own row. */
+  .style-section .style-wrap-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .style-section .symbol-inputs {
+    display: flex;
+    gap: var(--space-2);
+
+    .text-input {
+      width: 3em;
+      text-align: center;
+      padding-inline: var(--space-2);
+    }
+  }
+
+  /* --- animations --- */
+
+  /* REC badge breathing (header start button while recognising) */
+  @keyframes rec-pulse {
+    50% { opacity: 0.35; }
+  }
+
+  /* OBS "connecting" status dot */
+  @keyframes dot-pulse {
+    50% { opacity: 0.4; }
   }
 }
 
@@ -1235,8 +1572,8 @@
 
   /* The HTML [hidden] attribute defaults to `display: none` via the UA
      stylesheet, but any author rule with `display: <other>` (e.g. grid/flex
-     on .form-row) wins by source order. Re-asserting it in a later layer
-     (utilities > components) restores the expected behavior cleanly. */
+     on .form-row or .tab-panel) wins by source order. Re-asserting it in a
+     later layer (utilities > components) restores the expected behavior. */
   [hidden] { display: none; }
 
   .visually-hidden {
@@ -1277,5 +1614,20 @@
   [data-sub-source-single="true"] .source {
     height: 1.3em;
     overflow: hidden;
+  }
+
+  /* Reduced motion: keep the state changes (color/opacity feedback) but drop
+     movement — the manual panel appears in place instead of sliding, presses
+     don't scale, pulses stop. */
+  @media (prefers-reduced-motion: reduce) {
+    .manual-translate-panel { transition: none; }
+
+    .btn:active:not(:disabled),
+    .icon-btn:active { transform: none; }
+
+    .header-speech:has(#btn-stop:not(:disabled)) #btn-start svg,
+    .obs-conn-status[data-phase="connecting"] .obs-conn-dot {
+      animation: none;
+    }
   }
 }

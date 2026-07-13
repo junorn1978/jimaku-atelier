@@ -1,10 +1,13 @@
 /**
  * @file ui-languages.js
- * @description Renders the Languages tab as three horizontal columns
- * (source / target1+target2 / engine), with the custom-URL input on a full-width
- * row below. The verbose URL format help lives in a dialog (#dialog-url-format
- * in index.html) opened from the "format help" button. All form controls bind
- * to the settings store via [data-bind].
+ * @description Renders the language controls as two side-by-side blocks: the
+ * source side (recognition language + show-source toggle + offline download
+ * button on one line, its download messages stacked below) and the translation
+ * side (the two target selects on one line, with the engine picker stacked
+ * below). Selects are a fixed compact width. The custom-URL input appears under
+ * the engine picker in "link" mode; the verbose URL format help lives in a
+ * dialog (#dialog-url-format in index.html). All form controls bind to the
+ * settings store via [data-bind].
  */
 
 import { getAllLanguages } from './languages.js';
@@ -26,69 +29,73 @@ export function mountLanguagesTab(container) {
     langs.map(l => `<option value="${l.id}" data-i18n="lang.name.${l.id}">${escapeAttr(l.label)}</option>`).join('');
 
   container.innerHTML = `
-    <div class="panel-cols">
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="lang.source">音声認識</h3>
-        <div class="form-row form-row-select-toggle">
-          <select class="select" data-bind="sourceLangId">${sourceOptions}</select>
+    <div class="lang-grid">
+      <!-- source side: the recognition language row, with its download
+           messages stacked below it -->
+      <div class="lang-side lang-side-source">
+        <div class="lang-field">
+          <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
+          <select class="select select-compact" data-bind="sourceLangId">${sourceOptions}</select>
           <label class="toggle" data-i18n-title="style.showSource" title="原文を表示">
             <input type="checkbox" data-bind="subShowSource">
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
           </label>
+          <button type="button" class="btn" id="btn-offline-pack"
+                  data-i18n-title="lang.offline.label" title="オフライン認識パック" hidden>ダウンロード</button>
         </div>
-        <div class="form-row form-row-stack" id="offline-pack-row" hidden>
-          <div class="offline-pack-head">
-            <span class="form-row-label" data-i18n="lang.offline.label">オフライン認識パック</span>
-            <button type="button" class="btn" id="btn-offline-pack">ダウンロード</button>
-          </div>
+        <div class="lang-sub" id="offline-pack-row" hidden>
           <p class="manual-status" id="offline-pack-status" role="status" aria-live="polite"></p>
           <p class="offline-pack-info" id="offline-pack-info"></p>
         </div>
-      </section>
+      </div>
 
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="lang.target1">翻訳 1</h3>
-        <div class="form-row form-row-full">
-          <select class="select" data-bind="target1LangId">${targetOptions}</select>
+      <!-- translation side: the two target rows on one line, with the engine
+           picker stacked below them -->
+      <div class="lang-side lang-side-translate">
+        <div class="lang-targets">
+          <div class="lang-field">
+            <span class="lang-field-label" data-i18n="lang.target1">翻訳 1</span>
+            <select class="select select-compact" data-bind="target1LangId">${targetOptions}</select>
+          </div>
+          <div class="lang-field">
+            <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
+            <select class="select select-compact" data-bind="target2LangId">${targetOptions}</select>
+          </div>
         </div>
-        <h3 class="section-title" data-i18n="lang.target2">翻訳 2</h3>
-        <div class="form-row form-row-full">
-          <select class="select" data-bind="target2LangId">${targetOptions}</select>
-        </div>
-      </section>
 
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
-        <div class="seg-switch seg-switch-stretch" role="group">
-          <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
-          <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
-          <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
-        </div>
-        <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
+        <div class="lang-engine">
+          <span class="section-title" data-i18n="lang.engine">翻訳エンジン</span>
+          <div class="seg-switch" role="group">
+            <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
+            <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
+            <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
+          </div>
+          <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
 
-        <div class="lang-url-row" id="custom-url-row" hidden>
-          <input type="url" class="text-input" placeholder="https://..." data-bind="customTranslateUrl"
-                 autocomplete="off" spellcheck="false">
+          <div class="lang-url-row" id="custom-url-row" hidden>
+            <input type="url" class="text-input" placeholder="https://..." data-bind="customTranslateUrl"
+                   autocomplete="off" spellcheck="false">
 
-          <button type="button" class="btn url-examples-toggle" id="btn-url-examples"
-                  popovertarget="popover-url-examples">
-            <span data-i18n="lang.engine.link.help.more">範例與說明</span>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </button>
+            <button type="button" class="btn url-examples-toggle" id="btn-url-examples"
+                    popovertarget="popover-url-examples">
+              <span data-i18n="lang.engine.link.help.more">範例與說明</span>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
 
-          <div class="url-popover" id="popover-url-examples" popover>
-            <div class="format-help-examples">
-              <span data-i18n="lang.engine.link.help.examples">可直接使用的範例：</span>
-              <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
-              <button type="button" class="btn" data-example="openai">OpenAI</button>
-              <button type="button" class="btn" data-example="gemini">Gemini</button>
-              <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
+            <div class="url-popover" id="popover-url-examples" popover>
+              <div class="format-help-examples">
+                <span data-i18n="lang.engine.link.help.examples">可直接使用的範例：</span>
+                <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
+                <button type="button" class="btn" data-example="openai">OpenAI</button>
+                <button type="button" class="btn" data-example="gemini">Gemini</button>
+                <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      </div>
     </div>
   `;
 
@@ -162,6 +169,9 @@ function setupOfflinePack(container) {
   const status = container.querySelector('#offline-pack-status');
   const info   = container.querySelector('#offline-pack-info');
   if (!row || !button || !status || !info) return;
+  /* The button lives inline in the source row (hidden by default); the status
+     and info messages sit in their own row below. Reveal both on Chrome. */
+  button.hidden = false;
   row.hidden = false;
   setupLanguagePackButton({ button, status, info });
 }

@@ -22,6 +22,7 @@ import { initSpeech } from './speech.js';
 import { initFilter } from './filter.js';
 import { initObs } from './obs.js';
 import { initLayoutToggles } from './ui-layout.js';
+import { initSettingsTabs } from './ui-tabs.js';
 
 async function init() {
   /* Load static config first — UI rendering depends on it. */
@@ -35,11 +36,12 @@ async function init() {
   ]);
   await setLanguage(settings.uiLang || 'ja');
 
-  /* Mount each tab's content. */
-  mountLanguagesTab(document.getElementById('tab-panel-languages'));
-  mountStyleTab(document.getElementById('tab-panel-style'));
-  mountFilterTab(document.getElementById('tab-panel-filter'));
-  mountObsTab(document.getElementById('tab-panel-obs'));
+  /* Mount each settings tab into its own panel (static markup in index.html;
+     switching is wired by initSettingsTabs below). */
+  mountLanguagesTab(document.getElementById('tab-languages'));
+  mountStyleTab(document.getElementById('tab-style'));
+  mountFilterTab(document.getElementById('tab-filter'));
+  mountObsTab(document.getElementById('tab-obs'));
   mountManualTranslate(document.getElementById('manual-translate-panel'));
   mountSettingsDialog(document.querySelector('#dialog-settings .dialog-body'));
 
@@ -62,9 +64,9 @@ async function init() {
   /* Document-level interactions. */
   syncLangSwitcher();
   wireLangSwitcher();
-  wireTabs();
   wireDialogs();
   initLayoutToggles();
+  initSettingsTabs();
 
   if (isDebugEnabled()) console.debug('[main] init complete');
 }
@@ -88,22 +90,6 @@ function syncLangSwitcher() {
   document.querySelectorAll('.seg-switch button[data-lang]').forEach(btn => {
     btn.classList.toggle('is-active', btn.dataset.lang === active);
   });
-}
-
-/* -------- tab switching -------- */
-
-function wireTabs() {
-  const tabs   = document.querySelectorAll('.tab-bar [role="tab"]');
-  const panels = document.querySelectorAll('.tab-panel');
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => activateTab(tab.dataset.tab, tabs, panels));
-  });
-}
-
-function activateTab(target, tabs, panels) {
-  tabs.forEach(t => t.setAttribute('aria-selected', t.dataset.tab === target ? 'true' : 'false'));
-  panels.forEach(p => { p.hidden = p.dataset.tab !== target; });
 }
 
 /* -------- dialogs -------- */

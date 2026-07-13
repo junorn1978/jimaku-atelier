@@ -8,7 +8,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -18,7 +18,7 @@
     <div class="app-title">
       <img class="app-icon" src="images/icon.svg" alt="">
       <h1 data-i18n="app.title">字幕アトリエ</h1>
-      <span class="app-version">v1.2.0</span>
+      <span class="app-version">v1.3.0</span>
     </div>
 
     <div class="header-info">
@@ -90,45 +90,29 @@
     </section>
 
     <aside class="settings-pane" aria-label="Settings">
-      <nav class="tab-bar" role="tablist">
-        <button type="button" role="tab" aria-selected="true"
-                id="tab-btn-languages" aria-controls="tab-panel-languages"
-                data-tab="languages" data-i18n="tab.languages">言語</button>
-        <button type="button" role="tab" aria-selected="false"
-                id="tab-btn-style" aria-controls="tab-panel-style"
-                data-tab="style" data-i18n="tab.style">スタイル</button>
-        <button type="button" role="tab" aria-selected="false"
-                id="tab-btn-filter" aria-controls="tab-panel-filter"
-                data-tab="filter" data-i18n="tab.filter">フィルター</button>
-        <button type="button" role="tab" aria-selected="false"
-                id="tab-btn-obs" aria-controls="tab-panel-obs"
-                data-tab="obs" data-i18n="tab.obs">OBS</button>
-      </nav>
-
-      <div class="tab-panels">
-        <section class="tab-panel" role="tabpanel"
-                 id="tab-panel-languages" aria-labelledby="tab-btn-languages"
-                 data-tab="languages">
-          <!-- Languages tab content goes here -->
-        </section>
-
-        <section class="tab-panel" role="tabpanel"
-                 id="tab-panel-style" aria-labelledby="tab-btn-style"
-                 data-tab="style" hidden>
-          <!-- Style tab content goes here -->
-        </section>
-
-        <section class="tab-panel" role="tabpanel"
-                 id="tab-panel-filter" aria-labelledby="tab-btn-filter"
-                 data-tab="filter" hidden>
-          <!-- Filter tab content goes here -->
-        </section>
-
-        <section class="tab-panel" role="tabpanel"
-                 id="tab-panel-obs" aria-labelledby="tab-btn-obs"
-                 data-tab="obs" hidden>
-          <!-- OBS tab content goes here -->
-        </section>
+      <!-- Settings are split across four tabs. Each tab panel is filled by its
+           own module (js/ui-languages.js, js/ui-style.js, js/ui-filter.js,
+           js/ui-obs.js — mounted from js/main.js); switching is handled by
+           js/ui-tabs.js and the active tab persists in the settings store. -->
+      <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+        <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
+                aria-selected="true" data-tab="languages" class="tab-btn is-active"
+                data-i18n="tab.languages">言語</button>
+        <button type="button" role="tab" id="tab-btn-style" aria-controls="tab-style"
+                aria-selected="false" tabindex="-1" data-tab="style" class="tab-btn"
+                data-i18n="tab.style">スタイル</button>
+        <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
+                aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
+                data-i18n="tab.filter">単語置換</button>
+        <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
+                aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
+                data-i18n="tab.obs">OBS</button>
+      </div>
+      <div class="settings-body" id="settings-body">
+        <div class="tab-panel" id="tab-languages" role="tabpanel" aria-labelledby="tab-btn-languages"></div>
+        <div class="tab-panel" id="tab-style"  role="tabpanel" aria-labelledby="tab-btn-style"  hidden></div>
+        <div class="tab-panel" id="tab-filter" role="tabpanel" aria-labelledby="tab-btn-filter" hidden></div>
+        <div class="tab-panel" id="tab-obs"    role="tabpanel" aria-labelledby="tab-btn-obs"    hidden></div>
       </div>
     </aside>
 

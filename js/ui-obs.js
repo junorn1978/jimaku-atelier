@@ -1,8 +1,8 @@
 /**
  * @file ui-obs.js
- * @description OBS tab UI: WebSocket enable toggle, URL/password inputs,
- * drag links (drag onto OBS to create a browser source), and a one-click
- * Auto Setup button.
+ * @description OBS UI: WebSocket enable toggle, URL/password inputs, drag links
+ * (drag onto OBS to create a browser source), and a one-click Auto Setup button.
+ * Appended into its own tab panel (#tab-obs) as an `.obs-section`.
  */
 
 import { subscribe } from './store.js';
@@ -12,7 +12,9 @@ import { triggerAutoSetup, getOverlayUrl, onConnectionState } from './obs.js';
 export function mountObsTab(container) {
   if (!container) return;
 
-  container.innerHTML = `
+  const section = document.createElement('div');
+  section.className = 'obs-section';
+  section.innerHTML = `
     <div class="panel-cols">
       <section class="panel-col">
         <h3 class="section-title" data-i18n="obs.connection">接続設定</h3>
@@ -31,14 +33,15 @@ export function mountObsTab(container) {
           <p class="obs-conn-hint" id="obs-conn-hint"></p>
         </div>
 
-        <div class="form-row">
+        <div class="obs-conn-fields">
+        <div class="form-row form-row-stack">
           <span class="form-row-label" data-i18n="obs.url">URL</span>
           <input type="text" class="text-input" data-bind="obsUrl"
                  placeholder="ws://127.0.0.1:4455"
                  autocomplete="off" spellcheck="false" autocorrect="off">
         </div>
 
-        <div class="form-row">
+        <div class="form-row form-row-stack">
           <span class="form-row-label" data-i18n="obs.password">Password</span>
           <div class="secret-input-wrap" data-secret-visible="false">
             <input type="text" class="text-input secret-input" data-bind="obsPassword"
@@ -58,6 +61,7 @@ export function mountObsTab(container) {
               </svg>
             </button>
           </div>
+        </div>
         </div>
       </section>
 
@@ -99,22 +103,24 @@ export function mountObsTab(container) {
     </div>
   `;
 
+  container.appendChild(section);
+
   /* Drag link hrefs depend on current URL/password; refresh when they change. */
   const refreshDragLinks = () => {
-    container.querySelector('#obs-drag-all')    .href = getOverlayUrl('all');
-    container.querySelector('#obs-drag-source') .href = getOverlayUrl('source');
-    container.querySelector('#obs-drag-target1').href = getOverlayUrl('target1');
-    container.querySelector('#obs-drag-target2').href = getOverlayUrl('target2');
+    section.querySelector('#obs-drag-all')    .href = getOverlayUrl('all');
+    section.querySelector('#obs-drag-source') .href = getOverlayUrl('source');
+    section.querySelector('#obs-drag-target1').href = getOverlayUrl('target1');
+    section.querySelector('#obs-drag-target2').href = getOverlayUrl('target2');
   };
   refreshDragLinks();
   subscribe('obsUrl',      refreshDragLinks);
   subscribe('obsPassword', refreshDragLinks);
 
-  container.querySelector('#obs-auto-setup').addEventListener('click', triggerAutoSetup);
-  wireSecretToggle(container);
-  wireConnStatus(container);
+  section.querySelector('#obs-auto-setup').addEventListener('click', triggerAutoSetup);
+  wireSecretToggle(section);
+  wireConnStatus(section);
 
-  applyTo(container);
+  applyTo(section);
 }
 
 /* Live connection status shown beside the WS toggle, so the user can tell

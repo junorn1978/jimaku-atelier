@@ -19,6 +19,7 @@ const _defaults = Object.freeze({
 
   // --- Layout (capture mode): collapse the bottom control panel so the preview fills the window ---
   panelCollapsed:     false,      // bottom settings/control panel
+  activeTab:          'languages', // active settings tab: 'languages' | 'style' | 'filter' | 'obs'
 
   // --- Language selection ---
   sourceLangId:       '',

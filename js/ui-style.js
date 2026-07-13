@@ -1,10 +1,15 @@
 /**
  * @file ui-style.js
- * @description Renders the Style tab as two rows of three columns: the top row
- * holds per-line color/stroke/size controls for the three subtitle lines, the
- * bottom row holds the source wrap symbols, display settings (align / bg /
- * single-line), and overflow mode. Form controls bind via [data-bind] in the
- * shared ui-bind helper.
+ * @description Renders the style controls as two rows of three columns: the top
+ * row holds per-line color/stroke/size controls for the three subtitle lines
+ * (each laid out 2×2 — the two color swatches stacked on the left, each paired
+ * with its slider on the right), the bottom row groups the source controls (wrap
+ * symbols sit inline to the right of the heading, with the single-line limit
+ * below), the display settings (align / bg), and the overflow mode. Form
+ * controls bind via [data-bind] in the shared ui-bind helper.
+ *
+ * The block is appended into its own tab panel (#tab-style) as a
+ * `.style-section`; its compact CSS is scoped to `.style-section`.
  */
 
 const SIZE_MIN = 14;
@@ -25,56 +30,61 @@ export function mountStyleTab(container) {
     <section class="panel-col">
       <h3 class="section-title" data-i18n="${i18nKey}"></h3>
 
-      <div class="form-row-pair">
-        <div>
+      <div class="style-controls">
+        <div class="style-control">
           <span class="form-row-label" data-i18n="style.textColor">文字色</span>
           <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Color')}">
         </div>
-        <div>
+        <div class="style-control">
+          <span class="form-row-label" data-i18n="style.fontSize">サイズ</span>
+          <div class="slider-group">
+            <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${camel('sub', prefix, 'Size')}">
+            <output class="slider-value"></output>
+          </div>
+        </div>
+
+        <div class="style-control">
           <span class="form-row-label" data-i18n="style.strokeColor">縁取り色</span>
           <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Stroke')}">
         </div>
-      </div>
-
-      <div class="form-row">
-        <span class="form-row-label" data-i18n="style.fontSize">サイズ</span>
-        <div class="slider-group">
-          <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${camel('sub', prefix, 'Size')}">
-          <output class="slider-value"></output>
-        </div>
-      </div>
-
-      <div class="form-row">
-        <span class="form-row-label" data-i18n="style.strokeWidth">縁取り</span>
-        <div class="slider-group">
-          <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${camel('sub', prefix, 'StrokeW')}">
-          <output class="slider-value"></output>
+        <div class="style-control">
+          <span class="form-row-label" data-i18n="style.strokeWidth">縁取り</span>
+          <div class="slider-group">
+            <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${camel('sub', prefix, 'StrokeW')}">
+            <output class="slider-value"></output>
+          </div>
         </div>
       </div>
     </section>
   `).join('');
 
-  container.innerHTML = `
+  const section = document.createElement('div');
+  section.className = 'style-section';
+  section.innerHTML = `
     <div class="panel-cols">
       ${subjectSections}
     </div>
 
     <div class="panel-cols">
     <section class="panel-col">
-      <h3 class="section-title" data-i18n="style.sourceWrap">音声字幕の囲み記号</h3>
-      <div class="form-row-pair">
-        <div>
-          <span class="form-row-label" data-i18n="style.sourcePrefix">左記号</span>
+      <div class="style-wrap-head">
+        <h3 class="section-title" data-i18n="style.sourceWrap">原文符號</h3>
+        <div class="symbol-inputs">
           <input type="text" class="text-input" data-bind="subSourcePrefix"
-                 data-i18n-placeholder="style.sourcePrefix.ph"
+                 data-i18n-placeholder="style.sourcePrefix.ph" data-i18n-title="style.sourcePrefix" title="左記号"
                  autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
-        </div>
-        <div>
-          <span class="form-row-label" data-i18n="style.sourceSuffix">右記号</span>
           <input type="text" class="text-input" data-bind="subSourceSuffix"
-                 data-i18n-placeholder="style.sourceSuffix.ph"
+                 data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
                  autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
         </div>
+      </div>
+
+      <div class="form-row">
+        <span class="form-row-label" data-i18n="style.sourceSingleLine">原文を1行に制限</span>
+        <label class="toggle">
+          <input type="checkbox" data-bind="subSourceSingleLine">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
       </div>
     </section>
 
@@ -121,14 +131,6 @@ export function mountStyleTab(container) {
         <span class="form-row-label" data-i18n="style.bg">背景色</span>
         <input type="color" class="color-input" data-bind="subBg">
       </div>
-
-      <div class="form-row">
-        <span class="form-row-label" data-i18n="style.sourceSingleLine">原文を1行に制限</span>
-        <label class="toggle">
-          <input type="checkbox" data-bind="subSourceSingleLine">
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </label>
-      </div>
     </section>
 
     <section class="panel-col">
@@ -144,6 +146,8 @@ export function mountStyleTab(container) {
     </section>
     </div>
   `;
+
+  container.appendChild(section);
 }
 
 function camel(...parts) {

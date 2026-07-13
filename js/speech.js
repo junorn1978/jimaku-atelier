@@ -39,16 +39,44 @@ function getSourceEl() {
 }
 
 /* The wrapping symbols flag "still being recognised / not yet sent". A pending
-   (interim) line shows them; once the text is finalised and the translation is
-   sent, we display it without symbols so the symbols read as a "sending" cue. */
+   (interim) line shows them; once the sentence is finalised and the translation
+   is sent, the symbols are stripped so they read as a "sending" cue. */
 function updateSource(text, pending = false) {
   const el = getSourceEl();
   if (!el || (text === _lastSource && pending === _lastSourcePending)) return;
+
+  /* Prefix hold: after a final (which is never rendered — see onresult), the
+     on-device model replays the in-progress sentence from its first word in
+     the next result slot. While a pending update is only a shorter prefix of
+     what's already on screen, keep the longer text — the display then only
+     moves forward within a sentence, and resumes updating as soon as the
+     replay catches up with or diverges from it. */
+  if (pending && _lastSource && normForHold(_lastSource).startsWith(normForHold(text))) {
+    return;
+  }
+
+  /* TEMP: trace for the "interim flashes back after final" issue — logs the
+     moment the source line is actually rendered. Remove once diagnosed. */
+  console.log(
+    `[speech][temp] render @${performance.now().toFixed(0)}ms pending=${pending} text="${text}"`
+  );
   el.textContent = pending ? decorateSource(text) : text;
   _lastSource = text;
   _lastSourcePending = pending;
   keepSourceTailVisible(el);
   publishSource(text, pending);  /* raw — obs.js applies the symbols for the overlay */
+}
+
+/* Case/whitespace-insensitive comparison basis for the prefix hold above. */
+function normForHold(s) {
+  return s.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/* A sentence was finalised (translation sent): mark the line on screen as sent
+   by re-rendering it without the wrapping symbols. The final text itself is
+   never displayed — see the note in onresult. */
+function markSourceSent() {
+  if (_lastSource && _lastSourcePending) updateSource(_lastSource, false);
 }
 
 /* Re-decorate the currently shown source line when the symbols change so the
@@ -110,10 +138,11 @@ async function configureRecognition(rec, lang) {
   const processLocally = await decideProcessLocally(lang);
   if (isChrome) rec.processLocally = processLocally;
 
-  rec.interimResults  = true;
-  rec.lang            = lang;
-  rec.continuous      = processLocally;  /* on-device mode is stable in continuous */
-  rec.maxAlternatives = 1;
+  rec.unspokenPunctuation = true;
+  rec.interimResults      = true;
+  rec.lang                = lang;
+  rec.continuous          = processLocally;  /* on-device mode is stable in continuous */
+  rec.maxAlternatives     = 1;
   if ('phrases' in rec) rec.phrases = [];
 
   if (isDebugEnabled()) console.debug('[speech] configured', {
@@ -172,6 +201,14 @@ function setupRecognition() {
       else                          { interimTranscript += t; }
     }
 
+    /* TEMP: trace for the "interim flashes back after final" issue — logs every
+       recognition event as it arrives. Remove once diagnosed. */
+    console.log(
+      `[speech][temp] event @${performance.now().toFixed(0)}ms ` +
+      `resultIndex=${event.resultIndex} results=${event.results.length} hasFinal=${hasFinal} ` +
+      `interim="${interimTranscript}" final="${finalTranscript}"`
+    );
+
     if (hasFinal && finalTranscript.trim()) {
       const text = filterSource(
         finalTranscript.replace(/[、。？\s]+/g, ' ').trim(),
@@ -184,13 +221,17 @@ function setupRecognition() {
       }
     }
 
-    const fullText = filterSource(
-      `${finalTranscript} ${interimTranscript}`.replace(/[、。？\s]+/g, ' ').trim(),
+    /* The final text itself is never rendered. The new on-device model can
+       deliver a final long after the *next* sentence's interims started
+       flowing, so rendering it would briefly stomp the live line and make the
+       text jump. The source line is interim-driven only; a final just strips
+       the pending symbols off whatever is on screen ("sent" cue). */
+    const interimText = filterSource(
+      interimTranscript.replace(/[、。？\s]+/g, ' ').trim(),
       rec.lang
     );
-    /* Interim text still pending → wrap with symbols; an all-final line has
-       already been sent → show it bare. */
-    if (fullText) updateSource(fullText, interimTranscript.trim().length > 0);
+    if (interimText)   updateSource(interimText, true);
+    else if (hasFinal) markSourceSent();
   };
 
   rec.onend = () => {
