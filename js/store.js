@@ -27,7 +27,7 @@ const _defaults = Object.freeze({
   target2LangId:      'none',
 
   // --- Translation engine ---
-  translationMode:    'gtx',     // 'gtx' | 'prompt' | 'link'
+  translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'link'
   customTranslateUrl: '',
 
   // --- Manual text translation ---

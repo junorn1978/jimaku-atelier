@@ -4,6 +4,7 @@
       "id":               "ja-JP",
       "label":            "日本語",
       "gtxCode":          "ja",
+      "translatorCode":   "ja",
       "promptName":       "Japanese",
       "chunkSize":        45,
       "displayTimeRules": [ { "maxLength": 20, "time": 1 }, { "maxLength": 40, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -12,6 +13,7 @@
       "id":               "zh-TW",
       "label":            "中国語(繁体字)",
       "gtxCode":          "zh-TW",
+      "translatorCode":   "zh-Hant",
       "promptName":       "Traditional Chinese",
       "chunkSize":        33,
       "displayTimeRules": [ { "maxLength": 20, "time": 1 }, { "maxLength": 40, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -20,6 +22,7 @@
       "id":               "zh-CN",
       "label":            "中国語(簡体字)",
       "gtxCode":          "zh-CN",
+      "translatorCode":   "zh",
       "promptName":       "Simplified Chinese",
       "chunkSize":        33,
       "displayTimeRules": [ { "maxLength": 20, "time": 1 }, { "maxLength": 40, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -28,6 +31,7 @@
       "id":               "en-US",
       "label":            "英語",
       "gtxCode":          "en",
+      "translatorCode":   "en",
       "promptName":       "English",
       "chunkSize":        80,
       "displayTimeRules": [ { "maxLength": 30, "time": 1 }, { "maxLength": 70, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -36,6 +40,7 @@
       "id":               "ko-KR",
       "label":            "韓国語",
       "gtxCode":          "ko",
+      "translatorCode":   "ko",
       "promptName":       "Korean",
       "chunkSize":        80,
       "displayTimeRules": [ { "maxLength": 20, "time": 1 }, { "maxLength": 40, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -44,6 +49,7 @@
       "id":               "es-ES",
       "label":            "スペイン語",
       "gtxCode":          "es",
+      "translatorCode":   "es",
       "promptName":       "Spanish",
       "chunkSize":        80,
       "displayTimeRules": [ { "maxLength": 30, "time": 1 }, { "maxLength": 70, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -52,6 +58,7 @@
       "id":               "id-ID",
       "label":            "インドネシア語",
       "gtxCode":          "id",
+      "translatorCode":   "id",
       "promptName":       "Indonesian",
       "chunkSize":        80,
       "displayTimeRules": [ { "maxLength": 30, "time": 1 }, { "maxLength": 70, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -60,6 +67,7 @@
       "id":               "th-TH",
       "label":            "タイ語",
       "gtxCode":          "th",
+      "translatorCode":   "th",
       "promptName":       "Thai",
       "chunkSize":        80,
       "displayTimeRules": [ { "maxLength": 30, "time": 1 }, { "maxLength": 70, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
@@ -68,6 +76,7 @@
       "id":               "vi-VN",
       "label":            "ベトナム語",
       "gtxCode":          "vi",
+      "translatorCode":   "vi",
       "promptName":       "Vietnamese",
       "chunkSize":        80,
       "displayTimeRules": [ { "maxLength": 30, "time": 1 }, { "maxLength": 70, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]

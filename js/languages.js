@@ -32,6 +32,10 @@ export async function loadLanguages(url = './data/language_config.json') {
          on-device models recognise "Traditional Chinese" far better than a code
          like "zh-TW". Falls back to label so callers never get undefined. */
       promptName:       item.promptName       ?? item.label,
+      /* BCP 47 tag for the built-in Translator API. Mostly the same as
+         gtxCode, but Chinese differs: the Translator API wants zh / zh-Hant
+         where Google translate uses zh-CN / zh-TW. */
+      translatorCode:   item.translatorCode   ?? item.gtxCode ?? item.id,
       chunkSize:        item.chunkSize        ?? defaults.chunkSize        ?? 40,
       displayTimeRules: item.displayTimeRules ?? defaults.displayTimeRules ?? [],
     });

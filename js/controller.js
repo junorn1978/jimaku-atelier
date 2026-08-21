@@ -4,7 +4,8 @@
  *
  * Responsibilities:
  *   - Limit concurrent translation requests (MAX_CONCURRENT).
- *   - Route each request to gtx or link based on settings.translationMode.
+ *   - Route each request to gtx / translator / prompt / link based on
+ *     settings.translationMode.
  *   - Stage results in per-target buffers and replay them in sequence order,
  *     respecting a minimum display time so fast successive responses don't
  *     flash past the viewer.
@@ -19,6 +20,7 @@ import { getLang } from './languages.js';
 import { translateGtx } from './translate-gtx.js';
 import { translateLink } from './translate-link.js';
 import { translatePrompt } from './translate-prompt.js';
+import { translateTranslator } from './translate-translator.js';
 import { applyFilter } from './filter.js';
 import { publishTargets } from './obs.js';
 
@@ -183,6 +185,12 @@ async function route(text, previousText, sourceLangId, targetLangIds, sequenceId
 
   if (mode === 'gtx') {
     return translateGtx(text, targetLangIds, sourceLangId);
+  }
+  if (mode === 'translator') {
+    /* Built-in Translator API. Instances are warmed up from the language tab
+       (a download needs user activation), so by the time subtitles flow this
+       is a straight local call. */
+    return translateTranslator(text, targetLangIds, sourceLangId);
   }
   if (mode === 'prompt') {
     /* On-device Prompt API. It serialises with latest-wins preemption itself,

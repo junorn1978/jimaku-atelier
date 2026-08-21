@@ -16,6 +16,7 @@ import { applyTo, t } from './i18n.js';
 import { isChrome } from './env.js';
 import { setupLanguagePackButton } from './language-pack.js';
 import { isPromptSupported, getPromptAvailability } from './translate-prompt.js';
+import { isTranslatorSupported, prepareTranslators } from './translate-translator.js';
 
 export function mountLanguagesTab(container) {
   if (!container) return;
@@ -67,9 +68,11 @@ export function mountLanguagesTab(container) {
           <span class="section-title" data-i18n="lang.engine">翻訳エンジン</span>
           <div class="seg-switch" role="group">
             <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
+            <label id="engine-translator-label"><input type="radio" name="translationMode" value="translator" data-bind="translationMode"><span data-i18n="lang.engine.translator">ブラウザ翻訳</span></label>
             <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
             <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
           </div>
+          <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
           <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
 
           <div class="lang-url-row" id="custom-url-row" hidden>
@@ -115,7 +118,97 @@ export function mountLanguagesTab(container) {
 
   wireExampleButtons(container);
   setupOfflinePack(container);
+  setupTranslatorEngine(container);
   setupPromptEngine(container);
+}
+
+/* Built-in Translator API engine. Unlike the Prompt API we do download models
+   here — they are per language pair and downloading on demand is the intended
+   flow — but create() only downloads while a user gesture is live. So the
+   warm-up runs exactly on the gestures that can trigger it: picking this
+   engine, and changing a source/target language while it is picked. */
+function setupTranslatorEngine(container) {
+  const label  = container.querySelector('#engine-translator-label');
+  const radio  = label?.querySelector('input[value="translator"]');
+  const status = container.querySelector('#engine-translator-status');
+  if (!label || !radio || !status) return;
+
+  /* Keep the message as a key (+ percentage) so a UI language switch can
+     re-render it without redoing the work that produced it. */
+  let messageKey = null;
+  let percent    = null;
+
+  const render = () => {
+    if (!messageKey) { status.hidden = true; status.textContent = ''; return; }
+    const suffix = percent == null ? '' : ` ${percent}%`;
+    status.hidden = false;
+    status.textContent = t(messageKey) + suffix;
+  };
+
+  const setMessage = (key, pct = null) => { messageKey = key; percent = pct; render(); };
+  subscribe('uiLang', render);
+
+  if (!isTranslatorSupported()) {
+    radio.disabled = true;
+    label.classList.add('is-disabled');
+    setMessage('lang.engine.translator.unsupported');
+    label.title = t('lang.engine.translator.unsupported');
+    if (settings.translationMode === 'translator') settings.translationMode = 'gtx';
+    return;
+  }
+
+  const REASON_KEYS = {
+    unavailable: 'lang.engine.translator.unavailable',
+    blocked:     'lang.engine.translator.blocked',
+    failed:      'lang.engine.translator.failed',
+    unsupported: 'lang.engine.translator.unsupported',
+  };
+
+  /* Only one warm-up runs at a time; a language change during a download is
+     remembered and re-run afterwards rather than dropped. */
+  let warming = false;
+  let restart = false;
+
+  const warmUp = async () => {
+    if (settings.translationMode !== 'translator') return;
+    if (warming) { restart = true; return; }
+    warming = true;
+
+    /* A download only reports progress once it actually starts; if the models
+       are already there the user just sees "preparing" blink past. */
+    let downloaded = false;
+    setMessage('lang.engine.translator.preparing');
+
+    try {
+      const result = await prepareTranslators(
+        settings.sourceLangId,
+        [settings.target1LangId, settings.target2LangId],
+        (loaded) => {
+          downloaded = true;
+          setMessage('lang.engine.translator.downloading', Math.floor(loaded * 100));
+        },
+      );
+      if (result.ok) setMessage(downloaded ? 'lang.engine.translator.ready' : null);
+      else           setMessage(REASON_KEYS[result.reason] ?? REASON_KEYS.failed);
+    } finally {
+      warming = false;
+    }
+
+    /* The selection changed mid-download. The gesture is long gone, so this
+       only completes silently when the new pair is already downloaded — the
+       user is told to re-pick the engine otherwise. */
+    if (restart) { restart = false; await warmUp(); }
+  };
+
+  subscribe('translationMode', (mode) => {
+    if (mode === 'translator') warmUp();
+    else setMessage(null);
+  });
+  ['sourceLangId', 'target1LangId', 'target2LangId'].forEach(key => subscribe(key, warmUp));
+
+  /* Restored from a previous session: the models may already be downloaded, in
+     which case create() needs no gesture and this simply succeeds. */
+  if (settings.translationMode === 'translator') warmUp();
 }
 
 /* Chrome Prompt API engine: usable only when the model reports 'available'.

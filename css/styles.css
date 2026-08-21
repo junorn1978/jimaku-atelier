@@ -1060,8 +1060,13 @@
     gap: var(--space-2);
 
     /* segmented control hugs its content (Apple-style) instead of being
-       stretched to the column width by the flex container */
-    > .seg-switch { align-self: flex-start; }
+       stretched to the column width by the flex container; with four engines
+       it wraps onto a second row rather than overflowing the column */
+    > .seg-switch {
+      align-self: flex-start;
+      flex-wrap: wrap;
+      max-width: 100%;
+    }
   }
 
   .secret-input-wrap {
