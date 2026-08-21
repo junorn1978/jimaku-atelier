@@ -15,6 +15,7 @@ import { sendTranslationRequest, resetController } from './controller.js';
 import { applyFilter } from './filter.js';
 import { publishSource } from './obs.js';
 import { decorateSource } from './source-decoration.js';
+import { normalizeRecognised } from './normalize-ja.js';
 import { isChrome, isEdge } from './env.js';
 
 /* ============ environment ============ */
@@ -109,8 +110,8 @@ function keepSourceTailVisible(el) {
 
 /* ============ filter hook ============ */
 
-function filterSource(text /*, lang */) {
-  return applyFilter(text);
+function filterSource(text, lang) {
+  return applyFilter(normalizeRecognised(text, lang));
 }
 
 /* ============ Web Speech adapter ============ */
