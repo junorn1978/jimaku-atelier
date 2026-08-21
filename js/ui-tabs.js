@@ -1,6 +1,6 @@
 /**
  * @file ui-tabs.js
- * @description Settings-panel tab bar (言語 / スタイル / 単語置換 / OBS).
+ * @description Settings-panel vertical tab rail (言語 / スタイル / 単語置換 / OBS).
  * The tab buttons and panels are static markup in index.html; this module only
  * wires switching. Panels toggle via the plain `hidden` attribute (re-asserted
  * in the CSS utilities layer, so it wins over any display rule), buttons get
@@ -38,14 +38,15 @@ export function initSettingsTabs() {
     btn.addEventListener('click', () => activate(btn.dataset.tab));
   });
 
-  /* ARIA tabs pattern: arrow keys move + activate, Home/End jump to the ends. */
+  /* ARIA tabs pattern (vertical tablist): Up/Down move + activate, Home/End
+     jump to the ends. */
   tablist.addEventListener('keydown', (e) => {
     const current = TAB_NAMES.indexOf(settings.activeTab);
     let next = -1;
 
     switch (e.key) {
-      case 'ArrowLeft':  next = (current - 1 + TAB_NAMES.length) % TAB_NAMES.length; break;
-      case 'ArrowRight': next = (current + 1) % TAB_NAMES.length; break;
+      case 'ArrowUp':   next = (current - 1 + TAB_NAMES.length) % TAB_NAMES.length; break;
+      case 'ArrowDown': next = (current + 1) % TAB_NAMES.length; break;
       case 'Home':       next = 0; break;
       case 'End':        next = TAB_NAMES.length - 1; break;
       default: return;

@@ -1,5 +1,10 @@
 {
   "app.title":              "字幕アトリエ",
+  "aria.preview":           "字幕預覽",
+  "aria.settingsPane":      "設定面板",
+  "aria.settingsSections":  "設定項目",
+  "aria.manualTranslate":   "文字翻譯",
+  "aria.interfaceLanguage": "介面語言",
   "header.mic.unknown":     "未選擇",
   "header.action.settings": "設定",
   "header.action.togglePanel":     "顯示／隱藏控制面板",
@@ -116,12 +121,14 @@
   "filter.delete":          "刪除",
   "filter.source.ph":       "尋找",
   "filter.target.ph":       "取代為",
+  "filter.empty":           "尚未建立置換規則",
 
   "blacklist.enabled":      "黑名單遮蔽",
   "blacklist.hint":         "清單中的詞會以等長的 * 遮蔽（おちんちん→*****）。原文與譯文皆會套用。",
   "blacklist.add":          "+ 新增",
   "blacklist.loadDefaults": "載入預設",
   "blacklist.word.ph":      "要遮蔽的詞",
+  "blacklist.empty":        "尚未加入遮蔽字詞",
 
   "obs.connection":         "連線設定",
   "obs.enabled":            "WS 連線",

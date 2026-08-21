@@ -42,8 +42,10 @@ export function mountFilterTab(container) {
           </label>
         </div>
         <h3 class="section-title" data-i18n="filter.rules">ルール</h3>
-        <div class="filter-list" id="filter-rules-list"></div>
-        <button type="button" class="btn filter-add" id="filter-add-rule" data-i18n="filter.add">+ 追加</button>
+        <div class="filter-list-wrap">
+          <div class="filter-list" id="filter-rules-list"></div>
+          <button type="button" class="btn filter-add" id="filter-add-rule" data-i18n="filter.add">+ 追加</button>
+        </div>
       </section>
 
       <section class="panel-col">
@@ -55,10 +57,12 @@ export function mountFilterTab(container) {
           </label>
         </div>
         <p class="form-hint" data-i18n="blacklist.hint">登録した語は文字数ぶんの * で伏せ字になります。</p>
-        <div class="filter-list" id="blacklist-list"></div>
-        <div class="blacklist-actions">
-          <button type="button" class="btn filter-add" id="blacklist-add" data-i18n="blacklist.add">+ 追加</button>
-          <button type="button" class="btn blacklist-defaults" id="blacklist-load-defaults" data-i18n="blacklist.loadDefaults">既定語を読み込む</button>
+        <div class="filter-list-wrap">
+          <div class="filter-list" id="blacklist-list"></div>
+          <div class="blacklist-actions">
+            <button type="button" class="btn filter-add" id="blacklist-add" data-i18n="blacklist.add">+ 追加</button>
+            <button type="button" class="btn blacklist-defaults" id="blacklist-load-defaults" data-i18n="blacklist.loadDefaults">既定語を読み込む</button>
+          </div>
         </div>
       </section>
     </div>
@@ -106,6 +110,13 @@ export function mountFilterTab(container) {
 function renderBlacklist(listEl) {
   const words = settings.blacklistRules || [];
 
+  /* Empty state: tell the user what lives here instead of showing a void. */
+  if (words.length === 0) {
+    listEl.innerHTML = `<p class="filter-empty" data-i18n="blacklist.empty"></p>`;
+    applyTo(listEl);
+    return;
+  }
+
   listEl.innerHTML = words.map((word, i) => `
     <div class="filter-row blacklist-row" data-index="${i}">
       <input class="text-input filter-source"
@@ -141,6 +152,13 @@ function renderBlacklist(listEl) {
 
 function renderRules(listEl) {
   const rules = settings.filterRules || [];
+
+  /* Empty state: tell the user what lives here instead of showing a void. */
+  if (rules.length === 0) {
+    listEl.innerHTML = `<p class="filter-empty" data-i18n="filter.empty"></p>`;
+    applyTo(listEl);
+    return;
+  }
 
   listEl.innerHTML = rules.map((rule, i) => `
     <div class="filter-row" data-index="${i}">

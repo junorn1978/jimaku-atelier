@@ -1,10 +1,10 @@
 /**
  * @file ui-style.js
- * @description Renders the style controls as two rows of three columns: the top
- * row holds per-line color/stroke/size controls for the three subtitle lines
- * (each laid out 2×2 — the two color swatches stacked on the left, each paired
- * with its slider on the right), the bottom row groups the source controls (wrap
- * symbols sit inline to the right of the heading, with the single-line limit
+ * @description Renders the style controls as a matrix over the three subtitle
+ * lines: column headers (text color / stroke color / size / stroke width) are
+ * written once and each line is a row, so same-type values align vertically
+ * and can be compared at a glance. Below it, a three-column row groups the
+ * source controls (wrap symbols inline with the heading, single-line limit
  * below), the display settings (align / bg), and the overflow mode. Form
  * controls bind via [data-bind] in the shared ui-bind helper.
  *
@@ -26,43 +26,40 @@ const SUBJECTS = [
 export function mountStyleTab(container) {
   if (!container) return;
 
-  const subjectSections = SUBJECTS.map(({ prefix, i18nKey }) => `
-    <section class="panel-col">
-      <h3 class="section-title" data-i18n="${i18nKey}"></h3>
-
-      <div class="style-controls">
-        <div class="style-control">
-          <span class="form-row-label" data-i18n="style.textColor">文字色</span>
-          <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Color')}">
-        </div>
-        <div class="style-control">
-          <span class="form-row-label" data-i18n="style.fontSize">サイズ</span>
-          <div class="slider-group">
-            <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${camel('sub', prefix, 'Size')}">
-            <output class="slider-value"></output>
-          </div>
-        </div>
-
-        <div class="style-control">
-          <span class="form-row-label" data-i18n="style.strokeColor">縁取り色</span>
-          <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Stroke')}">
-        </div>
-        <div class="style-control">
-          <span class="form-row-label" data-i18n="style.strokeWidth">縁取り</span>
-          <div class="slider-group">
-            <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${camel('sub', prefix, 'StrokeW')}">
-            <output class="slider-value"></output>
-          </div>
-        </div>
+  const matrixRows = SUBJECTS.map(({ prefix, i18nKey }) => `
+    <div class="style-matrix-row">
+      <span class="style-matrix-label" data-i18n="${i18nKey}"></span>
+      <span class="color-cell">
+        <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Color')}">
+        <output class="color-value"></output>
+      </span>
+      <span class="color-cell">
+        <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Stroke')}">
+        <output class="color-value"></output>
+      </span>
+      <div class="slider-group">
+        <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${camel('sub', prefix, 'Size')}">
+        <output class="slider-value"></output>
       </div>
-    </section>
+      <div class="slider-group">
+        <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${camel('sub', prefix, 'StrokeW')}">
+        <output class="slider-value"></output>
+      </div>
+    </div>
   `).join('');
 
   const section = document.createElement('div');
   section.className = 'style-section';
   section.innerHTML = `
-    <div class="panel-cols">
-      ${subjectSections}
+    <div class="style-matrix">
+      <div class="style-matrix-head">
+        <span></span>
+        <span data-i18n="style.textColor">文字色</span>
+        <span data-i18n="style.strokeColor">縁取り色</span>
+        <span data-i18n="style.fontSize">サイズ</span>
+        <span data-i18n="style.strokeWidth">縁取り</span>
+      </div>
+      ${matrixRows}
     </div>
 
     <div class="panel-cols">
@@ -129,7 +126,10 @@ export function mountStyleTab(container) {
 
       <div class="form-row">
         <span class="form-row-label" data-i18n="style.bg">背景色</span>
-        <input type="color" class="color-input" data-bind="subBg">
+        <span class="color-cell">
+          <input type="color" class="color-input" data-bind="subBg">
+          <output class="color-value"></output>
+        </span>
       </div>
     </section>
 
@@ -138,7 +138,7 @@ export function mountStyleTab(container) {
 
       <div class="form-row form-row-stack">
         <span class="form-row-label" data-i18n="style.overflow">翻訳字幕の行数</span>
-        <div class="seg-switch seg-switch-stretch" role="group">
+        <div class="seg-switch" role="group">
           <label><input type="radio" name="subOverflow" value="normal" data-bind="subOverflow"><span data-i18n="style.overflow.normal">制限なし</span></label>
           <label><input type="radio" name="subOverflow" value="shrink" data-bind="subOverflow"><span data-i18n="style.overflow.shrink">2行 流動</span></label>
         </div>

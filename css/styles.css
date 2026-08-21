@@ -62,6 +62,11 @@
     --fill-2: rgba(255, 255, 255, 0.14);   /* hovered controls */
     --fill-3: rgba(255, 255, 255, 0.22);   /* raised / selected chips */
 
+    /* --- motion (custom curves — built-in CSS easings are too weak) --- */
+    --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);    /* UI enter / press release */
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);   /* on-screen movement */
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);    /* iOS-like drawer slide */
+
     /* --- elevation / focus (soft, two-layer Apple shadows) --- */
     --shadow-1:       0 1px 2.5px rgba(0, 0, 0, 0.3);
     --shadow-2:       0 4px 16px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -70,7 +75,7 @@
 
     /* --- layout sizing --- */
     --header-h:        52px;
-    --control-panel-h: 300px;     /* bottom control panel (36px tab bar + content);
+    --control-panel-h: 300px;     /* bottom control panel (left tab rail + content);
                                      the manual panel matches it */
     --radius-sm:       6px;
     --radius-md:       10px;
@@ -120,8 +125,10 @@
     color: var(--color-text);
     min-width: 1000px;
     overflow: hidden;
+    /* main on top, the control strip (.app-header) docked at the bottom —
+       the green preview sits flush with the window's top edge for OBS. */
     display: grid;
-    grid-template-rows: var(--header-h) 1fr;
+    grid-template-rows: minmax(0, 1fr) var(--header-h);
   }
 
   /* slim scrollbars for the few internal scroll areas (Chrome-only app) */
@@ -149,44 +156,21 @@
 /* ============ layout ============ */
 @layer layout {
 
+  /* Bottom-docked control strip (start-stop on the left, global actions on
+     the right); see the note in index.html for why it lives at the bottom. */
   .app-header {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     align-items: center;
     gap: var(--space-3);
     padding: 0 var(--space-4);
     background: var(--color-surface-1);
-    border-bottom: 1px solid var(--color-border);
-
-    .app-title {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-
-      .app-icon { width: 28px; height: 28px; }
-
-      .app-version {
-        font-size: var(--text-xs);
-        font-weight: 600;
-        color: var(--color-text-faint);
-        background: var(--color-surface-2);
-        border: 1px solid var(--color-border);
-        border-radius: var(--radius-full);
-        padding: 1px 8px;
-        letter-spacing: 0.3px;
-      }
-
-      h1 {
-        font-size: var(--text-lg);
-        font-weight: 600;
-        letter-spacing: -0.01em;   /* larger text wants tighter tracking */
-      }
-    }
+    border-top: 1px solid var(--color-border);
 
     .header-info {
       display: flex;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: var(--space-2);
       color: var(--color-text-dim);
       font-size: var(--text-sm);
@@ -257,6 +241,10 @@
     grid-template-rows: minmax(0, 1fr) auto;
     position: relative;
     min-height: 0;
+    /* The closed manual-translate drawer is parked just below (translateY
+       100%); clip it here so it can't peek over the control strip that now
+       sits under app-main. */
+    overflow: clip;
   }
 
   .preview-pane {
@@ -344,7 +332,10 @@
     padding: var(--space-3) var(--space-5);
     min-height: 0;
     transform: translateY(100%);
-    transition: transform 0.2s ease;
+    /* iOS-like drawer curve; this base rule times the exit (200ms) — the
+       slower 300ms enter lives on .manual-open (transitions read their
+       duration from the destination state), so closing feels snappier. */
+    transition: transform 0.2s var(--ease-drawer);
   }
 
   .manual-panel-head {
@@ -359,37 +350,83 @@
   }
 
   .settings-pane {
-    /* Bottom control panel: a tab bar (言語 / スタイル / 単語置換 / OBS) over
-       the active tab's panel. In normal flow as app-main's second row;
-       .panel-collapsed removes it so the preview grows. Tab switching is
-       wired by js/ui-tabs.js. */
+    /* Bottom control panel: a vertical tab rail (言語 / スタイル / 単語置換 /
+       OBS) on the left, System Settings-style, beside the active tab's panel.
+       The rail frees a full row of the panel's fixed height for content. In
+       normal flow as app-main's second row; .panel-collapsed removes it so the
+       preview grows. Tab switching is wired by js/ui-tabs.js. */
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     background: var(--color-surface-1);
     border-top: 1px solid var(--color-border);
     height: var(--control-panel-h);
     min-height: 0;
 
-    .settings-tabs {
+    .settings-rail {
+      display: flex;
+      flex-direction: column;
+      width: 140px;   /* comfortably fits the longest label ("Languages") */
+      padding: var(--space-3) var(--space-2) var(--space-2);
+      border-right: 1px solid var(--color-border);
+      /* half a step darker than the content surface: heavier material reads
+         as structure (sidebar), and the active chip floats above it */
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    /* App identity, parked at the rail's bottom as a quiet watermark. */
+    .rail-brand {
+      margin-top: auto;
       display: flex;
       align-items: center;
-      gap: var(--space-1);
-      padding: var(--space-1) var(--space-3);
-      border-bottom: 1px solid var(--color-border);
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-1) 0;
 
-      /* Apple-style pill tabs: the active tab is a raised material chip,
-         matching the segmented switches in the header. */
-      .tab-btn {
-        padding: 4px 14px;
-        font-size: var(--text-md);
+      .app-icon { width: 20px; height: 20px; opacity: 0.85; }
+
+      h1 {
+        font-size: var(--text-xs);
+        font-weight: 600;
         color: var(--color-text-dim);
-        border-radius: var(--radius-full);
-        transition: color 0.15s, background 0.15s;
+        letter-spacing: 0.2px;
+      }
+
+      .rail-brand-text {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
+      }
+
+      .rail-brand-version {
+        font-size: 0.65rem;
+        color: var(--color-text-faint);
+      }
+    }
+
+    .settings-tabs {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--space-1);
+
+      /* Sidebar items: the active tab is a raised material chip, matching
+         the segmented switches in the header. No animation on switching —
+         tabs are flipped dozens of times a day. */
+      .tab-btn {
+        padding: 5px 12px;
+        font-size: var(--text-md);
+        text-align: left;
+        color: var(--color-text-dim);
+        border-radius: var(--radius-md);
+        transition: color 0.15s, background 0.15s, transform 0.15s var(--ease-out);
 
         &:hover {
           color: var(--color-text);
           background: var(--fill-1);
         }
+
+        &:active { transform: scale(0.97); }
 
         &.is-active {
           color: var(--color-text);
@@ -437,7 +474,7 @@
     background: var(--fill-1);
     color: var(--color-text);
     font-size: var(--text-sm);
-    transition: background 0.15s, color 0.15s, transform 0.1s ease-out;
+    transition: background 0.15s, color 0.15s, transform 0.15s var(--ease-out);
 
     &:hover:not(:disabled) {
       background: var(--fill-2);
@@ -474,7 +511,7 @@
     place-items: center;
     border-radius: var(--radius-md);
     color: var(--color-text-dim);
-    transition: background 0.15s, color 0.15s, transform 0.1s ease-out;
+    transition: background 0.15s, color 0.15s, transform 0.15s var(--ease-out);
 
     &:hover { background: var(--fill-1); color: var(--color-text); }
 
@@ -518,9 +555,11 @@
       color: var(--color-text-dim);
       font-size: var(--text-sm);
       letter-spacing: 0.5px;
-      transition: background 0.15s, color 0.15s;
+      transition: background 0.15s, color 0.15s, transform 0.15s var(--ease-out);
 
       &:hover { color: var(--color-text); }
+
+      &:active { transform: scale(0.97); }
 
       &.is-active {
         background: var(--fill-3);
@@ -546,11 +585,13 @@
       border-radius: calc(var(--radius-md) - 3px);
       color: var(--color-text-dim);
       font-size: var(--text-sm);
-      transition: background 0.15s, color 0.15s;
+      transition: background 0.15s, color 0.15s, transform 0.15s var(--ease-out);
       user-select: none;
     }
 
     label:hover > span { color: var(--color-text); }
+
+    label:not(.is-disabled):active > span { transform: scale(0.97); }
 
     input[type="radio"]:checked + span {
       background: var(--fill-3);
@@ -566,15 +607,6 @@
     label.is-disabled { cursor: not-allowed; }
     label.is-disabled > span { opacity: 0.4; }
     label.is-disabled:hover > span { color: var(--color-text-dim); }
-  }
-
-  /* full-width variant (e.g., overflow control) */
-  .seg-switch-stretch {
-    display: flex;
-    width: 100%;
-
-    label { flex: 1; }
-    label > span { width: 100%; text-align: center; }
   }
 
   /* icon-only variant (e.g., alignment switch) — fixed square cells */
@@ -603,9 +635,47 @@
     max-height: 86vh;
     box-shadow: var(--shadow-overlay);
 
+    /* Enter/exit animation. Modals keep transform-origin: center (they are
+       not anchored to a trigger). Scale starts at 0.97 — never from 0 —
+       and the exit (150ms) is snappier than the enter (200ms). display/
+       overlay transition with allow-discrete keeps the dialog in the
+       top layer until the exit finishes (Chrome-only app). */
+    opacity: 0;
+    transform: scale(0.97);
+    transition:
+      opacity   150ms var(--ease-out),
+      transform 150ms var(--ease-out),
+      display   150ms allow-discrete,
+      overlay   150ms allow-discrete;
+
+    &[open] {
+      opacity: 1;
+      transform: scale(1);
+      transition-duration: 200ms;
+
+      @starting-style {
+        opacity: 0;
+        transform: scale(0.97);
+      }
+    }
+
     &::backdrop {
       background: rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(8px);
+      opacity: 0;
+      transition:
+        opacity 150ms var(--ease-out),
+        display 150ms allow-discrete,
+        overlay 150ms allow-discrete;
+    }
+
+    &[open]::backdrop {
+      opacity: 1;
+      transition-duration: 200ms;
+
+      @starting-style {
+        opacity: 0;
+      }
     }
 
     .dialog-header {
@@ -764,6 +834,10 @@
   .form-row-stack {
     grid-template-columns: 1fr;
     gap: var(--space-1);
+
+    /* segmented controls hug their content (Apple-style) instead of being
+       stretched to the column width by the grid */
+    > .seg-switch { justify-self: start; }
   }
 
   /* Toggle rows read as one full-width unit, System Settings-style: the
@@ -1020,6 +1094,21 @@
     }
   }
 
+  /* swatch + live hex readout, macOS-style — confirms "is this pure white?"
+     without opening the picker (kept in sync by ui-bind.js) */
+  .color-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    .color-value {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+      letter-spacing: 0.02em;
+    }
+  }
+
   .color-input {
     appearance: none;
     -webkit-appearance: none;
@@ -1073,7 +1162,7 @@
       background: white;
       border-radius: 50%;
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(0, 0, 0, 0.08);
-      transition: transform 0.18s;
+      transition: transform 0.18s var(--ease-out);
     }
 
     input[type="checkbox"]:checked + .toggle-track {
@@ -1101,13 +1190,34 @@
       grid-template-rows: minmax(0, 1fr);
     }
 
-    /* toggle row / title-or-hint / scrolling list / add buttons */
+    /* toggle row / title-or-hint / list group (list + add buttons) */
     .panel-col {
       display: grid;
-      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      grid-template-rows: auto auto minmax(0, 1fr);
       gap: var(--space-2);
       min-height: 0;
     }
+  }
+
+  /* List + its add buttons travel as one group: the buttons sit right under
+     the last row (not pinned to the panel floor across a void), and once the
+     list outgrows the panel it scrolls while the buttons stay reachable. */
+  .filter-list-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: 0;
+
+    .filter-list { flex: 0 1 auto; }
+  }
+
+  /* empty state — a quiet hint instead of a void */
+  .filter-empty {
+    margin: 0;
+    padding: var(--space-3) 0;
+    text-align: center;
+    color: var(--color-text-faint);
+    font-size: var(--text-sm);
   }
 
   /* --- word-replacement rule list --- */
@@ -1241,10 +1351,23 @@
     gap: var(--space-1);
   }
 
+  /* Drag chips share the dashed "not a push button" language with .filter-add:
+     grip dots + dashed border say "take me", solid buttons say "press me". */
   .obs-drag-link {
     cursor: grab;
     text-decoration: none;
     user-select: none;
+    background: transparent;
+    border: 1px dashed var(--color-border-strong);
+    color: var(--color-text-dim);
+
+    svg { color: var(--color-text-faint); }
+
+    &:hover:not(:disabled) {
+      background: transparent;
+      border-color: var(--color-accent);
+      color: var(--color-text);
+    }
 
     &:active { cursor: grabbing; }
   }
@@ -1256,14 +1379,39 @@
     line-height: 1.4;
   }
 
+  /* Sequential instructions get sequential numbers: small numbered chips
+     instead of bullets, so the order reads at a glance. */
   .help-steps {
     display: grid;
-    gap: 6px;
+    gap: var(--space-2);
     margin: 0;
-    padding-left: 1.3em;
+    padding: 0;
     color: var(--color-text-dim);
     font-size: var(--text-sm);
     line-height: 1.45;
+    counter-reset: help-step;
+
+    li {
+      counter-increment: help-step;
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: var(--space-2);
+
+      &::before {
+        content: counter(help-step);
+        display: inline-grid;
+        place-items: center;
+        width: 16px;
+        height: 16px;
+        margin-top: 1px;
+        border-radius: var(--radius-full);
+        background: var(--fill-1);
+        color: var(--color-text-dim);
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1;
+      }
+    }
   }
 
   /* --- range slider + readout --- */
@@ -1302,7 +1450,7 @@
       border-radius: 50%;
       box-shadow: 0 0.5px 2.5px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(0, 0, 0, 0.1);
       cursor: pointer;
-      transition: transform 0.1s;
+      transition: transform 0.1s var(--ease-out);
 
       &:hover { transform: scale(1.1); }
     }
@@ -1484,44 +1632,42 @@
     }
   }
 
-  /* Style-tab subject controls: a 2×2 layout per subtitle line. The two color
-     swatches stack down the left, each paired on the same row with its slider
-     (text color↔size, stroke color↔width). Sliders get a fixed, modest width —
-     full-width ones were just dead space — and the colour group sits apart from
-     the slider group so each cell breathes without growing taller. */
-  .style-section .style-controls {
+  /* Style-tab subject controls: one matrix over the three subtitle lines.
+     Column labels are written once in a header row; each line is a row, so
+     same-type values align vertically and can be compared at a glance.
+     display: contents flattens rows into the shared grid. */
+  .style-section .style-matrix {
     display: grid;
-    grid-template-columns: auto auto;
-    justify-content: start;
-    align-items: center;
-    column-gap: var(--space-4);
+    grid-template-columns: max-content max-content max-content minmax(150px, 210px) minmax(150px, 210px);
+    column-gap: var(--space-5);
     row-gap: var(--space-2);
-  }
-
-  .style-section .style-control {
-    display: grid;
     align-items: center;
-    gap: var(--space-1);
-
-    .form-row-label {
-      color: var(--color-text-dim);
-      font-size: var(--text-sm);
-      white-space: nowrap;
-    }
-
-    /* narrow slider track so the colour group and slider group both fit
-       inside one subtitle column without the value spilling over. */
-    .slider-group {
-      grid-template-columns: 80px 24px;
-      gap: var(--space-1);
-    }
+    justify-content: start;
   }
 
-  /* Fixed label columns give every swatch (and every slider) a shared left edge,
-     so the colour pickers line up cleanly down each subtitle column. The two
-     control types size their own label column to their own longest label. */
-  .style-section .style-control:has(.color-input)  { grid-template-columns: 3.5em auto; }
-  .style-section .style-control:has(.slider-group) { grid-template-columns: 4.2em auto; }
+  .style-section .style-matrix-head,
+  .style-section .style-matrix-row { display: contents; }
+
+  .style-section .style-matrix-head > span {
+    font-size: var(--text-xs);
+    font-weight: 600;
+    color: var(--color-text-dim);
+  }
+
+  .style-section .style-matrix-label {
+    font-size: var(--text-md);
+    color: var(--color-text);
+    padding-right: var(--space-2);
+    white-space: nowrap;
+  }
+
+  /* the matrix and the column-row below it get the same separating rule the
+     two column-rows used to share */
+  .style-section .style-matrix + .panel-cols {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+  }
 
   /* Source column: the wrap symbols sit inline to the right of the heading, in
      two small (~2–3 char) boxes; the single-line limit drops onto its own row. */
@@ -1567,8 +1713,12 @@
      green preview grows to fill the window. */
   .panel-collapsed .settings-pane { display: none; }
 
-  /* Manual text-translation overlay: slide it up into view over the preview. */
-  .manual-open .manual-translate-panel { transform: translateY(0); }
+  /* Manual text-translation overlay: slide it up into view over the preview.
+     Enter is deliberately slower (300ms) than the 200ms exit on the base rule. */
+  .manual-open .manual-translate-panel {
+    transform: translateY(0);
+    transition-duration: 0.3s;
+  }
 
   /* The HTML [hidden] attribute defaults to `display: none` via the UA
      stylesheet, but any author rule with `display: <other>` (e.g. grid/flex
@@ -1622,8 +1772,16 @@
   @media (prefers-reduced-motion: reduce) {
     .manual-translate-panel { transition: none; }
 
+    /* dialogs keep the opacity fade (comprehension) but not the scale.
+       This utilities-layer rule also outranks the components-layer
+       @starting-style scale during the enter frame. */
+    .app-dialog { transform: none; }
+
     .btn:active:not(:disabled),
-    .icon-btn:active { transform: none; }
+    .icon-btn:active,
+    .tab-btn:active,
+    .seg-switch button:active,
+    .seg-switch label:active > span { transform: none; }
 
     .header-speech:has(#btn-stop:not(:disabled)) #btn-start svg,
     .obs-conn-status[data-phase="connecting"] .obs-conn-dot {

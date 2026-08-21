@@ -7,7 +7,8 @@
  * back on change, and stays in sync if the setting is mutated elsewhere.
  *
  * For range inputs, an adjacent <output class="slider-value"> sibling will be
- * kept in sync automatically (display only).
+ * kept in sync automatically (display only). Color inputs do the same with an
+ * adjacent <output class="color-value"> (uppercase hex readout).
  */
 
 import { settings, subscribe } from './store.js';
@@ -88,6 +89,19 @@ function bindSelect(el, key) {
 
 function bindText(el, key) {
   if (el.value !== String(settings[key] ?? '')) el.value = settings[key] ?? '';
-  el.addEventListener('input', () => { settings[key] = el.value; });
-  subscribe(key, (val) => { if (el.value !== String(val ?? '')) el.value = val ?? ''; });
+  el.addEventListener('input', () => {
+    settings[key] = el.value;
+    updateColorOutput(el);
+  });
+  subscribe(key, (val) => {
+    if (el.value !== String(val ?? '')) el.value = val ?? '';
+    updateColorOutput(el);
+  });
+  updateColorOutput(el);
+}
+
+function updateColorOutput(el) {
+  if (el.type !== 'color') return;
+  const out = el.nextElementSibling;
+  if (out?.classList.contains('color-value')) out.textContent = el.value.toUpperCase();
 }

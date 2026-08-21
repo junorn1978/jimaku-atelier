@@ -1,5 +1,10 @@
 {
   "app.title":              "字幕アトリエ",
+  "aria.preview":           "Subtitle preview",
+  "aria.settingsPane":      "Settings panel",
+  "aria.settingsSections":  "Settings sections",
+  "aria.manualTranslate":   "Text translation",
+  "aria.interfaceLanguage": "Interface language",
   "header.mic.unknown":     "Not selected",
   "header.action.settings": "Settings",
   "header.action.togglePanel":     "Toggle control panel",
@@ -116,12 +121,14 @@
   "filter.delete":          "Delete",
   "filter.source.ph":       "Find",
   "filter.target.ph":       "Replace with",
+  "filter.empty":           "No replacement rules yet",
 
   "blacklist.enabled":      "Blacklist mask",
   "blacklist.hint":         "Listed words are masked with as many * as the word is long (e.g. damn→****). Applied to both source and translation.",
   "blacklist.add":          "+ Add",
   "blacklist.loadDefaults": "Load defaults",
   "blacklist.word.ph":      "Word to mask",
+  "blacklist.empty":        "No masked words yet",
 
   "obs.connection":         "Connection",
   "obs.enabled":            "WS Connection",

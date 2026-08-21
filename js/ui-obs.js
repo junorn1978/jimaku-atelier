@@ -9,6 +9,16 @@ import { subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { triggerAutoSetup, getOverlayUrl, onConnectionState } from './obs.js';
 
+/* Grip dots: mark the drag chips as draggable at a glance, so they don't
+   read as push buttons. */
+const GRIP_SVG = `
+  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
+    <circle cx="9" cy="5.5" r="1.7"/><circle cx="15" cy="5.5" r="1.7"/>
+    <circle cx="9" cy="12"  r="1.7"/><circle cx="15" cy="12"  r="1.7"/>
+    <circle cx="9" cy="18.5" r="1.7"/><circle cx="15" cy="18.5" r="1.7"/>
+  </svg>
+`;
+
 export function mountObsTab(container) {
   if (!container) return;
 
@@ -69,17 +79,17 @@ export function mountObsTab(container) {
         <h3 class="section-title" data-i18n="obs.sources">ソース作成</h3>
         <div class="obs-drag-grid">
           <a class="btn obs-drag-link" id="obs-drag-all"
-             draggable="true" data-i18n="obs.drag.all"
-             data-i18n-title="obs.drag.all.tip">全表示</a>
+             draggable="true" data-i18n-title="obs.drag.all.tip">
+            ${GRIP_SVG}<span data-i18n="obs.drag.all">全表示</span></a>
           <a class="btn obs-drag-link" id="obs-drag-source"
-             draggable="true" data-i18n="obs.drag.source"
-             data-i18n-title="obs.drag.source.tip">音声</a>
+             draggable="true" data-i18n-title="obs.drag.source.tip">
+            ${GRIP_SVG}<span data-i18n="obs.drag.source">音声</span></a>
           <a class="btn obs-drag-link" id="obs-drag-target1"
-             draggable="true" data-i18n="obs.drag.target1"
-             data-i18n-title="obs.drag.target1.tip">翻訳 1</a>
+             draggable="true" data-i18n-title="obs.drag.target1.tip">
+            ${GRIP_SVG}<span data-i18n="obs.drag.target1">翻訳 1</span></a>
           <a class="btn obs-drag-link" id="obs-drag-target2"
-             draggable="true" data-i18n="obs.drag.target2"
-             data-i18n-title="obs.drag.target2.tip">翻訳 2</a>
+             draggable="true" data-i18n-title="obs.drag.target2.tip">
+            ${GRIP_SVG}<span data-i18n="obs.drag.target2">翻訳 2</span></a>
         </div>
         <button type="button" class="btn primary" id="obs-auto-setup"
                 data-i18n="obs.autoSetup">OBS 自動構築</button>

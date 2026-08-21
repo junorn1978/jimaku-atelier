@@ -128,19 +128,34 @@ function setupPromptEngine(container) {
   const status = container.querySelector('#engine-prompt-status');
   if (!label || !radio || !status) return;
 
+  /* Availability changes asynchronously, while the UI language can change at
+     any time. Keep the message key so the current state can be translated
+     again without repeating the availability check. */
+  let currentMessageKey = null;
+
+  const renderMessage = () => {
+    if (!currentMessageKey) return;
+    const message = t(currentMessageKey);
+    label.title = message;
+    status.textContent = message;
+  };
+
+  subscribe('uiLang', renderMessage);
+
   /* `fallback` is only set once we KNOW the engine is unusable; during the
      async "checking" phase we just disable the radio without stranding a valid
      prompt selection. */
   const disable = (msgKey, fallback) => {
+    currentMessageKey = msgKey;
     radio.disabled = true;
     label.classList.add('is-disabled');
-    label.title = t('lang.engine.prompt.unavailable');
     status.hidden = false;
-    status.textContent = t(msgKey);
+    renderMessage();
     if (fallback && settings.translationMode === 'prompt') settings.translationMode = 'gtx';
   };
 
   const enable = () => {
+    currentMessageKey = null;
     radio.disabled = false;
     label.classList.remove('is-disabled');
     label.removeAttribute('title');

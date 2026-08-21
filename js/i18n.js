@@ -4,6 +4,7 @@
  * and applies entries to elements marked with the following attributes:
  *   - data-i18n             → textContent
  *   - data-i18n-title       → title attribute
+ *   - data-i18n-aria-label  → aria-label attribute
  *   - data-i18n-placeholder → data-placeholder attribute (used by CSS ::before
  *                              on empty subtitle lines)
  */
@@ -36,6 +37,12 @@ function _apply(root = document) {
     const key = el.dataset.i18nTitle;
     const val = _dict[key];
     if (val != null) el.title = val;
+  });
+
+  root.querySelectorAll('[data-i18n-aria-label]').forEach(el => {
+    const key = el.dataset.i18nAriaLabel;
+    const val = _dict[key];
+    if (val != null) el.setAttribute('aria-label', val);
   });
 
   root.querySelectorAll('[data-i18n-placeholder]').forEach(el => {

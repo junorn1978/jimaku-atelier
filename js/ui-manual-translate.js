@@ -35,7 +35,8 @@ export function mountManualTranslate(container) {
     <div class="manual-panel-head">
       <span class="manual-panel-title" data-i18n="manual.title">テキスト翻訳</span>
       <button type="button" class="icon-btn" id="manual-close"
-              data-i18n-title="dialog.close" title="閉じる" aria-label="Close">
+              data-i18n-title="dialog.close" data-i18n-aria-label="dialog.close"
+              title="閉じる" aria-label="閉じる">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M18 6 6 18M6 6l12 12"/>
         </svg>
