@@ -38,12 +38,20 @@ function bindOne(el) {
   }
 }
 
+/* A radio's value is always a string, but some settings are booleans — a
+   two-state segmented picker is sometimes a better-looking stand-in for a
+   toggle. Coerce on the way into the store so consumers comparing with === true
+   keep working. Reads are unaffected: they already compare as strings. */
+function coerceRadioValue(current, raw) {
+  return typeof current === 'boolean' ? raw === 'true' : raw;
+}
+
 function bindRadio(el, key) {
   /* Group radios by their shared settings key. We only attach one subscriber
      per group to avoid redundant DOM writes. */
   el.checked = String(settings[key]) === String(el.value);
   el.addEventListener('change', () => {
-    if (el.checked) settings[key] = el.value;
+    if (el.checked) settings[key] = coerceRadioValue(settings[key], el.value);
   });
 
   if (!_radioGroups.has(key)) {

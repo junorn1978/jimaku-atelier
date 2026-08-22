@@ -27,7 +27,6 @@
   "manual.error.failed":    "翻譯失敗。",
 
   "tab.languages":          "語言",
-  "tab.style":              "樣式",
   "tab.filter":             "字詞替換",
   "tab.obs":                "OBS",
 
@@ -98,11 +97,6 @@
   "lang.engine.link.steps.run":                "把下面的程式碼存成 server.py 後執行：",
   "lang.engine.link.steps.url":                "在「自訂 URL」欄位填入：",
 
-  "style.source":           "原文字幕",
-  "style.target1":          "翻譯 1 字幕",
-  "style.target2":          "翻譯 2 字幕",
-  "style.display":          "字幕顯示",
-  "style.behavior":         "字幕行為",
   "style.textColor":        "文字色",
   "style.strokeColor":      "邊框色",
   "style.fontSize":         "字級",
@@ -116,7 +110,10 @@
   "style.overflow":         "翻譯字幕行數",
   "style.overflow.normal":  "無限制",
   "style.overflow.shrink":  "2行 捲動",
-  "style.sourceSingleLine": "原文限 1 行",
+  "style.overflow.deprecated": "不建議使用：譯文較長時顯示會出問題。",
+  "style.sourceLines":      "原文行數",
+  "style.sourceLines.all":  "不限",
+  "style.sourceLines.one":  "1 行",
   "style.sourceWrap":       "原文符號",
   "style.sourcePrefix":     "左符號",
   "style.sourceSuffix":     "右符號",

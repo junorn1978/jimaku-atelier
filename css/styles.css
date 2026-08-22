@@ -88,8 +88,12 @@
     --focus-ring:     0 0 0 3px color-mix(in oklab, var(--color-accent) 40%, transparent);
 
     /* --- layout sizing --- */
-    --control-panel-h: 300px;     /* the control card (toolbar + tab body);
-                                     the manual panel matches it */
+    /* The control card (toolbar + tab body); the manual panel matches it. Grew
+       from 300px when the Style tab's controls merged into the Languages tab —
+       that is a real increase in content, not slack. Even so the app spends
+       less vertical chrome than it used to: the old layout was this panel plus
+       a separate 52px control strip. */
+    --control-panel-h: 324px;
     --panel-measure:   1200px;    /* widest the card grows to before it centres
                                      itself in the window */
     --radius-sm:       6px;
@@ -839,11 +843,17 @@
 
   /* Download button with the pack's name beside it. Wraps so a long name drops
      to its own line instead of widening the source column. */
-  .offline-pack-head {
+  /* A row of a section's controls, optionally led by its heading. Inlining the
+     heading costs no height — the control beside it is taller anyway — which
+     matters in the shortest tab in the app. (Same idea as .style-wrap-head in
+     the Style tab.) Wraps rather than overflowing when the column gets narrow. */
+  .col-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2);
+    gap: var(--space-3);
+
+    .section-title { flex-shrink: 0; }
   }
 
   /* .manual-status reserves a line so a message appearing can't shift the
@@ -950,15 +960,20 @@
   }
 
   /* custom-URL input + "examples & help" trigger, inside the engine column */
+  /* URL field and its help trigger on one line. Stacked they cost two rows in
+     the shortest tab in the app, and the button is the field's companion — it
+     belongs beside it, not under it. */
   .lang-url-row {
-    margin-top: var(--space-2);
     display: flex;
-    flex-direction: column;
+    align-items: center;
     gap: var(--space-2);
+    min-width: 0;
+
+    .text-input { min-width: 0; }
   }
 
   .url-examples-toggle {
-    align-self: flex-start;
+    flex-shrink: 0;
     anchor-name: --url-examples-anchor;
   }
 
@@ -1051,15 +1066,60 @@
      controls. Rows are display:contents so every cell joins this grid and the
      columns line up down the table. The two sliders are the only flexible
      tracks — everything else is sized by its control. */
+  /* Matrix on the left, whole-display settings in the space it leaves. The
+     matrix shrinks its two slider tracks before anything overflows, so the
+     right-hand block keeps its width as the window narrows. */
+  .lang-top {
+    display: flex;
+    /* Children stretch (the default) so the divider on .lang-extras runs the
+       full height of the row rather than only as far as its own four rows;
+       each side packs its own rows at the top with align-content. */
+    gap: var(--space-4);
+    min-width: 0;
+  }
+
+  /* Two columns: label, control. Sized by content — this block is narrow by
+     design and must not steal width from the matrix. No heading of its own:
+     every row is already labelled, so a title would only repeat them, and the
+     row it costs is needed for the fourth control. Tight row spacing for the
+     same reason — these are four short controls, not sections. */
+  .lang-extras {
+    flex-shrink: 0;
+    display: grid;
+    grid-template-columns: max-content max-content;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+    align-items: center;
+    align-content: start;
+
+    /* Marks the block as its own group without spending a row on a heading —
+       the same hairline the two columns below the matrix already use. */
+    padding-left: var(--space-4);
+    border-left: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+  }
+
+  .lang-extras-label {
+    color: var(--color-text-dim);
+    font-size: var(--text-md);
+    white-space: nowrap;
+  }
+
   .lang-matrix {
     display: grid;
+    /* Slider tracks are capped tighter than they used to be (190/150) to leave
+       room for .lang-extras beside the matrix. The <output> beside each slider
+       shows the exact value, so the track only needs to be comfortable to drag,
+       not precise. */
     grid-template-columns:
       max-content max-content max-content max-content
-      minmax(110px, 190px) minmax(90px, 150px);
+      minmax(90px, 140px) minmax(70px, 110px);
     column-gap: var(--space-4);
     row-gap: var(--space-2);
     align-items: center;
     justify-content: start;
+    /* Rows stay packed at the top now that .lang-top stretches its children to
+       a common height for the divider. */
+    align-content: start;
     /* A 6-column table cannot collapse without losing the column comparison it
        exists for, so in a narrow window it scrolls inside itself rather than
        widening the card. */
@@ -1093,9 +1153,28 @@
   /* Offline pack column. The removal instructions are the longest text in the
      tab, so the column is capped — otherwise installing a pack (which is when
      that text appears) would visibly change the layout. */
+  /* The two bottom columns are deliberately NOT equal: the offline pack is a
+     heading plus two buttons, while the engine wants every pixel it can get for
+     the picker and the URL field. So the pack is sized by its content and the
+     engine takes the rest. */
+  .lang-grid > .panel-cols {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  /* Pinned to the second track so the engine keeps the wide column even when
+     the pack column is absent (non-Chrome), where a display:none sibling
+     generates no box and auto-placement would otherwise pull it left. */
+  .lang-engine { grid-column: 2; }
+
+  /* ...and without this the divider would still be drawn, since the adjacent
+     sibling selector matches on the DOM, not on what is rendered. */
+  .panel-col[hidden] + .panel-col {
+    padding-left: 0;
+    border-left: 0;
+  }
+
   /* Offline pack column. Nothing here needs a width cap any more — the long
-     removal instructions moved into a popover, so the column is sized by its
-     buttons like every other column in the row. */
+     removal instructions moved into a popover. */
   .lang-sub { min-width: 0; }
 
   /* engine picker + its detail region, filling the translation column */
@@ -1106,10 +1185,9 @@
     min-height: 0;
 
     /* segmented control hugs its content (Apple-style) instead of being
-       stretched to the column width by the flex container; with four engines
-       it wraps onto a second row rather than overflowing the column */
-    > .seg-switch {
-      align-self: flex-start;
+       stretched to the column width; with four engines it wraps onto a second
+       row rather than overflowing the column */
+    .seg-switch {
       flex-wrap: wrap;
       max-width: 100%;
     }
@@ -1171,6 +1249,18 @@
       color: var(--color-text-faint);
       letter-spacing: 0.02em;
     }
+  }
+
+  /* Colour picker with no visible swatch — see the note in ui-languages.js for
+     why the background colour must not paint itself. position:relative keeps
+     the visually-hidden input from escaping to the viewport, where focusing it
+     would scroll the page (same trap as the segmented-switch radios). */
+  .color-pick {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+
+    .color-value { color: var(--color-text); }
   }
 
   .color-input {
@@ -1675,45 +1765,19 @@
     }
   }
 
-  /* --- Style tab: compact vertical rhythm ---
-     Both column-rows must stay compact so the tab fits the panel without
-     scrolling; the loose, shared form spacing is trimmed here only (Languages /
-     Filter / OBS keep the roomier defaults). Titles lean on the column gap and
-     rows drop their vertical padding, so spacing reflects the control height. */
-  .style-section {
-    padding-block: var(--space-1);
-
-    .panel-col { gap: var(--space-2); }
-
-    .section-title { margin-bottom: 0; }
-
-    .form-row { padding-block: 0; }
-
-    /* the two stacked column-rows sit a little apart, with a lighter divider */
-    .panel-cols + .panel-cols {
-      margin-top: var(--space-2);
-      padding-top: var(--space-2);
-    }
-  }
-
-  /* The per-line matrix moved to the Languages tab (see .lang-matrix); what is
-     left in the Style tab is the column row of global settings, which needs the
-     separating rule when something sits above it. */
-  .lang-matrix + .panel-cols {
-    margin-top: var(--space-2);
-    padding-top: var(--space-2);
+  /* Separator between the matrix row and the columns below it in the Languages
+     tab. Keyed off .lang-top, not .lang-matrix — the matrix gained a wrapper
+     when the display settings moved in beside it, which left this rule matching
+     nothing and the headings below sitting flush against the rows above. */
+  .lang-top + .panel-cols {
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
     border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
   }
 
-  /* Source column: the wrap symbols sit inline to the right of the heading, in
-     two small (~2–3 char) boxes; the single-line limit drops onto its own row. */
-  .style-section .style-wrap-head {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-  }
-
-  .style-section .symbol-inputs {
+  /* Two small boxes for the characters wrapped around the recognised line.
+     Not scoped to a tab — the control moved to the Languages tab. */
+  .symbol-inputs {
     display: flex;
     gap: var(--space-2);
 

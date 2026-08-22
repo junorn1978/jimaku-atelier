@@ -58,8 +58,8 @@
           </button>
         </div>
 
-        <!-- Settings are split across four tabs. Each tab panel is filled by
-             its own module (js/ui-languages.js, js/ui-style.js, js/ui-filter.js,
+        <!-- Settings are split across three tabs. Each tab panel is filled by
+             its own module (js/ui-languages.js, js/ui-filter.js,
              js/ui-obs.js — mounted from js/main.js); switching is handled by
              js/ui-tabs.js and the active tab persists in the settings store. -->
         <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
@@ -67,9 +67,6 @@
           <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
                   aria-selected="true" data-tab="languages" class="tab-btn is-active"
                   data-i18n="tab.languages">言語</button>
-          <button type="button" role="tab" id="tab-btn-style" aria-controls="tab-style"
-                  aria-selected="false" tabindex="-1" data-tab="style" class="tab-btn"
-                  data-i18n="tab.style">スタイル</button>
           <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
                   aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
                   data-i18n="tab.filter">単語置換</button>
@@ -120,7 +117,6 @@
       </div>
       <div class="settings-body" id="settings-body">
         <div class="tab-panel" id="tab-languages" role="tabpanel" aria-labelledby="tab-btn-languages"></div>
-        <div class="tab-panel" id="tab-style"  role="tabpanel" aria-labelledby="tab-btn-style"  hidden></div>
         <div class="tab-panel" id="tab-filter" role="tabpanel" aria-labelledby="tab-btn-filter" hidden></div>
         <div class="tab-panel" id="tab-obs"    role="tabpanel" aria-labelledby="tab-btn-obs"    hidden></div>
       </div>

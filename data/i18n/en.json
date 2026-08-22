@@ -27,7 +27,6 @@
   "manual.error.failed":    "Translation failed.",
 
   "tab.languages":          "Languages",
-  "tab.style":              "Style",
   "tab.filter":             "Filter",
   "tab.obs":                "OBS",
 
@@ -98,11 +97,6 @@
   "lang.engine.link.steps.run":                "Save the code below as server.py and run:",
   "lang.engine.link.steps.url":                "Enter in the Custom URL field:",
 
-  "style.source":           "Source subtitle",
-  "style.target1":          "Translation 1",
-  "style.target2":          "Translation 2",
-  "style.display":          "Display",
-  "style.behavior":         "Behavior",
   "style.textColor":        "Text",
   "style.strokeColor":      "Stroke",
   "style.fontSize":         "Size",
@@ -116,7 +110,10 @@
   "style.overflow":         "Subtitle lines",
   "style.overflow.normal":  "Unlimited",
   "style.overflow.shrink":  "2 lines (scroll)",
-  "style.sourceSingleLine": "Limit source to 1 line",
+  "style.overflow.deprecated": "Not recommended: long translations can display incorrectly.",
+  "style.sourceLines":      "Source lines",
+  "style.sourceLines.all":  "Unlimited",
+  "style.sourceLines.one":  "1 line",
   "style.sourceWrap":       "Source symbols",
   "style.sourcePrefix":     "Left",
   "style.sourceSuffix":     "Right",

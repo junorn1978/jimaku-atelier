@@ -6,17 +6,25 @@
  * translation 2). Each row carries that line's language AND its appearance:
  * text colour, stroke colour, size, stroke width. Language and appearance
  * describe the same object, so keeping them in separate tabs meant setting up
- * one line required switching back and forth; the appearance columns used to
- * live in ui-style.js. Rows are display:contents so their cells join the outer
- * grid and same-kind controls line up vertically.
+ * one line required switching back and forth. Rows are display:contents so
+ * their cells join the outer grid and same-kind controls line up vertically.
  *
- * Bottom — two columns: HOW to translate (engine picker plus an .engine-detail
- * region that absorbs the rest of the column, so switching engines never
- * resizes the tab) and the Chrome-only offline recognition pack. The verbose
- * URL format help lives in a dialog (#dialog-url-format in index.html).
+ * Beside the matrix, in the width it leaves — the settings you judge against
+ * the preview: the source line's wrap symbols and one-line limit, plus
+ * alignment and background. Deliberately unheaded: every row is labelled, and
+ * the row a title would cost is needed for the fourth control.
  *
- * What stayed in ui-style.js is everything global rather than per line: the
- * source wrap symbols, alignment, background colour, overflow mode.
+ * Bottom — two columns matching the matrix's sides: the Chrome-only offline
+ * recognition pack on the recognition side, and HOW to translate on the other
+ * (engine picker plus an .engine-detail region that absorbs the rest of the
+ * column, so switching engines never resizes the tab). The columns are sized to
+ * their contents rather than split evenly, and the engine inlines its heading
+ * with the picker (.col-head) since this is the shortest tab in the app. The
+ * verbose URL format help lives in a dialog (#dialog-url-format in index.html).
+ *
+ * This tab absorbed the old Style tab entirely; the only subtitle setting that
+ * did not move here is the two-line overflow mode, which is deprecated and now
+ * sits in the settings dialog.
  *
  * All form controls bind to the settings store via [data-bind].
  */
@@ -29,8 +37,8 @@ import { setupLanguagePackButton } from './language-pack.js';
 import { isPromptSupported, getPromptAvailability } from './translate-prompt.js';
 import { isTranslatorSupported, prepareTranslators } from './translate-translator.js';
 
-/* Ranges for the per-line appearance controls. They live here rather than in
-   ui-style.js because the controls they drive moved into this tab. */
+/* Ranges for the per-line appearance controls, inherited along with them from
+   the Style tab, which this tab absorbed. */
 const SIZE_MIN   = 14;
 const SIZE_MAX   = 48;
 const STROKE_MIN = 0;
@@ -80,6 +88,7 @@ export function mountLanguagesTab(container) {
            forth. Column headers are written once; each row is a
            display:contents wrapper so its cells join the outer grid and every
            control of the same kind lines up vertically. -->
+      <div class="lang-top">
       <div class="lang-matrix">
         <div class="lang-matrix-head">
           <span></span>
@@ -119,17 +128,123 @@ export function mountLanguagesTab(container) {
         </div>
       </div>
 
+      <!-- The settings you judge against the preview, filling the space the
+           matrix leaves: the source line's symbols and one-line limit,
+           alignment, background. They belong beside the colours rather than a
+           tab away, because they are adjusted the same way — by looking. -->
+      <section class="lang-extras">
+        <span class="lang-extras-label" data-i18n="style.sourceWrap">原文符號</span>
+        <div class="symbol-inputs">
+          <input type="text" class="text-input" data-bind="subSourcePrefix"
+                 data-i18n-placeholder="style.sourcePrefix.ph" data-i18n-title="style.sourcePrefix" title="左記号"
+                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
+          <input type="text" class="text-input" data-bind="subSourceSuffix"
+                 data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
+                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
+        </div>
+
+        <!-- Source-line only, like the wrap symbols above it — the two
+             source-scoped settings sit together, then the two global ones.
+             A two-state picker rather than a bare toggle: it names both states
+             instead of leaving one implied, and it matches the width of the
+             controls above and below it so the column has one right edge. -->
+        <span class="lang-extras-label" data-i18n="style.sourceLines">原文の行数</span>
+        <div class="seg-switch" role="group">
+          <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
+          <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
+        </div>
+
+        <span class="lang-extras-label" data-i18n="style.align">横位置</span>
+        <div class="seg-switch seg-switch-icons style-align-control" role="group">
+          <label>
+            <input type="radio" name="subAlign" value="left" data-bind="subAlign">
+            <span data-i18n-title="style.align.left" title="左">
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <line x1="2" y1="3.5"  x2="10" y2="3.5"/>
+                <line x1="2" y1="7"    x2="12" y2="7"/>
+                <line x1="2" y1="10.5" x2="8"  y2="10.5"/>
+              </svg>
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="subAlign" value="center" data-bind="subAlign">
+            <span data-i18n-title="style.align.center" title="中">
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <line x1="3" y1="3.5"  x2="11" y2="3.5"/>
+                <line x1="1" y1="7"    x2="13" y2="7"/>
+                <line x1="4" y1="10.5" x2="10" y2="10.5"/>
+              </svg>
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="subAlign" value="right" data-bind="subAlign">
+            <span data-i18n-title="style.align.right" title="右">
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <line x1="4" y1="3.5"  x2="12" y2="3.5"/>
+                <line x1="2" y1="7"    x2="12" y2="7"/>
+                <line x1="6" y1="10.5" x2="12" y2="10.5"/>
+              </svg>
+            </span>
+          </label>
+        </div>
+
+        <!-- Opened from a plain button rather than a filled swatch: the swatch
+             would be painted in exactly the chroma-key colour, so capturing the
+             window with a key filter punches a hole straight through the
+             control. The hex label carries the value instead — text survives the
+             key. The label activates the hidden input, so the native picker
+             still opens on click with no JS. -->
+        <span class="lang-extras-label" data-i18n="style.bg">背景色</span>
+        <label class="btn color-pick">
+          <input type="color" class="visually-hidden" data-bind="subBg">
+          <output class="color-value"></output>
+        </label>
+      </section>
+      </div>
+
+      <!-- Recognition-side settings on the left, translation-side on the right,
+           matching the matrix rows above. The columns are deliberately unequal:
+           the pack is a heading and two buttons, while the engine wants the
+           width for its picker and URL field. The engine also inlines its
+           heading with the picker, which costs no height because the picker is
+           the taller of the two. -->
       <div class="panel-cols cols-2">
+        <!-- Offline recognition pack: a property of the recognition language, so
+             it sits on the recognition side. Chrome-only; hidden elsewhere. -->
+        <section class="panel-col lang-sub" id="offline-pack-row" hidden>
+          <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
+          <div class="col-head">
+            <button type="button" class="btn" id="btn-offline-pack">ダウンロード</button>
+
+            <!-- Removal instructions live in a popover rather than as standing
+                 text: they only matter once a pack is installed, and as a
+                 permanent paragraph they were the tallest thing in the tab.
+                 A popover (not a tooltip) stays open while the user follows the
+                 steps in the browser's own settings. -->
+            <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
+                    popovertarget="popover-offline-help"
+                    data-i18n="lang.offline.help" hidden>削除方法</button>
+
+            <div class="help-popover offline-popover" id="popover-offline-help" popover>
+              <p class="offline-pack-info" id="offline-pack-info"></p>
+            </div>
+          </div>
+          <p class="manual-status offline-pack-status" id="offline-pack-status"
+             role="status" aria-live="polite"></p>
+        </section>
+
         <!-- How to translate. The engine's own detail (status messages, the
              custom URL row) sits in a region that absorbs the rest of the
              column, so switching engines never resizes the tab. -->
         <section class="panel-col lang-engine">
-          <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
-          <div class="seg-switch" role="group">
-            <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
-            <label id="engine-translator-label"><input type="radio" name="translationMode" value="translator" data-bind="translationMode"><span data-i18n="lang.engine.translator">ブラウザ翻訳</span></label>
-            <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
-            <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
+          <div class="col-head">
+            <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
+            <div class="seg-switch" role="group">
+              <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
+              <label id="engine-translator-label"><input type="radio" name="translationMode" value="translator" data-bind="translationMode"><span data-i18n="lang.engine.translator">ブラウザ翻訳</span></label>
+              <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
+              <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
+            </div>
           </div>
           <div class="engine-detail">
             <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
@@ -158,31 +273,6 @@ export function mountLanguagesTab(container) {
               </div>
             </div>
           </div>
-        </section>
-
-        <!-- Offline recognition pack: belongs to the recognition language above,
-             but is a Chrome-only, set-up-once concern, so it sits beside the
-             engine rather than inside the matrix. -->
-        <section class="panel-col lang-sub" id="offline-pack-row" hidden>
-          <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
-          <div class="offline-pack-head">
-            <button type="button" class="btn" id="btn-offline-pack">ダウンロード</button>
-
-            <!-- Removal instructions live in a popover rather than as standing
-                 text: they only matter once a pack is installed, and as a
-                 permanent paragraph they were the tallest thing in the tab.
-                 A popover (not a tooltip) stays open while the user follows the
-                 steps in the browser's own settings. -->
-            <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
-                    popovertarget="popover-offline-help"
-                    data-i18n="lang.offline.help" hidden>削除方法</button>
-
-            <div class="help-popover offline-popover" id="popover-offline-help" popover>
-              <p class="offline-pack-info" id="offline-pack-info"></p>
-            </div>
-          </div>
-          <p class="manual-status offline-pack-status" id="offline-pack-status"
-             role="status" aria-live="polite"></p>
         </section>
       </div>
     </div>

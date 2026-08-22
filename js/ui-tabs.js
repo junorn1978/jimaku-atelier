@@ -10,7 +10,7 @@
 
 import { settings } from './store.js';
 
-const TAB_NAMES = ['languages', 'style', 'filter', 'obs'];
+const TAB_NAMES = ['languages', 'filter', 'obs'];
 
 export function initSettingsTabs() {
   const tablist = document.querySelector('.settings-tabs');

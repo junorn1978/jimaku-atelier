@@ -27,7 +27,6 @@
   "manual.error.failed":    "翻訳に失敗しました。",
 
   "tab.languages":          "言語",
-  "tab.style":              "スタイル",
   "tab.filter":             "単語置換",
   "tab.obs":                "OBS",
 
@@ -98,11 +97,6 @@
   "lang.engine.link.steps.run":                "以下のコードを server.py として保存して実行：",
   "lang.engine.link.steps.url":                "「カスタム URL」欄に次の URL を入力：",
 
-  "style.source":           "原文字幕",
-  "style.target1":          "翻訳 1 字幕",
-  "style.target2":          "翻訳 2 字幕",
-  "style.display":          "字幕表示",
-  "style.behavior":         "字幕動作",
   "style.textColor":        "文字色",
   "style.strokeColor":      "縁取り色",
   "style.fontSize":         "サイズ",
@@ -116,7 +110,10 @@
   "style.overflow":         "翻訳字幕の行数",
   "style.overflow.normal":  "制限なし",
   "style.overflow.shrink":  "2行（スクロール）",
-  "style.sourceSingleLine": "原文を1行に制限",
+  "style.overflow.deprecated": "非推奨：長い訳文では表示が乱れることがあります。",
+  "style.sourceLines":      "原文の行数",
+  "style.sourceLines.all":  "制限なし",
+  "style.sourceLines.one":  "1行",
   "style.sourceWrap":       "原文字幕の囲み記号",
   "style.sourcePrefix":     "先頭記号",
   "style.sourceSuffix":     "末尾記号",

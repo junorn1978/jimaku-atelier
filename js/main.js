@@ -13,7 +13,6 @@ import { isDebugEnabled } from './logger.js';
 import { initPreviewBinding } from './preview.js';
 import { bindInputs } from './ui-bind.js';
 import { mountLanguagesTab } from './ui-languages.js';
-import { mountStyleTab } from './ui-style.js';
 import { mountFilterTab } from './ui-filter.js';
 import { mountObsTab } from './ui-obs.js';
 import { mountManualTranslate } from './ui-manual-translate.js';
@@ -39,7 +38,6 @@ async function init() {
   /* Mount each settings tab into its own panel (static markup in index.html;
      switching is wired by initSettingsTabs below). */
   mountLanguagesTab(document.getElementById('tab-languages'));
-  mountStyleTab(document.getElementById('tab-style'));
   mountFilterTab(document.getElementById('tab-filter'));
   mountObsTab(document.getElementById('tab-obs'));
   mountManualTranslate(document.getElementById('manual-translate-panel'));
