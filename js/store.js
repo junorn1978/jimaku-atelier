@@ -29,6 +29,11 @@ const _defaults = Object.freeze({
   // --- Translation engine ---
   translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'link'
   customTranslateUrl: '',
+  /* The Prompt API engine is archived rather than deleted: measured on Chrome
+     150 it costs ~800ms per line per target and its output is unreliable
+     outside en/ja/es/de/fr. It only joins the engine picker when this is on,
+     so the code stays reachable — and verifiable — without being offered. */
+  enableBrowserAI:    false,
 
   // --- Manual text translation ---
   manualTargetLangId: '',

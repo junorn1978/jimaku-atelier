@@ -10,7 +10,7 @@ import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 
 /** Shown in the About section — the only place the version appears in the UI. */
-const APP_VERSION = 'v1.8.0';
+const APP_VERSION = 'v1.8.1';
 
 export function mountSettingsDialog(container) {
   if (!container) return;
@@ -40,6 +40,23 @@ export function mountSettingsDialog(container) {
           <label><input type="radio" name="subOverflow" value="normal" data-bind="subOverflow"><span data-i18n="style.overflow.normal">制限なし</span></label>
           <label><input type="radio" name="subOverflow" value="shrink" data-bind="subOverflow"><span data-i18n="style.overflow.shrink">2行 流動</span></label>
         </div>
+      </div>
+    </section>
+
+    <!-- Same reasoning as the section above: the Prompt API engine is kept as a
+         working reference, not as a practical translator. Hiding it behind a
+         switch keeps it reachable (so it can still be run and verified) without
+         offering it in the engine picker by default. -->
+    <section class="dialog-section">
+      <div class="dialog-setting-row">
+        <div>
+          <h3 data-i18n="settings.browserAI.title">ブラウザ AI 翻訳</h3>
+          <p data-i18n="settings.browserAI.desc">非推奨</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" data-bind="enableBrowserAI">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
       </div>
     </section>
 

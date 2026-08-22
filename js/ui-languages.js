@@ -423,7 +423,10 @@ function setupPromptEngine(container) {
   const setMessage = (key, extra = '') => {
     currentMessageKey = key;
     suffix = extra;
-    status.hidden = !key;
+    /* A hidden engine must not leave its status line behind — the availability
+       check runs regardless of visibility, so it can produce a message for a
+       radio nobody can see. */
+    status.hidden = !key || label.hidden;
     if (!key) { status.textContent = ''; label.removeAttribute('title'); return; }
     renderMessage();
   };
@@ -496,6 +499,23 @@ function setupPromptEngine(container) {
       startWarmUp();
     }, 1000);
   };
+
+  /* --- archived engine: only joins the picker when explicitly enabled ----- */
+
+  /* Hidden rather than disabled: in this picker "disabled" already means "your
+     browser or device can't run this", so a permanently greyed-out radio would
+     be indistinguishable from a real failure. Hiding it also frees the width —
+     the segmented switch just shows three options instead of four. */
+  const syncVisibility = (on) => {
+    label.hidden = !on;
+    if (on) { setMessage(currentMessageKey, suffix); return; }
+    cancelWarmUp();
+    if (settings.translationMode === 'prompt') settings.translationMode = 'gtx';
+    setMessage(null);
+  };
+
+  subscribe('enableBrowserAI', syncVisibility);
+  syncVisibility(settings.enableBrowserAI);
 
   subscribe('translationMode', (mode) => {
     if (radio.disabled) return;
