@@ -26,17 +26,20 @@ export function initLayoutToggles() {
     const btn = document.getElementById(btnId);
     if (!btn) continue;
 
-    const set = (collapsed) => {
-      settings[key] = collapsed;
+    /* Driven by the setting rather than by the click, so anything else that
+       writes the store — the OBS tab's capture-mode button, for one — collapses
+       the panel too instead of only this button working. */
+    const apply = (collapsed) => {
       document.body.classList.toggle(cls, collapsed);
       btn.classList.toggle('is-active', collapsed);
       btn.setAttribute('aria-pressed', String(collapsed));
     };
 
-    /* Restore persisted state on load. */
-    set(settings[key] === true);
+    /* Restore persisted state on load, then follow it. */
+    apply(settings[key] === true);
+    subscribe(key, (v) => apply(v === true));
 
-    btn.addEventListener('click', () => set(!document.body.classList.contains(cls)));
+    btn.addEventListener('click', () => { settings[key] = !settings[key]; });
   }
 
   initToolbarStatus();
@@ -51,8 +54,16 @@ function initToolbarStatus() {
   const el = document.getElementById('toolbar-status');
   if (!el) return;
 
-  /* 'none' is a real stored value for an unused target line, not a language. */
-  const name = (id) => (!id || id === 'none' ? '' : (getLang(id)?.label || id));
+  /* 'none' is a real stored value for an unused target line, not a language.
+     Names come from the same lang.name.* keys the pickers use, so the readout
+     follows the UI language; t() echoes the key back when it has no entry, which
+     is the signal to fall back to the config's own label. */
+  const name = (id) => {
+    if (!id || id === 'none') return '';
+    const key = `lang.name.${id}`;
+    const localised = t(key);
+    return localised === key ? (getLang(id)?.label || id) : localised;
+  };
 
   const render = () => {
     const source  = name(settings.sourceLangId);

@@ -5,7 +5,7 @@
  * Appended into its own tab panel (#tab-obs) as an `.obs-section`.
  */
 
-import { subscribe } from './store.js';
+import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { triggerAutoSetup, getOverlayUrl, onConnectionState } from './obs.js';
 
@@ -25,7 +25,19 @@ export function mountObsTab(container) {
   const section = document.createElement('div');
   section.className = 'obs-section';
   section.innerHTML = `
-    <div class="panel-cols">
+    <!-- The two routes share almost nothing: WebSocket needs a connection and
+         source creation, window capture needs neither. Showing both at once
+         would leave half the tab inapplicable whichever route you picked, so
+         the switch swaps the whole body rather than just the instructions. -->
+    <div class="obs-mode-head">
+      <div class="seg-switch" role="group" data-i18n-aria-label="obs.mode" aria-label="連携方式">
+        <label><input type="radio" name="obsMode" value="websocket" data-bind="obsMode"><span data-i18n="obs.mode.ws">WebSocket</span></label>
+        <label><input type="radio" name="obsMode" value="capture" data-bind="obsMode"><span data-i18n="obs.mode.capture">ウィンドウキャプチャ</span></label>
+      </div>
+      <p class="obs-mode-desc" id="obs-mode-desc"></p>
+    </div>
+
+    <div class="panel-cols" id="obs-mode-websocket">
       <section class="panel-col">
         <h3 class="section-title" data-i18n="obs.connection">接続設定</h3>
         <div class="form-row">
@@ -111,6 +123,51 @@ export function mountObsTab(container) {
         </p>
       </section>
     </div>
+
+    <div class="panel-cols" id="obs-mode-capture" hidden>
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.capture.bg">背景色</h3>
+        <!-- Bound to the same setting as the languages tab. Two entry points
+             for one value is fine here: this is the colour the chroma key will
+             remove, so it belongs in the capture workflow as much as it does in
+             the subtitle appearance settings. A button rather than a filled
+             swatch — a swatch painted in the key colour is itself keyed out of
+             a window capture. -->
+        <label class="btn color-pick">
+          <input type="color" class="visually-hidden" data-bind="subBg">
+          <output class="color-value"></output>
+        </label>
+        <p class="form-hint" data-i18n="obs.capture.bg.hint">
+          クロマキーで抜く色です。
+        </p>
+      </section>
+
+      <!-- The OBS-side work comes first on purpose: the last step collapses
+           this panel, which takes these instructions with it. -->
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.help.title">使い方</h3>
+        <ol class="help-steps">
+          <li data-i18n="obs.capture.step1">OBS に［ウィンドウキャプチャ］を追加します。</li>
+          <li data-i18n="obs.capture.step2">［クロマキー］フィルタを追加します。</li>
+          <li data-i18n="obs.capture.step3">下のボタンでキャプチャモードにします。</li>
+        </ol>
+        <button type="button" class="btn primary" id="obs-capture-enter"
+                data-i18n="obs.capture.enter">キャプチャモードにする</button>
+        <p class="form-hint" data-i18n="obs.capture.enter.hint">
+          コントロールパネルを畳みます。
+        </p>
+      </section>
+
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.capture.notes">注意</h3>
+        <ul class="help-notes">
+          <li data-i18n="obs.capture.note1">字幕に背景色と同じ色を使わないでください。</li>
+          <li data-i18n="obs.capture.note2">ウィンドウを最小化しないでください。</li>
+          <li data-i18n="obs.capture.note3">縁が残る場合はクロマキーの類似性を上げてください。</li>
+          <li data-i18n="obs.capture.note4">ブラウザのズームは字幕の文字サイズとは別です。</li>
+        </ul>
+      </section>
+    </div>
   `;
 
   container.appendChild(section);
@@ -129,8 +186,36 @@ export function mountObsTab(container) {
   section.querySelector('#obs-auto-setup').addEventListener('click', triggerAutoSetup);
   wireSecretToggle(section);
   wireConnStatus(section);
+  wireModeSwitch(section);
 
   applyTo(section);
+}
+
+/* Swap the tab body between the two integration routes, and describe the
+   trade-off of whichever one is showing. */
+function wireModeSwitch(container) {
+  const ws      = container.querySelector('#obs-mode-websocket');
+  const capture = container.querySelector('#obs-mode-capture');
+  const desc    = container.querySelector('#obs-mode-desc');
+  if (!ws || !capture || !desc) return;
+
+  const render = () => {
+    const mode = settings.obsMode === 'capture' ? 'capture' : 'websocket';
+    ws.hidden      = mode !== 'websocket';
+    capture.hidden = mode !== 'capture';
+    desc.textContent = t(mode === 'capture' ? 'obs.mode.capture.desc' : 'obs.mode.ws.desc');
+  };
+
+  render();
+  subscribe('obsMode', render);
+  subscribe('uiLang', render);
+
+  /* The last step of the capture route. Deliberately the same state the
+     toolbar's panel button toggles — this is the button you reach for while
+     reading the steps, not a second mechanism. */
+  container.querySelector('#obs-capture-enter')?.addEventListener('click', () => {
+    settings.panelCollapsed = true;
+  });
 }
 
 /* Live connection status shown beside the WS toggle, so the user can tell

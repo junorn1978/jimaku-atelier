@@ -26,6 +26,12 @@ const _defaults = Object.freeze({
   target1LangId:      'none',
   target2LangId:      'none',
 
+  // --- OBS integration route ---
+  /* Which way subtitles reach the streaming software. The two routes need
+     almost nothing in common, so the OBS tab shows one or the other rather
+     than offering controls that don't apply to the chosen route. */
+  obsMode:            'websocket', // 'websocket' | 'capture'
+
   // --- Translation engine ---
   translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'link'
   customTranslateUrl: '',

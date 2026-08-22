@@ -1618,6 +1618,68 @@
     }
   }
 
+  /* The OBS tab stacks its two mutually exclusive bodies as siblings and hides
+     one, but the adjacent selector above matches on the DOM rather than on what
+     is rendered — so the visible body would draw a divider with nothing above
+     it. Same trap as .panel-col[hidden] + .panel-col. */
+  .panel-cols[hidden] + .panel-cols {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* Caveats rather than a sequence: same typography as .help-steps so the two
+     read as one voice, but a dot instead of a number — these are things to know,
+     not things to do in order. */
+  .help-notes {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    list-style: none;
+
+    li {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: var(--space-2);
+
+      &::before {
+        content: "";
+        justify-self: center;
+        width: 4px;
+        height: 4px;
+        margin-top: 0.55em;
+        border-radius: var(--radius-full);
+        background: var(--color-text-dim);
+      }
+    }
+  }
+
+  /* Route picker for the OBS tab. One line: the switch plus a sentence on what
+     the selected route costs you, so the choice can be made without reading the
+     whole tab. Kept slim — the tab body below it is height-constrained. */
+  .obs-mode-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+
+    > .seg-switch { flex-shrink: 0; }
+  }
+
+  .obs-mode-desc {
+    margin: 0;
+    min-width: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+
   /* --- range slider + readout --- */
   .slider-group {
     display: grid;
