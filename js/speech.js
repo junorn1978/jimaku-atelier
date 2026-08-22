@@ -56,10 +56,11 @@ function updateSource(text, pending = false) {
     return;
   }
 
-  /* TEMP: trace for the "interim flashes back after final" issue — logs the
-     moment the source line is actually rendered. Remove once diagnosed. */
-  console.log(
-    `[speech][temp] render @${performance.now().toFixed(0)}ms pending=${pending} text="${text}"`
+  /* Trace of the moment the source line is actually rendered — the counterpart
+     to the onresult trace below, for diagnosing display timing (e.g. an interim
+     flashing back after a final). */
+  if (isDebugEnabled()) console.debug(
+    `[speech] render @${performance.now().toFixed(0)}ms pending=${pending} text="${text}"`
   );
   el.textContent = pending ? decorateSource(text) : text;
   _lastSource = text;
@@ -202,10 +203,9 @@ function setupRecognition() {
       else                          { interimTranscript += t; }
     }
 
-    /* TEMP: trace for the "interim flashes back after final" issue — logs every
-       recognition event as it arrives. Remove once diagnosed. */
-    console.log(
-      `[speech][temp] event @${performance.now().toFixed(0)}ms ` +
+    /* Trace of every recognition event as it arrives, before any filtering. */
+    if (isDebugEnabled()) console.debug(
+      `[speech] event @${performance.now().toFixed(0)}ms ` +
       `resultIndex=${event.resultIndex} results=${event.results.length} hasFinal=${hasFinal} ` +
       `interim="${interimTranscript}" final="${finalTranscript}"`
     );

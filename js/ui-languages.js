@@ -41,11 +41,19 @@ export function mountLanguagesTab(container) {
             <input type="checkbox" data-bind="subShowSource">
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
           </label>
-          <button type="button" class="btn" id="btn-offline-pack"
-                  data-i18n-title="lang.offline.label" title="オフライン認識パック" hidden>ダウンロード</button>
         </div>
+
+        <!-- Offline pack sits UNDER the recognition row: beside it, the button
+             plus its name would widen the source column and push the panel out
+             of shape as soon as the window is narrowed. The name is visible
+             text rather than the button's tooltip, so it can't be missed. -->
         <div class="lang-sub" id="offline-pack-row" hidden>
-          <p class="manual-status" id="offline-pack-status" role="status" aria-live="polite"></p>
+          <div class="offline-pack-head">
+            <button type="button" class="btn" id="btn-offline-pack">ダウンロード</button>
+            <span class="lang-field-label" data-i18n="lang.offline.label">オフライン音声認識パック</span>
+          </div>
+          <p class="manual-status offline-pack-status" id="offline-pack-status"
+             role="status" aria-live="polite"></p>
           <p class="offline-pack-info" id="offline-pack-info"></p>
         </div>
       </div>
@@ -277,9 +285,8 @@ function setupOfflinePack(container) {
   const status = container.querySelector('#offline-pack-status');
   const info   = container.querySelector('#offline-pack-info');
   if (!row || !button || !status || !info) return;
-  /* The button lives inline in the source row (hidden by default); the status
-     and info messages sit in their own row below. Reveal both on Chrome. */
-  button.hidden = false;
+  /* The whole block — button, name, status and info — lives below the source
+     row and stays hidden on browsers without on-device packs. */
   row.hidden = false;
   setupLanguagePackButton({ button, status, info });
 }

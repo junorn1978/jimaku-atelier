@@ -98,8 +98,25 @@ function setState(key, disabled) {
   _button.disabled = disabled;
 }
 
-function setStatus(key) {
-  if (_status) _status.textContent = key ? t(key) : '';
+/* A success message is a one-off nudge ("press Start again"); left on screen it
+   just sits on top of the info note below it. Failures stay put — the user has
+   to know a retry is needed. */
+const STATUS_CLEAR_MS = 6000;
+
+let _statusKey   = '';
+let _statusTimer = null;
+
+function renderStatus() {
+  if (_status) _status.textContent = _statusKey ? t(_statusKey) : '';
+}
+
+function setStatus(key, autoClear = false) {
+  _statusKey = key || '';
+  if (_statusTimer) { clearTimeout(_statusTimer); _statusTimer = null; }
+  renderStatus();
+  if (_statusKey && autoClear) {
+    _statusTimer = setTimeout(() => { _statusTimer = null; setStatus(''); }, STATUS_CLEAR_MS);
+  }
 }
 
 /* Persistent guidance note shown beneath the button: removal instructions once
@@ -174,7 +191,7 @@ async function downloadPack(langId) {
   if (installed) {
     setState('lang.offline.btn.ready', true);
     setInfo('lang.offline.info.installed');
-    setStatus('lang.offline.msg.ready');
+    setStatus('lang.offline.msg.ready', true);
     /* Some recognition params (processLocally, continuous, …) are only applied
        on a fresh start, so stop now and prompt the user to press Start again. */
     stopSpeech();
@@ -200,9 +217,11 @@ export function setupLanguagePackButton({ button, status, info }) {
   button.addEventListener('click', () => downloadPack(settings.sourceLangId));
 
   subscribe('sourceLangId', (id) => { setStatus(''); refreshButton(id); });
-  /* Re-render the button label and info note in the new UI language without re-querying. */
+  /* Re-render the button label, status and info note in the new UI language
+     without re-querying. */
   subscribe('uiLang', () => {
     if (_button) _button.textContent = t(_stateKey);
     if (_info)   _info.textContent   = _infoKey ? t(_infoKey) : '';
+    renderStatus();
   });
 }

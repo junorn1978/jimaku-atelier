@@ -30,12 +30,13 @@
            own module (js/ui-languages.js, js/ui-style.js, js/ui-filter.js,
            js/ui-obs.js — mounted from js/main.js); switching is handled by
            js/ui-tabs.js and the active tab persists in the settings store. -->
-      <!-- Left rail: the tab list on top, the app identity parked at the
-           bottom as a quiet watermark (outside the tablist — ARIA allows
+      <!-- Tab bar across the top: the tab list shares the content's centred
+           column below it, and the app identity is parked at the far right of
+           the same row as a quiet watermark (outside the tablist — ARIA allows
            only tabs inside role="tablist"). -->
-      <div class="settings-rail">
+      <div class="settings-tabbar">
         <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
-             aria-label="設定項目" aria-orientation="vertical">
+             aria-label="設定項目" aria-orientation="horizontal">
           <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
                   aria-selected="true" data-tab="languages" class="tab-btn is-active"
                   data-i18n="tab.languages">言語</button>
@@ -49,12 +50,10 @@
                   aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
                   data-i18n="tab.obs">OBS</button>
         </div>
-        <div class="rail-brand">
+        <div class="app-brand">
           <img class="app-icon" src="images/icon.svg" alt="">
-          <div class="rail-brand-text">
-            <h1 data-i18n="app.title">字幕アトリエ</h1>
-            <span class="rail-brand-version">v1.4.0</span>
-          </div>
+          <h1 data-i18n="app.title">字幕アトリエ</h1>
+          <span class="app-brand-version">v1.5.0</span>
         </div>
       </div>
       <div class="settings-body" id="settings-body">
@@ -78,7 +77,7 @@
        row): the green preview sits flush with the top edge — OBS window
        capture only crops the bottom — and start/stop lives next to the
        settings panel instead of across the preview from it. Pure toolbar:
-       the app identity lives in the settings rail (.rail-brand) and in the
+       the app identity lives on the settings tab bar (.app-brand) and in the
        document title. -->
   <header class="app-header">
     <div class="header-info">

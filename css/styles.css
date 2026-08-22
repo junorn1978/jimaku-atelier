@@ -75,8 +75,16 @@
 
     /* --- layout sizing --- */
     --header-h:        52px;
-    --control-panel-h: 300px;     /* bottom control panel (left tab rail + content);
+    --control-panel-h: 300px;     /* bottom control panel (tab bar + content);
                                      the manual panel matches it */
+    --panel-measure:   1200px;    /* widest the content column grows to before
+                                     it centres itself in the window */
+    /* Horizontal padding that centres a full-width strip's content on the
+       measure. Every surface that shares the column (header, tab bar, tab
+       body) uses this, so their content edges line up exactly while their
+       backgrounds and borders still span the window. Falls back to a plain
+       gutter once the window is narrower than the measure. */
+    --panel-gutter:    max(var(--space-5), (100% - var(--panel-measure)) / 2);
     --radius-sm:       6px;
     --radius-md:       10px;
     --radius-lg:       16px;
@@ -163,7 +171,10 @@
     grid-template-columns: 1fr auto;
     align-items: center;
     gap: var(--space-3);
-    padding: 0 var(--space-4);
+    /* Shares the settings panel's column: without this the start button sits
+       at the window edge while the panel above it is a narrow centred block,
+       and the two read as unrelated strips. */
+    padding: 0 var(--panel-gutter);
     background: var(--color-surface-1);
     border-top: 1px solid var(--color-border);
 
@@ -350,55 +361,49 @@
   }
 
   .settings-pane {
-    /* Bottom control panel: a vertical tab rail (言語 / スタイル / 単語置換 /
-       OBS) on the left, System Settings-style, beside the active tab's panel.
-       The rail frees a full row of the panel's fixed height for content. In
-       normal flow as app-main's second row; .panel-collapsed removes it so the
-       preview grows. Tab switching is wired by js/ui-tabs.js. */
+    /* Bottom control panel: a horizontal tab bar (言語 / スタイル / 単語置換 /
+       OBS) above the active tab's panel. The bar shares the content's centred
+       column, so tabs and content hang off one left edge instead of the panel
+       being pinned to a rail at the window edge. In normal flow as app-main's
+       second row; .panel-collapsed removes it so the preview grows. Tab
+       switching is wired by js/ui-tabs.js. */
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
     background: var(--color-surface-1);
     border-top: 1px solid var(--color-border);
     height: var(--control-panel-h);
     min-height: 0;
 
-    .settings-rail {
+    /* Full-width strip whose content rides the shared column, so the divider
+       spans the window like the panel surface it sits on while the tabs line
+       up with the content below them. */
+    .settings-tabbar {
       display: flex;
-      flex-direction: column;
-      width: 140px;   /* comfortably fits the longest label ("Languages") */
-      padding: var(--space-3) var(--space-2) var(--space-2);
-      border-right: 1px solid var(--color-border);
-      /* half a step darker than the content surface: heavier material reads
-         as structure (sidebar), and the active chip floats above it */
-      background: rgba(0, 0, 0, 0.18);
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-2) var(--panel-gutter);
+      border-bottom: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
     }
 
-    /* App identity, parked at the rail's bottom as a quiet watermark. */
-    .rail-brand {
-      margin-top: auto;
+    /* App identity, parked at the far right of the tab row as a quiet
+       watermark — that end of the row is empty anyway, so it costs no height. */
+    .app-brand {
       display: flex;
       align-items: center;
       gap: var(--space-2);
-      padding: var(--space-2) var(--space-1) 0;
+      color: var(--color-text-dim);
+      white-space: nowrap;
 
-      .app-icon { width: 20px; height: 20px; opacity: 0.85; }
+      .app-icon { width: 18px; height: 18px; opacity: 0.85; }
 
       h1 {
         font-size: var(--text-xs);
         font-weight: 600;
-        color: var(--color-text-dim);
         letter-spacing: 0.2px;
       }
 
-      .rail-brand-text {
-        display: flex;
-        flex-direction: column;
-        gap: 1px;
-        min-width: 0;
-      }
-
-      .rail-brand-version {
+      .app-brand-version {
         font-size: 0.65rem;
         color: var(--color-text-faint);
       }
@@ -406,13 +411,13 @@
 
     .settings-tabs {
       display: flex;
-      flex-direction: column;
-      align-items: stretch;
+      flex-wrap: wrap;
+      align-items: center;
       gap: var(--space-1);
 
-      /* Sidebar items: the active tab is a raised material chip, matching
-         the segmented switches in the header. No animation on switching —
-         tabs are flipped dozens of times a day. */
+      /* The active tab is a raised material chip, matching the segmented
+         switches in the header. No animation on switching — tabs are flipped
+         dozens of times a day. */
       .tab-btn {
         padding: 5px 12px;
         font-size: var(--text-md);
@@ -438,7 +443,7 @@
     .settings-body {
       min-height: 0;
       overflow: hidden;
-      padding: var(--space-4) var(--space-5);
+      padding: var(--space-4) var(--panel-gutter);
 
       /* Tabs are designed to fit without scrolling (the Filter tab scrolls
          inside its rule lists instead); overflow-y is a graceful fallback
@@ -446,6 +451,9 @@
       .tab-panel {
         height: 100%;
         min-height: 0;
+        /* Width comes from .settings-body's shared gutter, so every tab — and
+           the tab bar and header strip above and below — hangs off one left
+           edge. Content inside stays left-aligned; only the column is centred. */
         overflow-y: auto;
         /* Reserve the scrollbar's width even while nothing overflows, so a
            tab growing taller (e.g. the custom-URL row appearing) doesn't
@@ -823,6 +831,21 @@
       font-size: var(--text-md);
     }
   }
+
+  /* Download button with the pack's name beside it. Wraps so a long name drops
+     to its own line instead of widening the source column. */
+  .offline-pack-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* .manual-status reserves a line so a message appearing can't shift the
+     layout — that matters in the manual-translate panel, where the status sits
+     above other controls. Here nothing below it would be pushed, so an idle
+     status takes no space at all and the block stays two lines. */
+  .offline-pack-status:empty { min-height: 0; }
 
   .offline-pack-info {
     color: var(--color-text-dim);
