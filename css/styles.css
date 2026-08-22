@@ -995,6 +995,10 @@
     min-width: 0;
 
     .text-input { min-width: 0; }
+
+    /* The URL sits in a masking wrapper, so the wrapper — not the input — is
+       what has to take up the row's spare width. */
+    .secret-input-wrap { flex: 1; }
   }
 
   .url-examples-toggle {

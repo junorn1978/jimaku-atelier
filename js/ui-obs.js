@@ -8,6 +8,7 @@
 import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { triggerAutoSetup, getOverlayUrl, onConnectionState } from './obs.js';
+import { wireSecretInputs } from './ui-secret-input.js';
 
 /* Grip dots: mark the drag chips as draggable at a glance, so they don't
    read as push buttons. */
@@ -65,12 +66,12 @@ export function mountObsTab(container) {
 
         <div class="form-row form-row-stack">
           <span class="form-row-label" data-i18n="obs.password">Password</span>
-          <div class="secret-input-wrap" data-secret-visible="false">
+          <div class="secret-input-wrap" data-secret-visible="false"
+                 data-secret-show="obs.password.show" data-secret-hide="obs.password.hide">
             <input type="text" class="text-input secret-input" data-bind="obsPassword"
                    autocomplete="off" spellcheck="false" autocorrect="off"
                    autocapitalize="off" inputmode="text">
-            <button type="button" class="icon-btn secret-toggle"
-                    title="表示" aria-label="Show password" aria-pressed="false">
+            <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
               <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
                 <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
@@ -184,7 +185,7 @@ export function mountObsTab(container) {
   subscribe('obsPassword', refreshDragLinks);
 
   section.querySelector('#obs-auto-setup').addEventListener('click', triggerAutoSetup);
-  wireSecretToggle(section);
+  wireSecretInputs(section);
   wireConnStatus(section);
   wireModeSwitch(section);
 
@@ -263,24 +264,3 @@ function failReason(code) {
   return `${t('obs.status.failed.generic')}${code != null ? ` (${code})` : ''}`;
 }
 
-function wireSecretToggle(container) {
-  const wrap = container.querySelector('.secret-input-wrap');
-  const btn = container.querySelector('.secret-toggle');
-  if (!wrap || !btn) return;
-
-  syncSecretToggleLabel(wrap, btn);
-  subscribe('uiLang', () => syncSecretToggleLabel(wrap, btn));
-  btn.addEventListener('click', () => {
-    const visible = wrap.dataset.secretVisible === 'true';
-    wrap.dataset.secretVisible = visible ? 'false' : 'true';
-    btn.setAttribute('aria-pressed', String(!visible));
-    syncSecretToggleLabel(wrap, btn);
-  });
-}
-
-function syncSecretToggleLabel(wrap, btn) {
-  const visible = wrap.dataset.secretVisible === 'true';
-  const label = t(visible ? 'obs.password.hide' : 'obs.password.show');
-  btn.title = label;
-  btn.setAttribute('aria-label', label);
-}
