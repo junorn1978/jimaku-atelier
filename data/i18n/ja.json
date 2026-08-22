@@ -114,7 +114,7 @@
   "style.sourceLines":      "原文の行数",
   "style.sourceLines.all":  "制限なし",
   "style.sourceLines.one":  "1行",
-  "style.sourceWrap":       "原文字幕の囲み記号",
+  "style.sourceWrap":       "原文の記号",
   "style.sourcePrefix":     "先頭記号",
   "style.sourceSuffix":     "末尾記号",
   "style.sourcePrefix.ph":  "例：【",

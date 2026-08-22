@@ -1086,16 +1086,34 @@
   .lang-extras {
     flex-shrink: 0;
     display: grid;
-    grid-template-columns: max-content max-content;
+    /* The control track has a floor rather than being sized by each control, so
+       all four fill one width and share a left AND a right edge. Sized by
+       content only when a translation needs more than the floor, in which case
+       they all grow together and stay aligned. */
+    grid-template-columns: max-content minmax(140px, max-content);
     column-gap: var(--space-3);
     row-gap: var(--space-1);
     align-items: center;
     align-content: start;
 
-    /* Marks the block as its own group without spending a row on a heading —
-       the same hairline the two columns below the matrix already use. */
-    padding-left: var(--space-4);
-    border-left: 1px solid color-mix(in oklab, var(--color-border) 55%, transparent);
+    /* Fill the track. Without this the controls sit at the track's left edge
+       and end wherever their content happens to, which is the ragged right edge
+       the fixed track exists to remove. */
+    .seg-switch { width: 100%; }
+    .seg-switch label { flex: 1; }
+    .seg-switch label > span { width: 100%; text-align: center; }
+    .symbol-inputs .text-input { flex: 1; width: auto; }
+    .color-pick { width: 100%; justify-content: center; }
+
+    /* Enclosed as a recessed well rather than divided off by a hairline: these
+       four settings arrived from another tab and are a different kind of thing
+       from the per-line matrix beside them, so the boundary should read as "a
+       separate group" rather than "the next column". Same treatment as
+       .format-help — the app's existing boxed sub-region, not a new one. */
+    padding: var(--space-2) var(--space-3);
+    background: color-mix(in oklab, var(--color-bg) 45%, var(--color-surface-1));
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .lang-extras-label {

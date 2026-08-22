@@ -133,6 +133,19 @@ export function mountLanguagesTab(container) {
            alignment, background. They belong beside the colours rather than a
            tab away, because they are adjusted the same way — by looking. -->
       <section class="lang-extras">
+        <!-- The two source-scoped settings first, then the two global ones.
+             Within that pair the segmented picker leads, so it sits next to the
+             other segmented control below and the odd one out (the two little
+             symbol boxes) doesn't break the run.
+             A two-state picker rather than a bare toggle: it names both states
+             instead of leaving one implied, and it matches the width of the
+             controls around it. -->
+        <span class="lang-extras-label" data-i18n="style.sourceLines">原文の行数</span>
+        <div class="seg-switch" role="group">
+          <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
+          <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
+        </div>
+
         <span class="lang-extras-label" data-i18n="style.sourceWrap">原文符號</span>
         <div class="symbol-inputs">
           <input type="text" class="text-input" data-bind="subSourcePrefix"
@@ -141,17 +154,6 @@ export function mountLanguagesTab(container) {
           <input type="text" class="text-input" data-bind="subSourceSuffix"
                  data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
                  autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
-        </div>
-
-        <!-- Source-line only, like the wrap symbols above it — the two
-             source-scoped settings sit together, then the two global ones.
-             A two-state picker rather than a bare toggle: it names both states
-             instead of leaving one implied, and it matches the width of the
-             controls above and below it so the column has one right edge. -->
-        <span class="lang-extras-label" data-i18n="style.sourceLines">原文の行数</span>
-        <div class="seg-switch" role="group">
-          <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
-          <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
         </div>
 
         <span class="lang-extras-label" data-i18n="style.align">横位置</span>
