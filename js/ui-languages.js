@@ -34,7 +34,8 @@ import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { isChrome } from './env.js';
 import { setupLanguagePackButton } from './language-pack.js';
-import { isPromptSupported, getPromptAvailability } from './translate-prompt.js';
+import { isPromptSupported, getPromptAvailability,
+         preparePromptSession, destroyPromptSession } from './translate-prompt.js';
 import { isTranslatorSupported, prepareTranslators } from './translate-translator.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
@@ -392,7 +393,14 @@ function setupTranslatorEngine(container) {
 /* Chrome Prompt API engine: usable only when the model reports 'available'.
    We never download it — that is the browser's job — so any other state is
    surfaced as "unavailable": the radio is disabled, and if it was the selected
-   engine we fall back to gtx. */
+   engine we fall back to gtx.
+
+   Selecting this engine warms the model up, because the first inference costs
+   ~17s on a cold model and would otherwise swallow the user's first sentence.
+   That warm-up holds the model in memory, so it must not start on a stray
+   click: the countdown below gives the user a few seconds to pick something
+   else, and switching away at any later point aborts or releases whatever the
+   warm-up has reached. */
 function setupPromptEngine(container) {
   const label  = container.querySelector('#engine-prompt-label');
   const radio  = label?.querySelector('input[value="prompt"]');
@@ -403,12 +411,21 @@ function setupPromptEngine(container) {
      any time. Keep the message key so the current state can be translated
      again without repeating the availability check. */
   let currentMessageKey = null;
+  let suffix = '';
 
   const renderMessage = () => {
     if (!currentMessageKey) return;
-    const message = t(currentMessageKey);
+    const message = t(currentMessageKey) + suffix;
     label.title = message;
     status.textContent = message;
+  };
+
+  const setMessage = (key, extra = '') => {
+    currentMessageKey = key;
+    suffix = extra;
+    status.hidden = !key;
+    if (!key) { status.textContent = ''; label.removeAttribute('title'); return; }
+    renderMessage();
   };
 
   subscribe('uiLang', renderMessage);
@@ -417,22 +434,74 @@ function setupPromptEngine(container) {
      async "checking" phase we just disable the radio without stranding a valid
      prompt selection. */
   const disable = (msgKey, fallback) => {
-    currentMessageKey = msgKey;
     radio.disabled = true;
     label.classList.add('is-disabled');
-    status.hidden = false;
-    renderMessage();
+    setMessage(msgKey);
     if (fallback && settings.translationMode === 'prompt') settings.translationMode = 'gtx';
   };
 
   const enable = () => {
-    currentMessageKey = null;
     radio.disabled = false;
     label.classList.remove('is-disabled');
-    label.removeAttribute('title');
-    status.hidden = true;
-    status.textContent = '';
+    setMessage(null);
   };
+
+  /* --- warm-up state machine: idle → pending → warming → ready ----------- */
+
+  /* Long enough to undo a mis-click before anything expensive happens. The
+     countdown is what makes the delay legible — otherwise the status line just
+     sits there and the engine looks broken. */
+  const WARMUP_DELAY_S = 5;
+
+  let countdownTimer = null;   /* pending: ticking towards the warm-up */
+  let warmupAbort    = null;   /* warming: aborts the in-flight create()  */
+  let warmed         = false;  /* ready:   a base session is held         */
+
+  /* Undo whichever stage we are in. Called on every switch away, so it has to
+     be safe from any state. */
+  const cancelWarmUp = () => {
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    if (warmupAbort)    { warmupAbort.abort(); warmupAbort = null; }
+    /* Unconditional, not just when `warmed`: abort() can land after create()
+       has already succeeded, which would leave a session holding the model
+       with nothing tracking it. Releasing an idle engine is a no-op. */
+    destroyPromptSession();
+    warmed = false;
+  };
+
+  const startWarmUp = async () => {
+    if (warmupAbort || warmed) return; /* already warming or warm */
+    const controller = new AbortController();
+    warmupAbort = controller;
+    setMessage('lang.engine.prompt.preparing');
+
+    const result = await preparePromptSession(controller.signal);
+
+    if (warmupAbort !== controller) return; /* superseded or cancelled */
+    warmupAbort = null;
+
+    if (result.ok)                    { warmed = true; setMessage('lang.engine.prompt.ready'); }
+    else if (result.reason !== 'aborted') setMessage('lang.engine.prompt.failed');
+  };
+
+  const scheduleWarmUp = () => {
+    cancelWarmUp();
+    let left = WARMUP_DELAY_S;
+    setMessage('lang.engine.prompt.pending', ` ${left}s`);
+    countdownTimer = setInterval(() => {
+      left -= 1;
+      if (left > 0) { setMessage('lang.engine.prompt.pending', ` ${left}s`); return; }
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      startWarmUp();
+    }, 1000);
+  };
+
+  subscribe('translationMode', (mode) => {
+    if (radio.disabled) return;
+    if (mode === 'prompt') scheduleWarmUp();
+    else { cancelWarmUp(); setMessage(null); }
+  });
 
   if (!isPromptSupported()) {
     disable('lang.engine.prompt.unsupported', true);
@@ -442,8 +511,12 @@ function setupPromptEngine(container) {
   /* Disable (no fallback yet) until the async availability check resolves. */
   disable('lang.engine.prompt.checking', false);
   getPromptAvailability().then((avail) => {
-    if (avail === 'available') enable();
-    else disable('lang.engine.prompt.unavailable', true);
+    if (avail !== 'available') { disable('lang.engine.prompt.unavailable', true); return; }
+    enable();
+    /* Restored from a previous session. There is no mis-click to guard against
+       here, but the same delay keeps a 17s model load off the critical path
+       while the page is still mounting. */
+    if (settings.translationMode === 'prompt') scheduleWarmUp();
   }).catch(() => disable('lang.engine.prompt.unavailable', true));
 }
 

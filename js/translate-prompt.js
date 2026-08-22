@@ -4,21 +4,29 @@
  * An alternative to the gtx/link engines, routed from controller.js when
  * settings.translationMode === 'prompt'.
  *
- * Design (see project notes):
+ * Kept as a reference implementation rather than as a practical engine: measured
+ * on Chrome 150, a single line costs ~800ms per target language on top of a
+ * ~17s one-off model load, and target languages outside the API's supported set
+ * produce visibly wrong output. See the note on buildCreateOpts() below.
+ *
+ * Design:
  *   - Availability is binary: only 'available' is usable. We never trigger the
  *     model download ourselves — that is left to the browser's device-AI
  *     setting. 'downloadable' / 'downloading' / 'unavailable' all mean "not
  *     usable" here.
- *   - The Prompt API session is stateful: each prompt() grows inputUsage toward
- *     inputQuota, so we rotate (destroy + recreate) the session once it nears
- *     the quota / a call count / a lifetime — inputQuota is read dynamically,
- *     never hardcoded.
- *   - A single session cannot run prompts in parallel, so requests are
- *     serialised with *latest-wins preemption*: a new translation request
- *     aborts the previous in-flight one (it is already stale for live
- *     subtitles). There is no fixed latency timeout — only an 8s backstop to
- *     recover a genuinely hung inference when no newer request arrives to abort
- *     it.
+ *   - One *pristine* base session is created up front and never prompted, so
+ *     its context stays at the system prompt (31 tokens of a 9216 window).
+ *     Every translation clones it, prompts the clone, and destroys it. clone()
+ *     costs ~0ms, so each request starts from a clean context and no session
+ *     ever grows — which is why there is no rotation logic here at all.
+ *   - Creating that base session is what pays the model's first-load cost, so
+ *     preparePromptSession() exists to do it ahead of time; the engine picker
+ *     calls it when the user selects this engine.
+ *   - A single model cannot run prompts in parallel, so requests are serialised
+ *     with *latest-wins preemption*: a new translation request aborts the
+ *     previous in-flight one (it is already stale for live subtitles). There is
+ *     no fixed latency timeout — only an 8s backstop to recover a genuinely
+ *     hung inference when no newer request arrives to abort it.
  *   - On any failure / abort / empty result we return null so the controller
  *     simply displays nothing. We deliberately do NOT fall back to gtx, because
  *     mixing AI and Google output makes the experience feel inconsistent.
@@ -27,7 +35,7 @@
 import { isDebugEnabled } from './logger.js';
 import { getLang } from './languages.js';
 
-/* Generous absolute cap, used only to free a hung session when no following
+/* Generous absolute cap, used only to free a hung request when no following
    request arrives to preempt it. Not part of normal latency control. */
 const BACKSTOP_MS = 8000;
 
@@ -35,7 +43,9 @@ const MAX_TRANSLATION_LEN = 800;
 const CONTROL_CHARS = /[\x00-\x1F\x7F]/g;
 
 /* Force the response to be { "translation": string } so parsing is trivial and
-   the model can't append explanations. */
+   the model can't append explanations. Without it the model treats the prompt
+   as an essay question and answers with a few hundred tokens instead of a
+   dozen, which costs seconds. */
 const TRANSLATION_SCHEMA = {
   type: 'object',
   properties: { translation: { type: 'string', maxLength: MAX_TRANSLATION_LEN } },
@@ -43,22 +53,16 @@ const TRANSLATION_SCHEMA = {
   additionalProperties: false,
 };
 
-let session     = null;
-let count       = 0;
-let createdAt   = 0;
-let initPromise = null;
-let refreshPromise = null;
+/** The pristine session everything clones from. Never prompted directly. */
+let base = null;
+/** In-flight create(), shared so concurrent callers don't build two sessions. */
+let baseCreating = null;
 
 /* The controller for the in-flight request; a new request aborts it. */
 let activeController = null;
 /* The in-flight request chain. A new request aborts the old controller then
-   awaits this so the single session is free before it issues its own prompt. */
+   awaits this so the model is free before it issues its own prompt. */
 let inflight = null;
-
-/* Session rotation thresholds. */
-const REFRESH_COUNT    = 50;
-const QUOTA_THRESHOLD  = 0.8;
-const LIFETIME_MS      = 5 * 60 * 1000;
 
 /* ---------------------------------------------------------------- support */
 
@@ -68,15 +72,22 @@ export function isPromptSupported() {
     typeof self.LanguageModel?.create === 'function';
 }
 
-/* expectedInputs/expectedOutputs are pinned to 'en' on purpose: the Prompt API
-   currently only accepts 'en' here and it does NOT affect translation output —
-   declaring it just silences a console error. Do not "fix" this to real langs. */
+/* expectedInputs/expectedOutputs are pinned to 'en' on purpose. Chrome 149+ also
+   accepts ja/es/de/fr here, but NOT zh — declaring a Chinese output makes
+   availability() return 'unavailable' outright ("The requested language options
+   are not supported"), which would kill the engine for this app's main language
+   pair. Declaring 'en' keeps it alive and does not change what the model
+   produces; the real target is carried by the prompt text. Treat any target
+   outside en/ja/es/de/fr as working incidentally rather than supported —
+   Chinese output in particular mixes scripts and invents proper nouns.
+
+   temperature/topK are deliberately absent: on the web they need an origin
+   trial (LanguageModel.params() is undefined without one) and are otherwise
+   ignored, so passing them only implied a control we never actually had. */
 function buildCreateOpts() {
   return {
     expectedInputs:  [{ type: 'text', languages: ['en'] }],
     expectedOutputs: [{ type: 'text', languages: ['en'] }],
-    temperature: 0.1,
-    topK: 40,
     initialPrompts: [
       {
         role: 'system',
@@ -105,61 +116,49 @@ export async function getPromptAvailability() {
 
 /* ---------------------------------------------------------------- session */
 
-function needRefresh() {
-  if (!session) return false;
-  const used  = Number(session.inputUsage ?? 0);
-  const quota = Number(session.inputQuota ?? 0);
-  const quotaFull    = quota > 0 && used / quota > QUOTA_THRESHOLD;
-  const countFull    = count >= REFRESH_COUNT;
-  const lifetimeFull = Date.now() - createdAt > LIFETIME_MS;
-  return quotaFull || countFull || lifetimeFull;
+function ensureBase(signal) {
+  if (base) return Promise.resolve(base);
+  if (!baseCreating) {
+    baseCreating = (async () => {
+      const avail = await getPromptAvailability();
+      if (avail !== 'available') throw new Error(`Prompt model not ready (${avail})`);
+      /* This call is where the model's first load happens: prefilling the
+         system prompt pulls it into memory (~17s cold, ~300ms once warm).
+         create() without initialPrompts returns in ~1ms but is lazy, which
+         would just move that cost onto the first translation instead. */
+      base = await LanguageModel.create({ ...buildCreateOpts(), signal });
+      return base;
+    })().finally(() => { baseCreating = null; });
+  }
+  return baseCreating;
 }
 
-async function init() {
-  if (!isPromptSupported()) throw new Error('Prompt API not supported');
-  if (session) return;
-  if (initPromise) return initPromise;
-
-  initPromise = (async () => {
-    /* Only build a session when the model is already downloaded; downloads are
-       the browser's responsibility, not ours. */
-    const avail = await getPromptAvailability();
-    if (avail !== 'available') throw new Error(`Prompt model not ready (${avail})`);
-
-    session   = await LanguageModel.create(buildCreateOpts());
-    createdAt = Date.now();
-    count     = 0;
-  })();
-
+/**
+ * Build the base session ahead of time so the model's first-load cost is paid
+ * before the user starts speaking. Safe to call repeatedly.
+ * @param {AbortSignal} [signal]  aborts the (long) create()
+ * @returns {Promise<{ok: true} | {ok: false, reason: string}>}
+ */
+export async function preparePromptSession(signal) {
+  if (!isPromptSupported()) return { ok: false, reason: 'unsupported' };
   try {
-    await initPromise;
-  } finally {
-    initPromise = null;
+    await ensureBase(signal);
+    return { ok: true };
+  } catch (err) {
+    if (err?.name === 'AbortError') return { ok: false, reason: 'aborted' };
+    if (isDebugEnabled()) console.warn('[prompt] prepare failed:', err?.message);
+    return { ok: false, reason: 'failed' };
   }
 }
 
-async function refreshSession() {
-  if (refreshPromise) return refreshPromise;
-
-  refreshPromise = (async () => {
-    if (session) {
-      try { await session.destroy(); }
-      catch (err) { if (isDebugEnabled()) console.warn('[prompt] destroy failed:', err); }
-      finally { session = null; count = 0; createdAt = 0; }
-    }
-    await init();
-  })();
-
-  try { await refreshPromise; }
-  finally { refreshPromise = null; }
-}
-
-/* Refresh proactively *before* a call when near a threshold, so a request never
-   lands in the brief window where the session is being torn down. */
-async function getSession() {
-  if (session && needRefresh()) await refreshSession();
-  if (!session) await init();
-  return session;
+/** Tear down the base session and release the model. Safe to call when idle. */
+export function destroyPromptSession() {
+  activeController?.abort();
+  activeController = null;
+  const s = base;
+  base = null;
+  try { s?.destroy(); }
+  catch (err) { if (isDebugEnabled()) console.warn('[prompt] destroy failed:', err); }
 }
 
 /* ---------------------------------------------------------------- parsing */
@@ -185,7 +184,7 @@ function safeParseTranslation(raw) {
 /* ---------------------------------------------------------------- translate */
 
 async function translateOne(text, targetLangId, signal) {
-  const sess = await getSession();
+  const sess = await ensureBase(signal);
   const targetName = getLang(targetLangId)?.promptName || targetLangId;
 
   /* JSON.stringify isolates the source text from the instruction so quotes or
@@ -197,13 +196,19 @@ async function translateOne(text, targetLangId, signal) {
     '只生成翻譯，只生成JSON格式',
   ].join('\n');
 
-  const raw = await sess.prompt(prompt, {
-    signal,
-    responseConstraint: TRANSLATION_SCHEMA,
-    omitResponseConstraintInput: true,
-  });
-  count++;
-  return safeParseTranslation(raw);
+  /* Clone per translation: the copy inherits the system prompt but no history,
+     so nothing accumulates anywhere and the base stays pristine. */
+  const scratch = await sess.clone();
+  try {
+    const raw = await scratch.prompt(prompt, {
+      signal,
+      responseConstraint: TRANSLATION_SCHEMA,
+      omitResponseConstraintInput: true,
+    });
+    return safeParseTranslation(raw);
+  } finally {
+    try { scratch.destroy(); } catch { /* ignore */ }
+  }
 }
 
 /**
@@ -218,7 +223,7 @@ export async function translatePrompt(text, targetLangIds, _sourceLangId) {
   if (!isPromptSupported()) return null;
 
   /* Preempt the previous in-flight request — it is now stale — and remember it
-     so we can wait for it to unwind before reusing the single session. */
+     so we can wait for it to unwind before asking the model again. */
   activeController?.abort();
   const prev = inflight;
 
@@ -227,7 +232,7 @@ export async function translatePrompt(text, targetLangIds, _sourceLangId) {
   const backstop = setTimeout(() => controller.abort(), BACKSTOP_MS);
 
   const run = (async () => {
-    /* Let the just-aborted request settle so the session isn't mid-generation
+    /* Let the just-aborted request settle so the model isn't mid-generation
        when we issue ours. Its result is irrelevant here. */
     if (prev) { try { await prev; } catch { /* ignore */ } }
     if (controller.signal.aborted) return null;
@@ -253,16 +258,5 @@ export async function translatePrompt(text, targetLangIds, _sourceLangId) {
     clearTimeout(backstop);
     if (activeController === controller) activeController = null;
     if (inflight === run) inflight = null;
-  }
-}
-
-/** Tear down the session (e.g. on stop). Safe to call when idle. */
-export async function destroyPromptSession() {
-  activeController?.abort();
-  activeController = null;
-  if (session) {
-    try { await session.destroy(); }
-    catch { /* ignore */ }
-    finally { session = null; count = 0; createdAt = 0; }
   }
 }
