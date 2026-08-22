@@ -10,7 +10,7 @@ import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 
 /** Shown in the About section — the only place the version appears in the UI. */
-const APP_VERSION = 'v1.11.0';
+const APP_VERSION = 'v1.11.1';
 
 export function mountSettingsDialog(container) {
   if (!container) return;

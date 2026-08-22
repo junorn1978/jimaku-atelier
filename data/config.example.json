@@ -1,7 +1,0 @@
-{
-  "gtx": {
-    "endpoint":  "https://translate-pa.googleapis.com/v1/translateHtml",
-    "apiKey":    "YOUR_API_KEY_HERE",
-    "clientTag": "te_lib"
-  }
-}

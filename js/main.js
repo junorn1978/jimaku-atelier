@@ -8,7 +8,6 @@
 import { settings } from './store.js';
 import { setLanguage, getLanguage, applyTo } from './i18n.js';
 import { loadLanguages } from './languages.js';
-import { loadConfig } from './config.js';
 import { isDebugEnabled } from './logger.js';
 import { initPreviewBinding } from './preview.js';
 import { bindInputs } from './ui-bind.js';
@@ -24,15 +23,9 @@ import { initLayoutToggles } from './ui-layout.js';
 import { initSettingsTabs } from './ui-tabs.js';
 
 async function init() {
-  /* Load static config first — UI rendering depends on it. */
-  await Promise.all([
-    loadLanguages(),
-    loadConfig().catch(err => {
-      /* config.json is required for gtx mode; surface the failure but keep
-         the rest of the app usable (link mode still works). */
-      if (isDebugEnabled()) console.warn('[main] config load failed:', err);
-    }),
-  ]);
+  /* Language metadata is the only thing that has to be fetched before the UI
+     can render; the gtx credentials are literals in translate-gtx.js. */
+  await loadLanguages();
   await setLanguage(settings.uiLang || 'ja');
 
   /* Mount each settings tab into its own panel (static markup in index.html;

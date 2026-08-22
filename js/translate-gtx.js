@@ -2,7 +2,9 @@
  * @file translate-gtx.js
  * @description Google translate-pa (translateHtml) provider. Posts each
  * (text, source, target) triple to the same endpoint Chrome uses internally
- * for "Translate this page". Endpoint and API key come from config.json.
+ * for "Translate this page". The endpoint, key and client tag are Chrome's own
+ * constants rather than anything the user owns, so they live here as literals —
+ * see GTX below.
  *
  * Public surface:
  *   translateGtx(text, targetLangIds, sourceLangId)
@@ -14,7 +16,19 @@
 
 import { isDebugEnabled } from './logger.js';
 import { getLang } from './languages.js';
-import { getGtxConfig } from './config.js';
+
+/* Chrome's public "te_lib" translate-pa client credentials — the same three
+   values the browser's own "Translate this page" sends. Not a secret and not
+   per-user, which is why they are literals instead of a config file: the file
+   only ever held these, so it was a loading step, a failure path and an easy
+   way to ship the wrong thing, in exchange for flexibility the custom-URL
+   engine already provides. If Google ever rotates them, edit them here.
+   Reference: the values Chrome sends to translate-pa.googleapis.com. */
+const GTX = {
+  endpoint:  'https://translate-pa.googleapis.com/v1/translateHtml',
+  apiKey:    'AIzaSyATBXajvzQLTDHEQbcpq0Ihe0vWDHmO520',
+  clientTag: 'te_lib',
+};
 
 const REQUEST_TIMEOUT_MS = 10000;
 
@@ -66,18 +80,18 @@ function getCode(langId) {
 }
 
 /* --- core: one (text, sl, tl) call --- */
-async function translateOne(text, sl, tl, cfg) {
+async function translateOne(text, sl, tl) {
   /* application/json+protobuf body shape:
         [[ [textArray], sourceLang, targetLang ], clientTag ]
      We only ever send a single text per call to keep the response shape
      trivial — one outer call per target language. */
-  const body = JSON.stringify([[[text], sl, tl], cfg.clientTag]);
+  const body = JSON.stringify([[[text], sl, tl], GTX.clientTag]);
 
-  const resp = await fetchWithRetry(cfg.endpoint, {
+  const resp = await fetchWithRetry(GTX.endpoint, {
     method: 'POST',
     headers: {
       'Content-Type':   'application/json+protobuf',
-      'X-Goog-API-Key': cfg.apiKey,
+      'X-Goog-API-Key': GTX.apiKey,
     },
     body,
   });
@@ -103,15 +117,12 @@ async function translateOne(text, sl, tl, cfg) {
 export async function translateGtx(text, targetLangIds, sourceLangId) {
   if (!text || text.trim() === '') return null;
 
-  const cfg = getGtxConfig();
-  if (!cfg?.endpoint || !cfg?.apiKey) throw new Error('[gtx] config not loaded');
-
   const sl = normalizeLang(getCode(sourceLangId), 'auto');
 
   const translations = await Promise.all(targetLangIds.map(async (tlId) => {
     if (!tlId || tlId === 'none') return '';
     const tl = normalizeLang(getCode(tlId), 'zh-TW');
-    return translateOne(text, sl, tl, cfg);
+    return translateOne(text, sl, tl);
   }));
 
   return { translations };

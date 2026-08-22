@@ -31,8 +31,3 @@ __pycache__/
 .agents/
 .claude/
 skills-lock.json
-
-# --- local translation endpoint config (see data/config.example.json) ---
-# Holds the gtx endpoint + key; commit only the example so a swapped key
-# never rides along in a commit.
-data/config.json
