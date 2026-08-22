@@ -62,6 +62,7 @@
   "lang.engine.translator.unsupported": "This browser does not support browser translation (a Translator API-capable browser is required: Chrome 138+ / Edge 148+).",
 
   "lang.offline.label":         "Offline recognition pack",
+  "lang.offline.help":          "How to remove",
   "lang.offline.btn":           "Download",
   "lang.offline.btn.ready":     "Downloaded",
   "lang.offline.btn.downloading":"Downloading…",
@@ -69,7 +70,6 @@
   "lang.offline.btn.unavailable":"Unavailable",
   "lang.offline.msg.ready":     "Ready. Please press Start again.",
   "lang.offline.msg.failed":    "Download failed.",
-  "lang.offline.info.notReady":  "The offline pack is intended for Japanese audio. Not recommended for English audio.",
   "lang.offline.info.installed": "To remove it, go to your browser's Settings → Accessibility → Live Caption and delete all offline languages.",
 
   "lang.engine.link.help.title":      "URL format",

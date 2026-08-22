@@ -62,6 +62,7 @@
   "lang.engine.translator.unsupported": "お使いのブラウザはブラウザ翻訳に対応していません。Translator API に対応したブラウザ（Chrome 138 以降 / Edge 148 以降）が必要です。",
 
   "lang.offline.label":         "オフライン音声認識パック",
+  "lang.offline.help":          "削除方法",
   "lang.offline.btn":           "ダウンロード",
   "lang.offline.btn.ready":     "ダウンロード済み",
   "lang.offline.btn.downloading":"ダウンロード中…",
@@ -69,7 +70,6 @@
   "lang.offline.btn.unavailable":"現在利用不可",
   "lang.offline.msg.ready":     "準備完了。もう一度「開始」を押してください。",
   "lang.offline.msg.failed":    "ダウンロードに失敗しました。",
-  "lang.offline.info.notReady":  "このオフラインパックは日本語の音声認識用です。英語の音声認識には適していません。",
   "lang.offline.info.installed": "削除するには、ブラウザの［設定］→［ユーザー補助機能］→［リアルタイム字幕］を開き、オフライン言語をすべて削除してください。",
 
   "lang.engine.link.help.title":      "URL の形式",

@@ -2,9 +2,10 @@
  * @file ui-layout.js
  * @description Layout toggles driven from the header.
  *
- *  - "toggle-panel" collapses the bottom control panel (the settings tabs) so
- *    the subtitle preview fills the window — handy for window-capture software
- *    (OBS, etc.) without needing the WebSocket overlay. The state persists via
+ *  - "toggle-panel" collapses the control card's tab body so the subtitle
+ *    preview fills the window — handy for window-capture software (OBS, etc.)
+ *    without needing the WebSocket overlay. The card's toolbar stays visible,
+ *    so start/stop remains reachable while collapsed. The state persists via
  *    the settings store and is restored on load.
  *  - "toggle-manual" opens/closes the manual text-translation slide-up overlay.
  *    It's a secondary tool, so its open state is ephemeral (always starts

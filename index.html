@@ -8,7 +8,14 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+  <!-- UI runs on the Noto Sans superfamily: Latin from Noto Sans, Chinese from
+       Noto Sans TC, Japanese from Noto Sans JP. They are cut from one source, so
+       switching the interface language no longer changes the panel's metrics.
+       Each is requested as a variable range (100..900) rather than fixed
+       weights, so any weight the CSS asks for is a real one instead of a
+       browser-synthesised fake bold, which smears CJK strokes.
+       Huninn and M PLUS Rounded 1c stay for the subtitle preview only. -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@100..900&family=Noto+Sans+TC:wght@100..900&family=Noto+Sans+JP:wght@100..900&family=Huninn&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/styles.css">
 </head>
@@ -25,16 +32,36 @@
       </div>
     </section>
 
-    <aside class="settings-pane" data-i18n-aria-label="aria.settingsPane" aria-label="設定パネル">
-      <!-- Settings are split across four tabs. Each tab panel is filled by its
-           own module (js/ui-languages.js, js/ui-style.js, js/ui-filter.js,
-           js/ui-obs.js — mounted from js/main.js); switching is handled by
-           js/ui-tabs.js and the active tab persists in the settings store. -->
-      <!-- Tab bar across the top: the tab list shares the content's centred
-           column below it, and the app identity is parked at the far right of
-           the same row as a quiet watermark (outside the tablist — ARIA allows
-           only tabs inside role="tablist"). -->
-      <div class="settings-tabbar">
+    <!-- One card carries the toolbar AND the active settings tab. It used to be
+         two full-width chrome strips (tab bar on top, control strip at the very
+         bottom) with the settings content sandwiched between them; a single
+         centred surface removes both bands, and with them the mismatch between
+         the strips' edges and the content's. -->
+    <aside class="control-card" data-i18n-aria-label="aria.settingsPane" aria-label="設定パネル">
+      <!-- One row: start/stop, the tab picker, global actions. All three are
+           segmented pills, so they read as the same kind of control. The
+           toolbar survives .panel-collapsed (only the tab body is hidden), so
+           start/stop stays reachable while the preview fills the window. -->
+      <div class="control-toolbar">
+        <div class="speech-switch">
+          <button type="button" class="btn primary" id="btn-start" disabled>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+              <circle cx="12" cy="12" r="6"/>
+            </svg>
+            <span data-i18n="action.start">開始</span>
+          </button>
+          <button type="button" class="btn" id="btn-stop" disabled>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+              <rect x="6" y="6" width="12" height="12" rx="1"/>
+            </svg>
+            <span data-i18n="action.stop">停止</span>
+          </button>
+        </div>
+
+        <!-- Settings are split across four tabs. Each tab panel is filled by
+             its own module (js/ui-languages.js, js/ui-style.js, js/ui-filter.js,
+             js/ui-obs.js — mounted from js/main.js); switching is handled by
+             js/ui-tabs.js and the active tab persists in the settings store. -->
         <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
              aria-label="設定項目" aria-orientation="horizontal">
           <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
@@ -50,10 +77,45 @@
                   aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
                   data-i18n="tab.obs">OBS</button>
         </div>
-        <div class="app-brand">
-          <img class="app-icon" src="images/icon.svg" alt="">
-          <h1 data-i18n="app.title">字幕アトリエ</h1>
-          <span class="app-brand-version">v1.5.0</span>
+
+        <div class="toolbar-actions">
+          <div class="seg-switch" role="group" data-i18n-aria-label="aria.interfaceLanguage"
+               aria-label="表示言語">
+            <button type="button" data-lang="ja"    class="is-active">JP</button>
+            <button type="button" data-lang="zh-TW">中</button>
+            <button type="button" data-lang="en">EN</button>
+          </div>
+
+          <button type="button" class="icon-btn" id="toggle-manual" aria-pressed="false"
+                  data-i18n-title="header.action.toggleManual" title="テキスト翻訳の表示／非表示">
+            <!-- languages / translate icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m5 8 6 6"/>
+              <path d="m4 14 6-6 2-3"/>
+              <path d="M2 5h12"/>
+              <path d="M7 2h1"/>
+              <path d="m22 22-5-10-5 10"/>
+              <path d="M14 18h6"/>
+            </svg>
+          </button>
+
+          <button type="button" class="icon-btn" id="toggle-panel" aria-pressed="false"
+                  data-i18n-title="header.action.togglePanel" title="コントロールパネルの表示／非表示">
+            <!-- panel-bottom icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M3 15h18"/>
+            </svg>
+          </button>
+
+          <button type="button" class="icon-btn" id="open-settings-dialog"
+                  data-i18n-title="header.action.settings" title="設定">
+            <!-- gear icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+            </svg>
+          </button>
         </div>
       </div>
       <div class="settings-body" id="settings-body">
@@ -73,70 +135,6 @@
 
   </main>
 
-  <!-- Control strip, docked at the BOTTOM of the window (body grid's last
-       row): the green preview sits flush with the top edge — OBS window
-       capture only crops the bottom — and start/stop lives next to the
-       settings panel instead of across the preview from it. Pure toolbar:
-       the app identity lives on the settings tab bar (.app-brand) and in the
-       document title. -->
-  <header class="app-header">
-    <div class="header-info">
-      <div class="header-speech">
-        <button type="button" class="btn primary" id="btn-start" disabled>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-            <circle cx="12" cy="12" r="6"/>
-          </svg>
-          <span data-i18n="action.start">開始</span>
-        </button>
-        <button type="button" class="btn" id="btn-stop" disabled>
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-            <rect x="6" y="6" width="12" height="12" rx="1"/>
-          </svg>
-          <span data-i18n="action.stop">停止</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="header-actions">
-      <div class="seg-switch" role="group" data-i18n-aria-label="aria.interfaceLanguage"
-           aria-label="表示言語">
-        <button type="button" data-lang="ja"    class="is-active">JP</button>
-        <button type="button" data-lang="zh-TW">中</button>
-        <button type="button" data-lang="en">EN</button>
-      </div>
-
-      <button type="button" class="icon-btn" id="toggle-manual" aria-pressed="false"
-              data-i18n-title="header.action.toggleManual" title="テキスト翻訳の表示／非表示">
-        <!-- languages / translate icon -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="m5 8 6 6"/>
-          <path d="m4 14 6-6 2-3"/>
-          <path d="M2 5h12"/>
-          <path d="M7 2h1"/>
-          <path d="m22 22-5-10-5 10"/>
-          <path d="M14 18h6"/>
-        </svg>
-      </button>
-
-      <button type="button" class="icon-btn" id="toggle-panel" aria-pressed="false"
-              data-i18n-title="header.action.togglePanel" title="コントロールパネルの表示／非表示">
-        <!-- panel-bottom icon -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <path d="M3 15h18"/>
-        </svg>
-      </button>
-
-      <button type="button" class="icon-btn" id="open-settings-dialog"
-              data-i18n-title="header.action.settings" title="設定">
-        <!-- gear icon -->
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
-        </svg>
-      </button>
-    </div>
-  </header>
 
   <dialog class="app-dialog" id="dialog-settings">
     <div class="dialog-header">

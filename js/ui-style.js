@@ -1,67 +1,26 @@
 /**
  * @file ui-style.js
- * @description Renders the style controls as a matrix over the three subtitle
- * lines: column headers (text color / stroke color / size / stroke width) are
- * written once and each line is a row, so same-type values align vertically
- * and can be compared at a glance. Below it, a three-column row groups the
- * source controls (wrap symbols inline with the heading, single-line limit
- * below), the display settings (align / bg), and the overflow mode. Form
- * controls bind via [data-bind] in the shared ui-bind helper.
+ * @description Subtitle settings that apply to the whole display rather than to
+ * one line: a three-column row grouping the source controls (wrap symbols
+ * inline with the heading, single-line limit below), the display settings
+ * (align / bg), and the overflow mode. Form controls bind via [data-bind] in
+ * the shared ui-bind helper.
+ *
+ * Per-line appearance (text colour, stroke colour, size, stroke width) is NOT
+ * here — it moved into ui-languages.js, next to each line's language select,
+ * because setting up one subtitle line otherwise meant switching tabs back and
+ * forth.
  *
  * The block is appended into its own tab panel (#tab-style) as a
  * `.style-section`; its compact CSS is scoped to `.style-section`.
  */
 
-const SIZE_MIN = 14;
-const SIZE_MAX = 48;
-const STROKE_MIN = 0;
-const STROKE_MAX = 10;
-
-const SUBJECTS = [
-  { prefix: 'source',  i18nKey: 'style.source'  },
-  { prefix: 'target1', i18nKey: 'style.target1' },
-  { prefix: 'target2', i18nKey: 'style.target2' },
-];
-
 export function mountStyleTab(container) {
   if (!container) return;
-
-  const matrixRows = SUBJECTS.map(({ prefix, i18nKey }) => `
-    <div class="style-matrix-row">
-      <span class="style-matrix-label" data-i18n="${i18nKey}"></span>
-      <span class="color-cell">
-        <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Color')}">
-        <output class="color-value"></output>
-      </span>
-      <span class="color-cell">
-        <input type="color" class="color-input" data-bind="${camel('sub', prefix, 'Stroke')}">
-        <output class="color-value"></output>
-      </span>
-      <div class="slider-group">
-        <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${camel('sub', prefix, 'Size')}">
-        <output class="slider-value"></output>
-      </div>
-      <div class="slider-group">
-        <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${camel('sub', prefix, 'StrokeW')}">
-        <output class="slider-value"></output>
-      </div>
-    </div>
-  `).join('');
 
   const section = document.createElement('div');
   section.className = 'style-section';
   section.innerHTML = `
-    <div class="style-matrix">
-      <div class="style-matrix-head">
-        <span></span>
-        <span data-i18n="style.textColor">文字色</span>
-        <span data-i18n="style.strokeColor">縁取り色</span>
-        <span data-i18n="style.fontSize">サイズ</span>
-        <span data-i18n="style.strokeWidth">縁取り</span>
-      </div>
-      ${matrixRows}
-    </div>
-
     <div class="panel-cols">
     <section class="panel-col">
       <div class="style-wrap-head">
@@ -150,8 +109,3 @@ export function mountStyleTab(container) {
   container.appendChild(section);
 }
 
-function camel(...parts) {
-  return parts.map((p, i) =>
-    i === 0 ? p : p.charAt(0).toUpperCase() + p.slice(1)
-  ).join('');
-}

@@ -62,6 +62,7 @@
   "lang.engine.translator.unsupported": "此瀏覽器不支援瀏覽器翻譯（需使用支援 Translator API 的瀏覽器：Chrome 138 以上／Edge 148 以上）。",
 
   "lang.offline.label":         "離線辨識語言包",
+  "lang.offline.help":          "刪除方法",
   "lang.offline.btn":           "下載",
   "lang.offline.btn.ready":     "已下載",
   "lang.offline.btn.downloading":"下載中…",
@@ -69,7 +70,6 @@
   "lang.offline.btn.unavailable":"暫不支援",
   "lang.offline.msg.ready":     "已就緒，請重新按一次「開始」。",
   "lang.offline.msg.failed":    "下載失敗。",
-  "lang.offline.info.notReady":  "離線語言包適用於日語語音，英語語音則不建議使用。",
   "lang.offline.info.installed": "若要移除，請至瀏覽器的 設定 → 無障礙設定 → 即時字幕，刪除所有離線語言即可。",
 
   "lang.engine.link.help.title":      "URL 格式說明",

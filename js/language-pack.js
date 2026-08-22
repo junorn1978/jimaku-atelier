@@ -44,6 +44,8 @@ const QUALITY_PREFERENCE = ['dictation', 'command'];
 let _button   = null;
 let _status   = null;
 let _info      = null;
+let _help        = null;   /* button that opens the removal-instructions popover */
+let _helpPopover = null;
 let _stateKey = 'lang.offline.btn';   /* i18n key of the current button label */
 let _infoKey  = '';                   /* i18n key of the persistent info note */
 let _installQuality = QUALITY_PREFERENCE[QUALITY_PREFERENCE.length - 1];
@@ -119,24 +121,31 @@ function setStatus(key, autoClear = false) {
   }
 }
 
-/* Persistent guidance note shown beneath the button: removal instructions once
-   the pack is installed, otherwise a note on which audio the pack suits. */
+/* Removal instructions, shown in a popover rather than as standing text. The
+   note only applies once a pack is installed, so the trigger button appears
+   with it and hides again when there is nothing to explain — no permanent
+   paragraph competing for the panel's height. */
 function setInfo(key) {
   _infoKey = key;
   if (_info) _info.textContent = key ? t(key) : '';
+  if (_help) {
+    _help.hidden = !key;
+    /* A hidden trigger leaves its popover orphaned on screen. */
+    if (!key) _helpPopover?.hidePopover?.();
+  }
 }
 
 async function refreshButton(langId) {
   const lang = getLang(langId);
   if (!lang) {
-    setInfo('lang.offline.info.notReady');
+    setInfo('');
     return setState('lang.offline.btn.unsupported', true);
   }
 
   /* Chrome's on-device model for Traditional Chinese (zh-TW) is still
      unstable, so the pack is intentionally withheld for now. */
   if (lang.id === 'zh-TW') {
-    setInfo('lang.offline.info.notReady');
+    setInfo('');
     return setState('lang.offline.btn.unavailable', true);
   }
 
@@ -149,9 +158,11 @@ async function refreshButton(langId) {
   else if (s.downloading)  setState('lang.offline.btn.downloading', true);
   else                     setState('lang.offline.btn.unsupported', true);
 
-  /* Once installed, point users to the browser settings to remove it; before
-     that, note which audio the pack is recommended for. */
-  setInfo(s.supported ? 'lang.offline.info.installed' : 'lang.offline.info.notReady');
+  /* The only note worth keeping: how to remove an installed pack, since that
+     lives in the browser's settings and isn't discoverable from here. Anything
+     describing what a pack is good for went stale as the on-device models were
+     revised — the button's own label carries the state instead. */
+  setInfo(s.supported ? 'lang.offline.info.installed' : '');
 }
 
 async function downloadPack(langId) {
@@ -205,12 +216,15 @@ async function downloadPack(langId) {
  * Wire the offline-pack button. No-op on non-Chrome (caller hides the row).
  * @param {{ button: HTMLButtonElement, status: HTMLElement }} els
  */
-export function setupLanguagePackButton({ button, status, info }) {
+export function setupLanguagePackButton({ button, status, info, help }) {
   if (!isChrome || !SR || typeof SR.install !== 'function') return;
 
   _button = button;
   _status = status;
   _info   = info ?? null;
+  _help   = help ?? null;
+  _helpPopover = _help?.popoverTargetElement
+    ?? (_help ? document.getElementById(_help.getAttribute('popovertarget')) : null);
 
   refreshButton(settings.sourceLangId);
 

@@ -9,6 +9,9 @@ import { applyTo, t } from './i18n.js';
 import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 
+/** Shown in the About section — the only place the version appears in the UI. */
+const APP_VERSION = 'v1.6.0';
+
 export function mountSettingsDialog(container) {
   if (!container) return;
 
@@ -52,7 +55,10 @@ export function mountSettingsDialog(container) {
       <dl class="about-list">
         <div>
           <dt data-i18n="settings.about.app">App</dt>
-          <dd data-i18n="app.title">字幕アトリエ</dd>
+          <!-- The toolbar has no room for a watermark, so the app's identity
+               and version live here. Bump APP_VERSION on release. -->
+          <dd><span data-i18n="app.title">字幕アトリエ</span>
+              <span class="about-version">${APP_VERSION}</span></dd>
         </div>
         <div>
           <dt data-i18n="settings.about.storage">Storage</dt>

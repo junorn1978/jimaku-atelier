@@ -1,13 +1,24 @@
 /**
  * @file ui-languages.js
- * @description Renders the language controls as two side-by-side blocks: the
- * source side (recognition language + show-source toggle + offline download
- * button on one line, its download messages stacked below) and the translation
- * side (the two target selects on one line, with the engine picker stacked
- * below). Selects are a fixed compact width. The custom-URL input appears under
- * the engine picker in "link" mode; the verbose URL format help lives in a
- * dialog (#dialog-url-format in index.html). All form controls bind to the
- * settings store via [data-bind].
+ * @description Everything about the three subtitle lines, in one place.
+ *
+ * Top — a matrix with one row per line (recognition / translation 1 /
+ * translation 2). Each row carries that line's language AND its appearance:
+ * text colour, stroke colour, size, stroke width. Language and appearance
+ * describe the same object, so keeping them in separate tabs meant setting up
+ * one line required switching back and forth; the appearance columns used to
+ * live in ui-style.js. Rows are display:contents so their cells join the outer
+ * grid and same-kind controls line up vertically.
+ *
+ * Bottom — two columns: HOW to translate (engine picker plus an .engine-detail
+ * region that absorbs the rest of the column, so switching engines never
+ * resizes the tab) and the Chrome-only offline recognition pack. The verbose
+ * URL format help lives in a dialog (#dialog-url-format in index.html).
+ *
+ * What stayed in ui-style.js is everything global rather than per line: the
+ * source wrap symbols, alignment, background colour, overflow mode.
+ *
+ * All form controls bind to the settings store via [data-bind].
  */
 
 import { getAllLanguages } from './languages.js';
@@ -17,6 +28,38 @@ import { isChrome } from './env.js';
 import { setupLanguagePackButton } from './language-pack.js';
 import { isPromptSupported, getPromptAvailability } from './translate-prompt.js';
 import { isTranslatorSupported, prepareTranslators } from './translate-translator.js';
+
+/* Ranges for the per-line appearance controls. They live here rather than in
+   ui-style.js because the controls they drive moved into this tab. */
+const SIZE_MIN   = 14;
+const SIZE_MAX   = 48;
+const STROKE_MIN = 0;
+const STROKE_MAX = 10;
+
+/**
+ * The four appearance cells of one subtitle line, in the matrix's column order.
+ * `prefix` is the settings-key middle part: source | target1 | target2.
+ */
+function styleCells(prefix) {
+  const key = (suffix) => `sub${prefix.charAt(0).toUpperCase()}${prefix.slice(1)}${suffix}`;
+  return `
+          <span class="color-cell">
+            <input type="color" class="color-input" data-bind="${key('Color')}">
+            <output class="color-value"></output>
+          </span>
+          <span class="color-cell">
+            <input type="color" class="color-input" data-bind="${key('Stroke')}">
+            <output class="color-value"></output>
+          </span>
+          <div class="slider-group">
+            <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${key('Size')}">
+            <output class="slider-value"></output>
+          </div>
+          <div class="slider-group">
+            <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${key('StrokeW')}">
+            <output class="slider-value"></output>
+          </div>`;
+}
 
 export function mountLanguagesTab(container) {
   if (!container) return;
@@ -31,81 +74,116 @@ export function mountLanguagesTab(container) {
 
   container.innerHTML = `
     <div class="lang-grid">
-      <!-- source side: the recognition language row, with its download
-           messages stacked below it -->
-      <div class="lang-side lang-side-source">
-        <div class="lang-field">
-          <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
-          <select class="select select-compact" data-bind="sourceLangId">${sourceOptions}</select>
-          <label class="toggle" data-i18n-title="style.showSource" title="原文を表示">
-            <input type="checkbox" data-bind="subShowSource">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
+      <!-- One row per subtitle line, carrying BOTH its language and its
+           appearance. They describe the same object, so splitting them across
+           two tabs meant setting up a single line required switching back and
+           forth. Column headers are written once; each row is a
+           display:contents wrapper so its cells join the outer grid and every
+           control of the same kind lines up vertically. -->
+      <div class="lang-matrix">
+        <div class="lang-matrix-head">
+          <span></span>
+          <span></span>
+          <span data-i18n="style.textColor">文字色</span>
+          <span data-i18n="style.strokeColor">縁取り色</span>
+          <span data-i18n="style.fontSize">サイズ</span>
+          <span data-i18n="style.strokeWidth">縁取り幅</span>
         </div>
 
-        <!-- Offline pack sits UNDER the recognition row: beside it, the button
-             plus its name would widen the source column and push the panel out
-             of shape as soon as the window is narrowed. The name is visible
-             text rather than the button's tooltip, so it can't be missed. -->
-        <div class="lang-sub" id="offline-pack-row" hidden>
-          <div class="offline-pack-head">
-            <button type="button" class="btn" id="btn-offline-pack">ダウンロード</button>
-            <span class="lang-field-label" data-i18n="lang.offline.label">オフライン音声認識パック</span>
+        <div class="lang-matrix-row">
+          <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
+          <div class="lang-control">
+            <select class="select select-compact" data-bind="sourceLangId">${sourceOptions}</select>
+            <label class="toggle" data-i18n-title="style.showSource" title="原文を表示">
+              <input type="checkbox" data-bind="subShowSource">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
           </div>
-          <p class="manual-status offline-pack-status" id="offline-pack-status"
-             role="status" aria-live="polite"></p>
-          <p class="offline-pack-info" id="offline-pack-info"></p>
+          ${styleCells('source')}
+        </div>
+
+        <div class="lang-matrix-row">
+          <span class="lang-field-label" data-i18n="lang.target1">翻訳 1</span>
+          <div class="lang-control">
+            <select class="select select-compact" data-bind="target1LangId">${targetOptions}</select>
+          </div>
+          ${styleCells('target1')}
+        </div>
+
+        <div class="lang-matrix-row">
+          <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
+          <div class="lang-control">
+            <select class="select select-compact" data-bind="target2LangId">${targetOptions}</select>
+          </div>
+          ${styleCells('target2')}
         </div>
       </div>
 
-      <!-- translation side: the two target rows on one line, with the engine
-           picker stacked below them -->
-      <div class="lang-side lang-side-translate">
-        <div class="lang-targets">
-          <div class="lang-field">
-            <span class="lang-field-label" data-i18n="lang.target1">翻訳 1</span>
-            <select class="select select-compact" data-bind="target1LangId">${targetOptions}</select>
-          </div>
-          <div class="lang-field">
-            <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
-            <select class="select select-compact" data-bind="target2LangId">${targetOptions}</select>
-          </div>
-        </div>
-
-        <div class="lang-engine">
-          <span class="section-title" data-i18n="lang.engine">翻訳エンジン</span>
+      <div class="panel-cols cols-2">
+        <!-- How to translate. The engine's own detail (status messages, the
+             custom URL row) sits in a region that absorbs the rest of the
+             column, so switching engines never resizes the tab. -->
+        <section class="panel-col lang-engine">
+          <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
           <div class="seg-switch" role="group">
             <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
             <label id="engine-translator-label"><input type="radio" name="translationMode" value="translator" data-bind="translationMode"><span data-i18n="lang.engine.translator">ブラウザ翻訳</span></label>
             <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
             <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
           </div>
-          <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
-          <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
+          <div class="engine-detail">
+            <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
+            <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
 
-          <div class="lang-url-row" id="custom-url-row" hidden>
-            <input type="url" class="text-input" placeholder="https://..." data-bind="customTranslateUrl"
-                   autocomplete="off" spellcheck="false">
+            <div class="lang-url-row" id="custom-url-row" hidden>
+              <input type="url" class="text-input" placeholder="https://..." data-bind="customTranslateUrl"
+                     autocomplete="off" spellcheck="false">
 
-            <button type="button" class="btn url-examples-toggle" id="btn-url-examples"
-                    popovertarget="popover-url-examples">
-              <span data-i18n="lang.engine.link.help.more">範例與說明</span>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="m6 9 6 6 6-6"/>
-              </svg>
-            </button>
+              <button type="button" class="btn url-examples-toggle" id="btn-url-examples"
+                      popovertarget="popover-url-examples">
+                <span data-i18n="lang.engine.link.help.more">範例與說明</span>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m6 9 6 6 6-6"/>
+                </svg>
+              </button>
 
-            <div class="url-popover" id="popover-url-examples" popover>
-              <div class="format-help-examples">
-                <span data-i18n="lang.engine.link.help.examples">可直接使用的範例：</span>
-                <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
-                <button type="button" class="btn" data-example="openai">OpenAI</button>
-                <button type="button" class="btn" data-example="gemini">Gemini</button>
-                <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
+              <div class="help-popover url-popover" id="popover-url-examples" popover>
+                <div class="format-help-examples">
+                  <span data-i18n="lang.engine.link.help.examples">可直接使用的範例：</span>
+                  <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
+                  <button type="button" class="btn" data-example="openai">OpenAI</button>
+                  <button type="button" class="btn" data-example="gemini">Gemini</button>
+                  <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
+
+        <!-- Offline recognition pack: belongs to the recognition language above,
+             but is a Chrome-only, set-up-once concern, so it sits beside the
+             engine rather than inside the matrix. -->
+        <section class="panel-col lang-sub" id="offline-pack-row" hidden>
+          <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
+          <div class="offline-pack-head">
+            <button type="button" class="btn" id="btn-offline-pack">ダウンロード</button>
+
+            <!-- Removal instructions live in a popover rather than as standing
+                 text: they only matter once a pack is installed, and as a
+                 permanent paragraph they were the tallest thing in the tab.
+                 A popover (not a tooltip) stays open while the user follows the
+                 steps in the browser's own settings. -->
+            <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
+                    popovertarget="popover-offline-help"
+                    data-i18n="lang.offline.help" hidden>削除方法</button>
+
+            <div class="help-popover offline-popover" id="popover-offline-help" popover>
+              <p class="offline-pack-info" id="offline-pack-info"></p>
+            </div>
+          </div>
+          <p class="manual-status offline-pack-status" id="offline-pack-status"
+             role="status" aria-live="polite"></p>
+        </section>
       </div>
     </div>
   `;
@@ -284,11 +362,12 @@ function setupOfflinePack(container) {
   const button = container.querySelector('#btn-offline-pack');
   const status = container.querySelector('#offline-pack-status');
   const info   = container.querySelector('#offline-pack-info');
+  const help   = container.querySelector('#btn-offline-help');
   if (!row || !button || !status || !info) return;
   /* The whole block — button, name, status and info — lives below the source
      row and stays hidden on browsers without on-device packs. */
   row.hidden = false;
-  setupLanguagePackButton({ button, status, info });
+  setupLanguagePackButton({ button, status, info, help });
 }
 
 function wireExampleButtons(container) {
