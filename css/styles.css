@@ -200,10 +200,35 @@
      flanking groups get, so it never drifts as labels change language. */
   .control-toolbar {
     display: grid;
-    grid-template-columns: 1fr auto 1fr;
+    /* minmax(0, auto) rather than auto: the centre cell also holds the
+       collapsed-state readout, whose language names can run long. Without a
+       zero minimum it would push the flanking groups — and .toolbar-actions,
+       being icon buttons, has nowhere to give. */
+    grid-template-columns: 1fr minmax(0, auto) 1fr;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
+
+    /* The tab picker and the readout share the centre cell; exactly one is
+       displayed at a time, so the track sizes to whichever is showing. */
+    .settings-tabs,
+    .toolbar-status { grid-column: 2; grid-row: 1; }
+
+    /* Hidden until .panel-collapsed swaps it in. The transparent border and
+       6px padding reproduce the tab track's box (1px border + 3px + the
+       button's own 3px), so swapping one for the other cannot change the
+       toolbar's height and jolt the preview. */
+    .toolbar-status {
+      display: none;
+      margin: 0;
+      padding: 6px var(--space-2);
+      border: 1px solid transparent;
+      font-size: var(--text-md);
+      color: var(--color-text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     /* start/stop live in a grouped pill so they read as one control */
     .speech-switch {
@@ -1839,6 +1864,11 @@
      disappearing with the settings. */
   .panel-collapsed .settings-body { display: none; }
   .panel-collapsed .control-card  { height: auto; }
+
+  /* The tab picker would drive a body that is no longer displayed, so it hands
+     its cell to the read-only language readout. */
+  .panel-collapsed .settings-tabs  { display: none; }
+  .panel-collapsed .toolbar-status { display: block; }
 
   /* Manual text-translation overlay: slide it up into view over the preview.
      Enter is deliberately slower (300ms) than the 200ms exit on the base rule. */

@@ -75,6 +75,14 @@
                   data-i18n="tab.obs">OBS</button>
         </div>
 
+        <!-- Takes the tab picker's cell while the panel is collapsed. The tabs
+             drive a body that isn't displayed then, and the language routing
+             disappears with it — this is the only place left to check what is
+             being recognised and where it is going. Read-only by design:
+             collapsed means the preview is being captured, so the position
+             that used to be a control must not invite a mid-stream click. -->
+        <p class="toolbar-status" id="toolbar-status"></p>
+
         <div class="toolbar-actions">
           <div class="seg-switch" role="group" data-i18n-aria-label="aria.interfaceLanguage"
                aria-label="表示言語">

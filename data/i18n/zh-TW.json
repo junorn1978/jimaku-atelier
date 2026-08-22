@@ -26,6 +26,7 @@
   "manual.error.empty":     "請輸入要翻譯的文字。",
   "manual.error.failed":    "翻譯失敗。",
 
+  "toolbar.status.noSource": "尚未選擇語言",
   "tab.languages":          "語言",
   "tab.filter":             "字詞替換",
   "tab.obs":                "OBS",
@@ -177,7 +178,7 @@
   "settings.mic.title":     "麥克風",
   "settings.mic.default":   "預設麥克風",
   "settings.browserAI.title": "瀏覽器 AI 翻譯",
-  "settings.browserAI.desc": "不建議使用：使用 Chrome 的 Prompt API（Gemini Nano）翻譯。每行約需 0.8 秒，且支援語言（英、日、西、德、法）以外的譯文會出錯。選用期間模型會常駐記憶體。開啟後會出現在翻譯引擎的選項中。",
+  "settings.browserAI.desc": "不建議使用：使用 Chrome 的 Prompt API（Gemini Nano）翻譯。每行約需 0.8 秒，且支援語言（en / ja / es / de / fr）以外的譯文會出錯。選用期間模型會常駐記憶體。開啟後會出現在翻譯引擎的選項中。",
   "settings.debug.title":   "Debug log",
   "settings.debug.desc":    "在瀏覽器 console 輸出詳細紀錄。",
   "settings.reset.title":   "重設設定",

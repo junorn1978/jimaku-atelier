@@ -12,7 +12,9 @@
  *    closed on load) and is not persisted.
  */
 
-import { settings } from './store.js';
+import { settings, subscribe } from './store.js';
+import { getLang } from './languages.js';
+import { t } from './i18n.js';
 
 /** Header button → store key → body class driving the CSS collapse. */
 const TOGGLES = [
@@ -37,7 +39,39 @@ export function initLayoutToggles() {
     btn.addEventListener('click', () => set(!document.body.classList.contains(cls)));
   }
 
+  initToolbarStatus();
   initManualPanel();
+}
+
+/* Collapsed mode hides the tab body, and the language routing goes with it.
+   This readout takes the tab picker's place so "am I translating into the right
+   language?" is still answerable while the preview is being captured. It is
+   deliberately not interactive — see the note in index.html. */
+function initToolbarStatus() {
+  const el = document.getElementById('toolbar-status');
+  if (!el) return;
+
+  /* 'none' is a real stored value for an unused target line, not a language. */
+  const name = (id) => (!id || id === 'none' ? '' : (getLang(id)?.label || id));
+
+  const render = () => {
+    const source  = name(settings.sourceLangId);
+    const targets = [settings.target1LangId, settings.target2LangId].map(name).filter(Boolean);
+
+    const text = !source ? t('toolbar.status.noSource')
+               : targets.length ? `${source} → ${targets.join(' · ')}`
+               : source;
+
+    el.textContent = text;
+    /* The cell truncates with an ellipsis when the window is narrow; the title
+       keeps the full routing reachable. */
+    el.title = text;
+  };
+
+  render();
+  /* uiLang only affects the "nothing selected" wording, but it still has to
+     re-render — the labels themselves come from language_config.json. */
+  ['sourceLangId', 'target1LangId', 'target2LangId', 'uiLang'].forEach(k => subscribe(k, render));
 }
 
 /* Manual text-translation overlay: opened from the header button, closed by its

@@ -26,6 +26,7 @@
   "manual.error.empty":     "翻訳する文章を入力してください。",
   "manual.error.failed":    "翻訳に失敗しました。",
 
+  "toolbar.status.noSource": "言語未選択",
   "tab.languages":          "言語",
   "tab.filter":             "単語置換",
   "tab.obs":                "OBS",
@@ -177,7 +178,7 @@
   "settings.mic.title":     "マイク",
   "settings.mic.default":   "既定のマイク",
   "settings.browserAI.title": "ブラウザ AI 翻訳",
-  "settings.browserAI.desc": "非推奨：Chrome の Prompt API（Gemini Nano）で翻訳します。1行あたり約 0.8 秒かかり、対応言語（英・日・西・独・仏）以外は訳文が乱れます。モデルは選択中メモリに常駐します。有効にすると翻訳エンジンの選択肢に現れます。",
+  "settings.browserAI.desc": "非推奨：Chrome の Prompt API（Gemini Nano）で翻訳します。1行あたり約 0.8 秒かかり、対応言語（en / ja / es / de / fr）以外は訳文が乱れます。モデルは選択中メモリに常駐します。有効にすると翻訳エンジンの選択肢に現れます。",
   "settings.debug.title":   "デバッグログ",
   "settings.debug.desc":    "ブラウザのコンソールに詳細なログを出力します。",
   "settings.reset.title":   "設定をリセット",
