@@ -16,7 +16,7 @@ import { applyFilter } from './filter.js';
 import { publishSource } from './obs.js';
 import { decorateSource } from './source-decoration.js';
 import { normalizeRecognised } from './normalize-ja.js';
-import { isChrome, isEdge } from './env.js';
+import { isChrome } from './env.js';
 
 /* ============ environment ============ */
 
@@ -196,10 +196,9 @@ function filterSource(text, lang) {
 /* ============ Web Speech adapter ============ */
 
 async function decideProcessLocally(lang) {
-  /* Edge does not support on-device, but its continuous mode is stable —
-     short-circuit to true so configureRecognition picks continuous=true.
-     The actual processLocally property is only assigned on Chrome below. */
-  if (isEdge) return true;
+  /* On-device is Chrome-only; everything else, Edge included, is a cloud
+     recogniser. The answer doubles as the continuous switch below, and the
+     processLocally property itself is only assigned on Chrome. */
   if (!isChrome) return false;
   const ctor = window.SpeechRecognition;
   if (!ctor || typeof ctor.available !== 'function') return false;
@@ -221,7 +220,15 @@ async function configureRecognition(rec, lang) {
   rec.unspokenPunctuation = true;
   rec.interimResults      = true;
   rec.lang                = lang;
-  rec.continuous          = processLocally;  /* on-device mode is stable in continuous */
+  /* Continuous only where there is no connection to lose. A cloud recogniser's
+     socket dies on its own after roughly a minute — on Edge as a `network`
+     error raised seconds after it had already stopped returning results, so
+     the speech in between is gone with no event to react to. Per-utterance
+     sessions hand the teardown back to the engine's own endpointing instead:
+     it closes at a pause it has just detected, and the restart costs ~200ms of
+     audio inside that same pause. The on-device model has no socket to lose
+     and runs the session unbroken. */
+  rec.continuous          = processLocally;
   rec.maxAlternatives     = 1;
   if ('phrases' in rec) rec.phrases = [];
 
@@ -239,8 +246,8 @@ function setupRecognition() {
   let finalTranscript  = '';
   let interimTranscript = '';
 
-  /* Edge auto-restart is slow enough that forcing a break tends to drop
-     words, so the silence guard is Chrome-only. */
+  /* Chrome-only. Edge runs per-utterance now, so it ends each session at its
+     own endpoint and a second guard here would only race that. */
   const resetSilenceTimer = () => {
     if (!isChrome) return;
     if (silenceTimer) clearTimeout(silenceTimer);
