@@ -449,18 +449,22 @@ function setupPromptEngine(container) {
      any time. Keep the message key so the current state can be translated
      again without repeating the availability check. */
   let currentMessageKey = null;
-  let suffix = '';
+  let value = '';
 
   const renderMessage = () => {
     if (!currentMessageKey) return;
-    const message = t(currentMessageKey) + suffix;
+    /* The countdown belongs inside the sentence, not tacked onto its end:
+       Japanese wants "あと 5 秒" mid-string, English "Preparing in 5s". So the
+       message owns a {s} placeholder and we substitute; on every other message
+       (which carries no value) the replace is a no-op. */
+    const message = t(currentMessageKey).replace('{s}', value);
     label.title = message;
     status.textContent = message;
   };
 
-  const setMessage = (key, extra = '') => {
+  const setMessage = (key, slot = '') => {
     currentMessageKey = key;
-    suffix = extra;
+    value = slot;
     /* A hidden engine must not leave its status line behind — the availability
        check runs regardless of visibility, so it can produce a message for a
        radio nobody can see. */
@@ -528,10 +532,10 @@ function setupPromptEngine(container) {
   const scheduleWarmUp = () => {
     cancelWarmUp();
     let left = WARMUP_DELAY_S;
-    setMessage('lang.engine.prompt.pending', ` ${left}s`);
+    setMessage('lang.engine.prompt.pending', String(left));
     countdownTimer = setInterval(() => {
       left -= 1;
-      if (left > 0) { setMessage('lang.engine.prompt.pending', ` ${left}s`); return; }
+      if (left > 0) { setMessage('lang.engine.prompt.pending', String(left)); return; }
       clearInterval(countdownTimer);
       countdownTimer = null;
       startWarmUp();
@@ -546,7 +550,7 @@ function setupPromptEngine(container) {
      the segmented switch just shows three options instead of four. */
   const syncVisibility = (on) => {
     label.hidden = !on;
-    if (on) { setMessage(currentMessageKey, suffix); return; }
+    if (on) { setMessage(currentMessageKey, value); return; }
     cancelWarmUp();
     if (settings.translationMode === 'prompt') settings.translationMode = 'gtx';
     setMessage(null);
