@@ -3,6 +3,8 @@ setlocal enabledelayedexpansion
 
 set "PORT=8082"
 set "PID="
+set "translate_DIR=%USERPROFILE%\junorn_1978_translate"
+
 for /f "tokens=5" %%P in ('
   netstat -ano ^| findstr /R /C:":%PORT%" ^| findstr LISTENING
 ') do set "PID=%%P"
@@ -15,10 +17,12 @@ if defined PID (
   timeout /t 1 /nobreak >nul
 )
 
-start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" ^
-  "http://localhost:%PORT%/index.html" ^
-  --window-size=1280,720 ^
-  --no-first-run ^
-  --no-default-browser-check
+
+start chrome.exe "http://localhost:%PORT%/index.html" --window-size=1280,720 ^
+--disable-features=CalculateNativeWinOcclusion ^
+--user-data-dir="%translate_DIR%" ^
+--disable-extensions ^
+--enable-features=AIPromptAPI ^
+--disable-default-apps
 
 exit /b
