@@ -5,11 +5,15 @@
  * as an array of `{ source, target }`; matching is case-insensitive substring
  * (regex special characters in source are auto-escaped).
  *
- * A separate blacklist (settings.blacklistRules, an array of plain words) masks
- * each match with as many '*' as the match is long (おちんちん → *****). Because
- * speech.js filters the recognised text *before* sending it to translation, a
- * masked source word stays masked through the translation too, so the blacklist
- * only needs source-language words.
+ * A separate blacklist masks each match with as many '*' as the match is long.
+ * It has two halves that never mix: settings.blacklistRules holds the words the
+ * user typed, and DEFAULT_BLACKLIST below is folded in at compile time whenever
+ * settings.blacklistUseDefaults is on. The built-in words are deliberately not
+ * copied into the user's list — see the note on that setting in store.js.
+ *
+ * Because speech.js filters the recognised text *before* sending it to
+ * translation, a masked source word stays masked through the translation too,
+ * so the blacklist only needs source-language words.
  *
  * Compiled rules are cached and rebuilt whenever the relevant settings change.
  */
@@ -18,9 +22,14 @@ import { settings, subscribe } from './store.js';
 import { isDebugEnabled } from './logger.js';
 
 /**
- * Starter blacklist (Japanese explicit terms). Loaded on demand via the UI's
- * "load defaults" button; fully editable afterwards. Kept to distinctive,
- * longer words to minimise false positives.
+ * Built-in blacklist (Japanese explicit terms), switched on by
+ * settings.blacklistUseDefaults. Never rendered anywhere in the UI — the point
+ * of having it built in is that these words never have to be on screen.
+ *
+ * Japanese only on purpose: Chrome's recognition already censors English
+ * profanity in its own results, so an English list here would mostly duplicate
+ * work the model has done. Kept to distinctive, longer words to minimise false
+ * positives, since there is no per-word switch to turn one off.
  */
 export const DEFAULT_BLACKLIST = Object.freeze([
   'おちんちん', 'ちんちん', 'ちんこ', 'ちんぽ', 'まんこ',
@@ -56,7 +65,8 @@ function rebuildBlacklist() {
     _blacklist = [];
     return;
   }
-  const words = Array.isArray(settings.blacklistRules) ? settings.blacklistRules : [];
+  const custom = Array.isArray(settings.blacklistRules) ? settings.blacklistRules : [];
+  const words = settings.blacklistUseDefaults ? [...custom, ...DEFAULT_BLACKLIST] : custom;
   _blacklist = words
     .filter(w => typeof w === 'string' && w.length > 0)
     .map(w => {
@@ -90,11 +100,38 @@ export function applyFilter(text) {
   return out;
 }
 
+/**
+ * One-time cleanup for lists written by the old "load defaults" button, which
+ * copied the built-in words into the editable list. blacklistUseDefaults covers
+ * them now, so drop them rather than leave them sitting in the panel as plain
+ * text. Dropping a word the user happened to type themselves that matches a
+ * built-in one costs nothing — it is still masked, just from the other half.
+ *
+ * Has to run before the filter tab renders, which is why initFilter() is called
+ * ahead of the tab mounts in main.js.
+ */
+function dropCopiedDefaults() {
+  const custom = Array.isArray(settings.blacklistRules) ? settings.blacklistRules : [];
+  if (custom.length === 0) return;
+
+  const builtIn = new Set(DEFAULT_BLACKLIST.map(w => w.toLowerCase()));
+  const kept = custom.filter(w =>
+    typeof w !== 'string' || !builtIn.has(w.trim().toLowerCase()));
+
+  if (kept.length === custom.length) return;
+  if (isDebugEnabled()) {
+    console.debug(`[filter] dropped ${custom.length - kept.length} copied default word(s)`);
+  }
+  settings.blacklistRules = kept;
+}
+
 export function initFilter() {
+  dropCopiedDefaults();
   rebuild();
   rebuildBlacklist();
-  subscribe('filterEnabled',    rebuild);
-  subscribe('filterRules',      rebuild);
-  subscribe('blacklistEnabled', rebuildBlacklist);
-  subscribe('blacklistRules',   rebuildBlacklist);
+  subscribe('filterEnabled',      rebuild);
+  subscribe('filterRules',        rebuild);
+  subscribe('blacklistEnabled',   rebuildBlacklist);
+  subscribe('blacklistRules',     rebuildBlacklist);
+  subscribe('blacklistUseDefaults', rebuildBlacklist);
 }

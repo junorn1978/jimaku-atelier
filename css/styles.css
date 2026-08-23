@@ -881,12 +881,6 @@
     .section-title { flex-shrink: 0; }
   }
 
-  /* .manual-status reserves a line so a message appearing can't shift the
-     layout — that matters in the manual-translate panel, where the status sits
-     above other controls. Here nothing below it would be pushed, so an idle
-     status takes no space at all and the block stays two lines. */
-  .offline-pack-status:empty { min-height: 0; }
-
   /* Lives inside .help-popover now, which sets the colour, size and leading —
      dimming it there would only make a bubble the user opened on purpose harder
      to read. */
@@ -1037,6 +1031,40 @@
   .offline-popover { position-anchor: --offline-help-anchor; }
 
   .offline-help-toggle { anchor-name: --offline-help-anchor; }
+  .offline-pack-btn    { anchor-name: --offline-pack-anchor; }
+
+  /* The one .help-popover the app opens by itself rather than on a click, so
+     it is the one that needs to announce its own arrival: it fades in instead
+     of blinking, and fades back out when it auto-clears. allow-discrete is what
+     lets `display` and `overlay` participate, without which the exit frame is
+     skipped and it would vanish instantly on the way out. */
+  .offline-status-popover {
+    position-anchor: --offline-pack-anchor;
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+      opacity 0.18s var(--ease-out),
+      transform 0.18s var(--ease-out),
+      overlay 0.18s allow-discrete,
+      display 0.18s allow-discrete;
+
+    &:popover-open {
+      opacity: 1;
+      transform: translateY(0);
+
+      @starting-style {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+    }
+
+    /* A failure has to read as one — it stays until dismissed, so without this
+       it is the same bubble as "ready", just with different words in it. */
+    &.is-error {
+      color: color-mix(in oklab, var(--color-danger) 85%, white);
+      border-color: color-mix(in oklab, var(--color-danger) 45%, var(--color-border-strong));
+    }
+  }
 
   /* --- form inputs (dark theme) --- */
 
@@ -1139,7 +1167,8 @@
        max-content, two of those blow the whole block out to ~450px, squeeze the
        matrix to its minimum and clip its last column behind its own overflow. */
     .symbol-inputs .text-input { flex: 1 1 3em; min-width: 0; }
-    .color-pick { width: 100%; justify-content: center; }
+    .color-pick { width: 100%; }
+    .color-trigger-text { width: 100%; justify-content: center; }
 
     /* Enclosed as a recessed well rather than divided off by a hairline: these
        four settings arrived from another tab and are a different kind of thing
@@ -1281,7 +1310,14 @@
       height: 28px;
       transform: translateY(-50%);
     }
+  }
 
+  /* Icon swap, shared by every masked control — single fields through
+     .secret-input-wrap and the blacklist column through .blacklist-mask. Keyed
+     off the state attribute rather than either wrapper class so a new masked
+     control only has to carry data-secret-visible. The crossed-out eye offers
+     "show"; the open eye offers "hide". */
+  [data-secret-visible] {
     .icon-eye { display: none; }
 
     &[data-secret-visible="true"] {
@@ -1291,8 +1327,12 @@
   }
 
   /* swatch + live hex readout, macOS-style — confirms "is this pure white?"
-     without opening the picker (kept in sync by ui-bind.js) */
+     without opening the palette (kept in sync by ui-bind.js). position:relative
+     keeps the visually-hidden colour input from escaping to the viewport, where
+     focusing it would scroll the page (same trap as the segmented-switch
+     radios). */
   .color-cell {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
@@ -1305,10 +1345,10 @@
     }
   }
 
-  /* Colour picker with no visible swatch — see the note in ui-languages.js for
-     why the background colour must not paint itself. position:relative keeps
-     the visually-hidden input from escaping to the viewport, where focusing it
-     would scroll the page (same trap as the segmented-switch radios). */
+  /* Colour trigger with no visible swatch — see the note in ui-languages.js for
+     why the background colour must not paint itself; its hex label carries the
+     value instead. Wrapper is position:relative for the same reason as
+     .color-cell above. */
   .color-pick {
     position: relative;
     display: inline-flex;
@@ -1317,23 +1357,212 @@
     .color-value { color: var(--color-text); }
   }
 
-  .color-input {
-    appearance: none;
-    -webkit-appearance: none;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+  /* The trigger the palette opens from: the old <input type="color"> swatch,
+     kept pixel-for-pixel so the matrix rows did not move when the native dialog
+     was replaced. Painted from --selected-color, which js/color-picker.js
+     writes on every change. */
+  .color-swatch {
+    --selected-color: #FFFFFF;
     width: 64px;
     height: 28px;
-    padding: 0;
+    padding: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
     background: var(--color-surface-2);
-    cursor: pointer;
     transition: border-color 0.15s;
 
     &:hover { border-color: var(--color-border-strong); }
 
-    &::-webkit-color-swatch-wrapper { padding: 3px; }
-    &::-webkit-color-swatch { border: 0; border-radius: var(--radius-sm); }
-    &::-moz-color-swatch    { border: 0; border-radius: var(--radius-sm); }
+    /* Inner fill rather than a background on the button itself: it keeps the
+       3px inset the native swatch had, so a white value still reads as a swatch
+       against the surface instead of merging with the panel. */
+    &::before {
+      content: "";
+      display: block;
+      width: 100%;
+      height: 100%;
+      border-radius: var(--radius-sm);
+      background: var(--selected-color);
+    }
+  }
+
+  /* ============ in-page colour palette (js/color-picker.js) ============ */
+
+  /* Fixed and positioned from JS — it opens out of a card pinned to the bottom
+     of the window and has to flip above its trigger when there is no room
+     below. z-index clears the panel and the manual-translate drawer; it never
+     opens from inside a <dialog>, which would out-rank it via the top layer. */
+  .color-popover {
+    position: fixed;
+    z-index: 900;
+    display: none;
+    width: 268px;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-1);
+    box-shadow: var(--shadow-overlay);
+    /* transform-origin is set by positionPopover() to the trigger's centre */
+    transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+
+    &.is-open {
+      display: block;
+
+      @starting-style {
+        opacity: 0;
+        transform: scale(0.96);
+      }
+    }
+  }
+
+  .color-popover-head {
+    margin-bottom: var(--space-2);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text);
+  }
+
+  /* Saturation across, value down, over the current hue — the standard square.
+     Two gradients stacked on the hue fill: white to transparent left to right,
+     black to transparent bottom to top. */
+  .color-field {
+    --field-hue: hsl(0, 100%, 50%);
+    position: relative;
+    width: 100%;
+    height: 132px;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    cursor: crosshair;
+    touch-action: none;   /* the drag is ours, not the browser's scroll */
+    background-color: var(--field-hue);
+    background-image:
+      linear-gradient(to top, #000, transparent),
+      linear-gradient(to right, #FFF, transparent);
+    box-shadow: inset 0 0 0 1px var(--color-border);
+  }
+
+  .color-field-cursor {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border: 2px solid #FFF;
+    border-radius: var(--radius-full);
+    /* Dark halo under the white ring so the cursor stays visible on white. */
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.55), var(--shadow-1);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .color-popover-label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+  }
+
+  /* Qualified by the popover on purpose, and it must stay that way: the panel's
+     generic slider is `input[type="range"]`, and an attribute selector carries
+     class-level specificity — (0,1,1) beats a lone `.color-hue` at (0,1,0), so
+     unqualified this rule loses every declaration to the macOS-style slider
+     further down and the hue track renders as a flat 4px line. */
+  .color-popover .color-hue {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 12px;
+    margin: 0;
+    padding: 0;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    background: linear-gradient(to right,
+      #F00 0%, #FF0 17%, #0F0 33%, #0FF 50%, #00F 67%, #F0F 83%, #F00 100%);
+
+    &::-webkit-slider-runnable-track { height: 12px; background: transparent; }
+    &::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 14px;
+      height: 18px;
+      margin-top: -3px;
+      border: 2px solid #FFF;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5), var(--shadow-1);
+    }
+    &::-moz-range-track { height: 12px; background: transparent; }
+    &::-moz-range-thumb {
+      width: 14px;
+      height: 18px;
+      border: 2px solid #FFF;
+      border-radius: var(--radius-sm);
+      background: transparent;
+    }
+  }
+
+  .color-popover-row {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--space-2);
+  }
+
+  .color-preview {
+    width: 34px;
+    height: 30px;
+    flex: 0 0 34px;
+    border-radius: var(--radius-sm);
+    box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  }
+
+  .color-hex-label { flex: 1; }
+
+  .color-hex {
+    width: 100%;
+    height: 30px;
+    padding: 4px var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+
+    &:focus { outline: none; border-color: var(--color-accent); box-shadow: var(--focus-ring); }
+    /* Only a hint while typing — nothing is written through until the value
+       parses, so an invalid box has changed nothing. */
+    &.is-invalid { border-color: var(--color-danger); }
+  }
+
+  .color-presets-label {
+    margin-top: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+  }
+
+  .color-presets {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: var(--space-1);
+    margin-top: var(--space-1);
+  }
+
+  .color-preset {
+    --preset-color: #FFF;
+    aspect-ratio: 1;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    background: var(--preset-color);
+    box-shadow: inset 0 0 0 1px var(--color-border-strong);
+    transition: transform 0.12s var(--ease-out);
+
+    &:hover  { transform: scale(1.12); }
+    &:active { transform: scale(0.94); }
+    /* A ring rather than a border: a border would shrink the colour it marks. */
+    &.is-selected {
+      box-shadow: 0 0 0 2px var(--color-surface-1), 0 0 0 3.5px var(--color-accent);
+    }
   }
 
   /* --- toggle switch (checkbox styled as iOS-style track + thumb) --- */
@@ -1489,9 +1718,15 @@
     .filter-add { flex: 1; }
   }
 
-  .blacklist-defaults {
-    flex: 0 0 auto;
-    white-space: nowrap;
+  /* One mask for the whole column rather than a toggle per row: this panel can
+     be on camera, and per-row eye buttons would be one mis-click per row. Same
+     -webkit-text-security technique as .secret-input-wrap, and not
+     type="password" for the same reason (see js/ui-secret-input.js).
+
+     The delete buttons stay usable while masked — removing a word you cannot
+     read is still the right thing to be able to do in a hurry. */
+  .blacklist-mask[data-secret-visible="false"] .filter-source {
+    -webkit-text-security: disc;
   }
 
   /* --- OBS tab: URL + password side by side (labels stacked above),
@@ -2005,6 +2240,14 @@
     .tab-btn:active,
     .seg-switch button:active,
     .seg-switch label:active > span { transform: none; }
+
+    /* Same treatment as the dialogs: keep the fade, drop the scale — and this
+       utilities-layer rule also outranks the components-layer @starting-style
+       during the enter frame. */
+    .color-popover { transform: none; }
+    .color-preset,
+    .color-preset:hover,
+    .color-preset:active { transition: none; transform: none; }
 
     .speech-switch:has(#btn-stop:not(:disabled)) #btn-start svg,
     .obs-conn-status[data-phase="connecting"] .obs-conn-dot {

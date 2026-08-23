@@ -134,10 +134,12 @@ export function mountObsTab(container) {
              the subtitle appearance settings. A button rather than a filled
              swatch — a swatch painted in the key colour is itself keyed out of
              a window capture. -->
-        <label class="btn color-pick">
-          <input type="color" class="visually-hidden" data-bind="subBg">
-          <output class="color-value"></output>
-        </label>
+        <span class="color-pick">
+          <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
+          <button type="button" class="btn color-trigger-text" data-color-trigger>
+            <output class="color-value"></output>
+          </button>
+        </span>
         <p class="form-hint" data-i18n="obs.capture.bg.hint">
           クロマキーで抜く色です。
         </p>

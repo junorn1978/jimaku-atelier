@@ -10,7 +10,7 @@ import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 
 /** Shown in the About section — the only place the version appears in the UI. */
-const APP_VERSION = 'v1.11.1';
+const APP_VERSION = 'v1.12.0';
 
 export function mountSettingsDialog(container) {
   if (!container) return;
@@ -24,6 +24,25 @@ export function mountSettingsDialog(container) {
           <dd id="default-mic-name" data-i18n="header.mic.unknown">未選択</dd>
         </div>
       </dl>
+    </section>
+
+    <!-- Timing rather than styling, so it belongs here and not in the style
+         matrix: nothing about it is judged by looking at the preview. -->
+    <section class="dialog-section">
+      <div class="dialog-setting-row">
+        <div>
+          <h3 data-i18n="settings.clearIdle.title">字幕の自動クリア</h3>
+          <p data-i18n="settings.clearIdle.desc">説明</p>
+        </div>
+        <select class="select select-compact" data-bind="subClearIdleSec">
+          <option value="0"  data-i18n="settings.clearIdle.off">クリアしない</option>
+          <option value="5"  data-i18n="settings.clearIdle.sec5">5 秒</option>
+          <option value="7"  data-i18n="settings.clearIdle.sec7">7 秒</option>
+          <option value="10" data-i18n="settings.clearIdle.sec10">10 秒</option>
+          <option value="15" data-i18n="settings.clearIdle.sec15">15 秒</option>
+          <option value="30" data-i18n="settings.clearIdle.sec30">30 秒</option>
+        </select>
+      </div>
     </section>
 
     <!-- Kept for reference rather than for use: the two-line scrolling mode

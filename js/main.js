@@ -11,6 +11,7 @@ import { loadLanguages } from './languages.js';
 import { isDebugEnabled } from './logger.js';
 import { initPreviewBinding } from './preview.js';
 import { bindInputs } from './ui-bind.js';
+import { initColorPickers } from './color-picker.js';
 import { mountLanguagesTab } from './ui-languages.js';
 import { mountFilterTab } from './ui-filter.js';
 import { mountObsTab } from './ui-obs.js';
@@ -28,6 +29,10 @@ async function init() {
   await loadLanguages();
   await setLanguage(settings.uiLang || 'ja');
 
+  /* Ahead of the mounts: initFilter() migrates blacklists written by an older
+     version, and the filter tab renders that list. */
+  initFilter();
+
   /* Mount each settings tab into its own panel (static markup in index.html;
      switching is wired by initSettingsTabs below). */
   mountLanguagesTab(document.getElementById('tab-languages'));
@@ -40,11 +45,12 @@ async function init() {
   applyTo(document);
   bindInputs(document);
 
+  /* After bindInputs: the palette reads each hidden colour input's seeded
+     value to paint its trigger. */
+  initColorPickers();
+
   /* Project subtitle settings onto CSS variables. */
   initPreviewBinding();
-
-  /* Compile filter rules now that settings are loaded. */
-  initFilter();
 
   /* Manage OBS WS connection lifecycle. */
   initObs();

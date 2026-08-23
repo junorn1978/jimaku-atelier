@@ -8,7 +8,8 @@
  *
  * For range inputs, an adjacent <output class="slider-value"> sibling will be
  * kept in sync automatically (display only). Color inputs do the same with an
- * adjacent <output class="color-value"> (uppercase hex readout).
+ * <output class="color-value"> anywhere in the same parent (uppercase hex
+ * readout).
  */
 
 import { settings, subscribe } from './store.js';
@@ -110,6 +111,8 @@ function bindText(el, key) {
 
 function updateColorOutput(el) {
   if (el.type !== 'color') return;
-  const out = el.nextElementSibling;
-  if (out?.classList.contains('color-value')) out.textContent = el.value.toUpperCase();
+  /* Looked up through the parent rather than as the next sibling: the palette's
+     trigger button sits between the input and its readout. */
+  const out = el.parentElement?.querySelector('.color-value');
+  if (out) out.textContent = el.value.toUpperCase();
 }

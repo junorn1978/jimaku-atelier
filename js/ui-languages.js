@@ -26,7 +26,9 @@
  * did not move here is the two-line overflow mode, which is deprecated and now
  * sits in the settings dialog.
  *
- * All form controls bind to the settings store via [data-bind].
+ * All form controls bind to the settings store via [data-bind]. The colour
+ * inputs are hidden and driven by the in-page palette in js/color-picker.js;
+ * each carries a `list` naming the <datalist> of quick colours it offers.
  */
 
 import { getAllLanguages } from './languages.js';
@@ -54,11 +56,13 @@ function styleCells(prefix) {
   const key = (suffix) => `sub${prefix.charAt(0).toUpperCase()}${prefix.slice(1)}${suffix}`;
   return `
           <span class="color-cell">
-            <input type="color" class="color-input" data-bind="${key('Color')}">
+            <input type="color" class="visually-hidden" data-bind="${key('Color')}" list="palette-text">
+            <button type="button" class="color-swatch" data-color-trigger></button>
             <output class="color-value"></output>
           </span>
           <span class="color-cell">
-            <input type="color" class="color-input" data-bind="${key('Stroke')}">
+            <input type="color" class="visually-hidden" data-bind="${key('Stroke')}" list="palette-text">
+            <button type="button" class="color-swatch" data-color-trigger></button>
             <output class="color-value"></output>
           </span>
           <div class="slider-group">
@@ -196,13 +200,18 @@ export function mountLanguagesTab(container) {
              would be painted in exactly the chroma-key colour, so capturing the
              window with a key filter punches a hole straight through the
              control. The hex label carries the value instead — text survives the
-             key. The label activates the hidden input, so the native picker
-             still opens on click with no JS. -->
+             key. js/color-picker.js recognises .color-trigger-text and skips
+             the swatch it paints on every other trigger for the same reason.
+             The quick colours here are the three that make sense as a key
+             (green / blue / magenta) plus black and white — a different list
+             from the text colours, which is why each input names its own. -->
         <span class="lang-extras-label" data-i18n="style.bg">背景色</span>
-        <label class="btn color-pick">
-          <input type="color" class="visually-hidden" data-bind="subBg">
-          <output class="color-value"></output>
-        </label>
+        <span class="color-pick">
+          <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
+          <button type="button" class="btn color-trigger-text" data-color-trigger>
+            <output class="color-value"></output>
+          </button>
+        </span>
       </section>
       </div>
 
@@ -218,7 +227,7 @@ export function mountLanguagesTab(container) {
         <section class="panel-col lang-sub" id="offline-pack-row" hidden>
           <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
           <div class="col-head">
-            <button type="button" class="btn" id="btn-offline-pack">ダウンロード</button>
+            <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
 
             <!-- Removal instructions live in a popover rather than as standing
                  text: they only matter once a pack is installed, and as a
@@ -232,9 +241,17 @@ export function mountLanguagesTab(container) {
             <div class="help-popover offline-popover" id="popover-offline-help" popover>
               <p class="offline-pack-info" id="offline-pack-info"></p>
             </div>
+
+            <!-- Download result. In the top layer rather than in the column:
+                 this section sits on the panel's bottom edge with no room left
+                 under it, and as a paragraph the message was clipped away by
+                 .tab-panel's overflow — it was never actually visible. Anchored
+                 to the download button so it appears where the user just
+                 clicked, costs the layout nothing, and fades rather than
+                 blinking in. -->
+            <div class="help-popover offline-status-popover" id="offline-pack-status"
+                 popover role="status" aria-live="polite"></div>
           </div>
-          <p class="manual-status offline-pack-status" id="offline-pack-status"
-             role="status" aria-live="polite"></p>
         </section>
 
         <!-- How to translate. The engine's own detail (status messages, the

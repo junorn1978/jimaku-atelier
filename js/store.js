@@ -52,6 +52,14 @@ const _defaults = Object.freeze({
   subShowSource:      true,
   subSourceSingleLine: false,
 
+  /* Seconds of recognition silence after a finalised sentence before every
+     subtitle line is wiped. Timing starts at the final rather than at any
+     recognition event: an interim that never finalises is still going to be
+     flushed by the silence guard in speech.js, and that flush redraws the
+     source line — clearing on interims would blank the display only to have
+     the text reappear seconds later. 0 leaves the last line on screen. */
+  subClearIdleSec:    7,
+
   subSourceColor:     '#FFFFFF',
   subSourceStroke:    '#000000',
   subSourceStrokeW:   4,
@@ -78,6 +86,12 @@ const _defaults = Object.freeze({
   // --- Blacklist (mask matched words with length-matched asterisks) ---
   blacklistEnabled:   false,
   blacklistRules:     [],        // ['word', ...]  → masked to '****'
+  /* The built-in list is switched on, never copied into blacklistRules. Those
+     words must not reach the editable list: it renders as plain text in a panel
+     that can end up on camera, which is the one place explicit words must not
+     be. Keeping them out also means the list ships with the app instead of
+     freezing in whatever localStorage held the day the user imported it. */
+  blacklistUseDefaults: true,
 
   // --- OBS bridge ---
   obsEnabled:         false,

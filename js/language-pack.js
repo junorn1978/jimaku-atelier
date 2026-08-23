@@ -100,9 +100,12 @@ function setState(key, disabled) {
   _button.disabled = disabled;
 }
 
-/* A success message is a one-off nudge ("press Start again"); left on screen it
-   just sits on top of the info note below it. Failures stay put — the user has
-   to know a retry is needed. */
+/* A success message is a one-off nudge ("press Start again") and takes itself
+   away. Failures stay until dismissed — the user has to know a retry is needed.
+
+   The element is a popover (see the markup note in ui-languages.js): the pack
+   section has no room under it, so this has to live in the top layer or it is
+   simply invisible. */
 const STATUS_CLEAR_MS = 6000;
 
 let _statusKey   = '';
@@ -112,11 +115,35 @@ function renderStatus() {
   if (_status) _status.textContent = _statusKey ? t(_statusKey) : '';
 }
 
-function setStatus(key, autoClear = false) {
+/* Both calls throw when the popover is already in the state being asked for,
+   so each is guarded on what is actually on screen. */
+function showStatus() {
+  if (_status?.showPopover && !_status.matches(':popover-open')) _status.showPopover();
+}
+
+function hideStatus() {
+  if (_status?.hidePopover && _status.matches(':popover-open')) _status.hidePopover();
+}
+
+function setStatus(key, { autoClear = false, error = false } = {}) {
   _statusKey = key || '';
   if (_statusTimer) { clearTimeout(_statusTimer); _statusTimer = null; }
+
+  if (!_statusKey) {
+    /* Text is left in place on the way out: clearing it first would empty the
+       bubble for the length of the fade. renderStatus() catches up the next
+       time it runs. */
+    hideStatus();
+    return;
+  }
+
+  _status?.classList.toggle('is-error', error);
+  /* Shown before the text is written, so the live region is already in the
+     accessibility tree when its content changes and the message is announced. */
+  showStatus();
   renderStatus();
-  if (_statusKey && autoClear) {
+
+  if (autoClear) {
     _statusTimer = setTimeout(() => { _statusTimer = null; setStatus(''); }, STATUS_CLEAR_MS);
   }
 }
@@ -169,7 +196,7 @@ async function downloadPack(langId) {
   const lang = getLang(langId);
   if (!lang) return;
 
-  if (!navigator.onLine) { setStatus('lang.offline.msg.failed'); return; }
+  if (!navigator.onLine) { setStatus('lang.offline.msg.failed', { error: true }); return; }
 
   setStatus('');
   setState('lang.offline.btn.downloading', true);
@@ -202,13 +229,13 @@ async function downloadPack(langId) {
   if (installed) {
     setState('lang.offline.btn.ready', true);
     setInfo('lang.offline.info.installed');
-    setStatus('lang.offline.msg.ready', true);
+    setStatus('lang.offline.msg.ready', { autoClear: true });
     /* Some recognition params (processLocally, continuous, …) are only applied
        on a fresh start, so stop now and prompt the user to press Start again. */
     stopSpeech();
   } else {
     await refreshButton(langId);
-    setStatus('lang.offline.msg.failed');
+    setStatus('lang.offline.msg.failed', { error: true });
   }
 }
 

@@ -5,6 +5,12 @@
  * Appended into its own tab panel (#tab-filter) as a `.filter-section`; the
  * section fills the panel and only the rule lists scroll (see styles.css).
  *
+ * The blacklist column is masked (-webkit-text-security) behind one switch for
+ * the whole column, and re-masks itself when recording starts — this panel can
+ * end up on camera, and a list of explicit words is the last thing that should
+ * be legible there. The built-in words are never rendered at all; they are a
+ * toggle (blacklistUseDefaults), not entries in the list.
+ *
  * Each rule row is rendered as (source input, →, target input, delete).
  * On every keystroke we write a fresh array back to settings.filterRules so
  * filter.js sees the change and recompiles. The DOM is the source of truth
@@ -12,9 +18,8 @@
  * focus). Re-renders only happen on add / delete.
  */
 
-import { settings } from './store.js';
-import { applyTo } from './i18n.js';
-import { DEFAULT_BLACKLIST } from './filter.js';
+import { settings, subscribe } from './store.js';
+import { applyTo, t } from './i18n.js';
 
 const TRASH_SVG = `
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -23,6 +28,21 @@ const TRASH_SVG = `
     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/>
     <line x1="10" y1="11" x2="10" y2="17"/>
     <line x1="14" y1="11" x2="14" y2="17"/>
+  </svg>
+`;
+
+/* Same pair of icons as the OBS password field, and the same two i18n keys —
+   this is the identical "you are about to put something on screen" gesture. */
+const EYE_SVG = `
+  <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+    <path d="M1 1l22 22"/>
+  </svg>
+  <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+    <circle cx="12" cy="12" r="3"/>
   </svg>
 `;
 
@@ -57,11 +77,27 @@ export function mountFilterTab(container) {
           </label>
         </div>
         <p class="form-hint" data-i18n="blacklist.hint">登録した語は文字数ぶんの * で伏せ字になります。</p>
-        <div class="filter-list-wrap">
+
+        <div class="form-row">
+          <span class="form-row-label" data-i18n="blacklist.useDefaults">内蔵のNGワード</span>
+          <label class="toggle">
+            <input type="checkbox" data-bind="blacklistUseDefaults">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+        <p class="form-hint" data-i18n="blacklist.useDefaults.desc">内蔵リストを使います。</p>
+
+        <!-- data-secret-visible drives the mask in CSS, matching the attribute
+             js/ui-secret-input.js uses on single fields. Not wired through that
+             module: it positions one toggle inside one input, and this switch
+             covers a whole column. -->
+        <div class="filter-list-wrap blacklist-mask" data-secret-visible="false">
           <div class="filter-list" id="blacklist-list"></div>
           <div class="blacklist-actions">
             <button type="button" class="btn filter-add" id="blacklist-add" data-i18n="blacklist.add">+ 追加</button>
-            <button type="button" class="btn blacklist-defaults" id="blacklist-load-defaults" data-i18n="blacklist.loadDefaults">既定語を読み込む</button>
+            <button type="button" class="icon-btn secret-toggle" id="blacklist-reveal" aria-pressed="false">
+              ${EYE_SVG}
+            </button>
           </div>
         </div>
       </section>
@@ -84,27 +120,56 @@ export function mountFilterTab(container) {
   });
 
   /* --- blacklist --- */
-  const blEl       = section.querySelector('#blacklist-list');
-  const blAddBtn   = section.querySelector('#blacklist-add');
-  const blLoadBtn  = section.querySelector('#blacklist-load-defaults');
+  const blEl     = section.querySelector('#blacklist-list');
+  const blAddBtn = section.querySelector('#blacklist-add');
 
   renderBlacklist(blEl);
+
+  /* --- column mask (declared first: the add button reveals through it) --- */
+  const maskWrap  = section.querySelector('.blacklist-mask');
+  const revealBtn = section.querySelector('#blacklist-reveal');
+
+  const syncReveal = () => {
+    const visible = maskWrap.dataset.secretVisible === 'true';
+    const label = t(visible ? 'secret.hide' : 'secret.show');
+    revealBtn.title = label;
+    revealBtn.setAttribute('aria-label', label);
+    revealBtn.setAttribute('aria-pressed', String(visible));
+  };
+  const setMasked = (masked) => {
+    maskWrap.dataset.secretVisible = masked ? 'false' : 'true';
+    syncReveal();
+  };
+
+  syncReveal();
+  subscribe('uiLang', syncReveal);
+  revealBtn.addEventListener('click', () => {
+    setMasked(maskWrap.dataset.secretVisible === 'true');
+  });
+
+  /* Going live re-hides the column. The failure this mask exists for is the
+     panel being on camera, and the likeliest way there is revealing the words
+     to edit one and forgetting to hide them again before hitting start. */
+  document.getElementById('btn-start')?.addEventListener('click', () => setMasked(true));
 
   blAddBtn.addEventListener('click', () => {
     settings.blacklistRules = [...(settings.blacklistRules || []), ''];
     renderBlacklist(blEl);
+    /* Reveal on add — but never while recording. Off air, the row that was just
+       created is empty and about to be typed into, and a field the user cannot
+       read is worse than the word showing for the seconds it takes to enter it.
+       On air, that same convenience would uncover the whole column at the exact
+       moment the panel must not be readable, so there it stays masked and the
+       user has to reveal it deliberately. */
+    if (!isRecording()) setMasked(false);
     blEl.lastElementChild?.querySelector('.filter-source')?.focus();
   });
+}
 
-  blLoadBtn.addEventListener('click', () => {
-    /* Append defaults that aren't already present (case-insensitive). */
-    const current = (settings.blacklistRules || []).filter(w => typeof w === 'string');
-    const seen = new Set(current.map(w => w.trim().toLowerCase()).filter(Boolean));
-    const added = DEFAULT_BLACKLIST.filter(w => !seen.has(w.toLowerCase()));
-    if (added.length === 0) return;
-    settings.blacklistRules = [...current, ...added];
-    renderBlacklist(blEl);
-  });
+/* Same test controller.js uses: while speech.js is running it enables the stop
+   button, and disables it again on stop. */
+function isRecording() {
+  return !document.getElementById('btn-stop')?.disabled;
 }
 
 function renderBlacklist(listEl) {

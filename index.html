@@ -208,6 +208,33 @@
     </div>
   </dialog>
 
+  <!-- Quick colours for the in-page palette (js/color-picker.js reads these
+       through each input's `list`). Declared here so the sets can be edited
+       without touching code; the subtitle set is the one carried over from the
+       project this app's palette is modelled on. -->
+  <datalist id="palette-text">
+    <option value="#FFFFFF"></option>
+    <option value="#000000"></option>
+    <option value="#4B8CE2"></option>
+    <option value="#FF80FF"></option>
+    <option value="#CB9947"></option>
+    <option value="#FF6264"></option>
+    <option value="#988952"></option>
+    <option value="#FF0000"></option>
+    <option value="#FF6C6C"></option>
+    <option value="#BE78FF"></option>
+  </datalist>
+
+  <!-- Chroma keys plus the two neutrals: this one fills the whole page, so the
+       useful values are the ones a key filter can knock out cleanly. -->
+  <datalist id="palette-bg">
+    <option value="#00FF00"></option>
+    <option value="#0000FF"></option>
+    <option value="#FF00FF"></option>
+    <option value="#000000"></option>
+    <option value="#FFFFFF"></option>
+  </datalist>
+
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

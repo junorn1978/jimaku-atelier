@@ -290,6 +290,22 @@ export async function translateManualText(text, targetLangId) {
   });
 }
 
+/**
+ * Wipe both target slots mid-session. Called by speech.js when recognition has
+ * been idle long enough that the subtitles are stale, and on stop.
+ *
+ * The epoch bump is what keeps the display empty afterwards: a translation that
+ * was still in flight when this ran is stale by definition — anything slower
+ * than the idle window has missed its moment — and without the bump it would
+ * land in the cleared display as a lone translation with no source line above
+ * it. The queue is left alone (unlike resetController): those tasks drop
+ * themselves on the epoch check when they run.
+ */
+export function clearTargets() {
+  sessionEpoch++;
+  TARGET_KEYS.forEach(clearTarget);
+}
+
 /* On stop: drop pending work and clear display buffers. Called by speech.js. */
 export function resetController() {
   sessionEpoch++;
