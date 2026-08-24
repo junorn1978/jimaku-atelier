@@ -25,6 +25,7 @@ import { publishSource } from './obs.js';
 import { decorateSource } from './source-decoration.js';
 import { normalizeRecognised } from './normalize-ja.js';
 import { isChrome } from './env.js';
+import { keepTailVisible } from './subtitle-render.js';
 
 /* ============ environment ============ */
 
@@ -101,7 +102,7 @@ function updateSource(text, pending = false) {
   el.textContent = pending ? decorateSource(text) : text;
   _lastSource = text;
   _lastSourcePending = pending;
-  keepSourceTailVisible(el);
+  keepTailVisible(el);
   publishSource(text, pending);  /* raw — obs.js applies the symbols for the overlay */
 }
 
@@ -123,7 +124,7 @@ function redecorateSource() {
   const el = getSourceEl();
   if (el && _lastSource) {
     el.textContent = _lastSourcePending ? decorateSource(_lastSource) : _lastSource;
-    keepSourceTailVisible(el);
+    keepTailVisible(el);
   }
 }
 
@@ -133,16 +134,6 @@ function clearSource() {
   _lastSource = '';
   _lastSourcePending = false;
   publishSource('');
-}
-
-/* In single-line mode the source line is clipped to one line height; keep the
-   newest line visible by scrolling to the bottom (no-op when not clipped). */
-function keepSourceTailVisible(el) {
-  if (el.scrollHeight > el.clientHeight) {
-    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
-  } else {
-    el.scrollTop = 0;
-  }
 }
 
 /* ============ idle clear ============ */

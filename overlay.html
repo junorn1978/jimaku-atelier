@@ -95,7 +95,13 @@
     <div id="status-msg"></div>
   </div>
 
-  <script>
+  <!-- type="module" so the shared subtitle motion can be imported instead of
+       copied. Needs Chrome 61+; OBS has shipped CEF 103 or newer since OBS 28.
+       Module scripts are deferred, which is fine — every element it touches is
+       above it in the document. -->
+  <script type="module">
+    import { keepTailVisible, setupCinemaScroll } from './js/subtitle-render.js';
+
     /* Hash params: #url=...&pwd=...&mode=all|source|target1|target2 */
     const hashParams  = new URLSearchParams(location.hash.replace(/^#/, ''));
     const queryParams = new URLSearchParams(location.search);
@@ -122,50 +128,16 @@
 
     function setStatus(text) { statusEl.textContent = text || ''; }
 
-    // === translation cinema scroll (shrink / 2-line mode); mirrors preview ===
-    const SCROLL_READ_DELAY_MS    = 3000;
-    const SCROLL_STEP_INTERVAL_MS = 2000;
-    const SCROLL_STEP_ANIM_MS     = 800;
+    /* Translation cinema scroll. The behaviour itself is in subtitle-render.js,
+       shared with the in-app preview so both move identically; this side only
+       supplies where the current overflow mode comes from — here, the last
+       broadcast payload rather than a settings store. */
     let lastOverflow = 'normal';
+    const isShrink = () => lastOverflow === 'shrink';
 
-    function smoothScrollToSlowly(el, to, duration) {
-      const start = el.scrollTop;
-      const change = to - start;
-      const t0 = performance.now();
-      const tick = (now) => {
-        const t = Math.min(1, (now - t0) / duration);
-        el.scrollTop = start + change * (t * (2 - t));
-        if (t < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    }
-
-    function setupCinemaScroll(el) {
-      let session = null;
-      const step = () => {
-        if (lastOverflow !== 'shrink') return;
-        const cs = getComputedStyle(el);
-        const lineH = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.3;
-        const max = el.scrollHeight - el.clientHeight;
-        if (el.scrollTop < max - 1) {
-          smoothScrollToSlowly(el, Math.min(el.scrollTop + lineH, max), SCROLL_STEP_ANIM_MS);
-          session = setTimeout(step, SCROLL_STEP_INTERVAL_MS);
-        }
-      };
-      const reeval = () => {
-        clearTimeout(session);
-        session = null;
-        if (lastOverflow === 'shrink' && el.scrollHeight > el.clientHeight) {
-          session = setTimeout(step, SCROLL_READ_DELAY_MS);
-        } else {
-          el.scrollTop = 0;
-        }
-      };
-      new MutationObserver(reeval).observe(el, { childList: true, characterData: true, subtree: true });
-      return reeval;
-    }
-
-    const targetReevals = [t1El, t2El].map(setupCinemaScroll);
+    /* Arrow, not a bare reference: .map() passes (element, index, array), so
+       passing setupCinemaScroll directly would hand it the index as isShrink. */
+    const targetReevals = [t1El, t2El].map(el => setupCinemaScroll(el, isShrink));
 
     /* OBS WebSocket v5 auth = base64(sha256(base64(sha256(pwd+salt))+challenge)) */
     function toBase64(bytes) {
@@ -287,11 +259,7 @@
           applyStyle(t2El,     data.styles?.target2);
 
           /* In single-line mode keep the latest line of the source in view. */
-          if (sourceEl.scrollHeight > sourceEl.clientHeight) {
-            sourceEl.scrollTo({ top: sourceEl.scrollHeight, behavior: 'smooth' });
-          } else {
-            sourceEl.scrollTop = 0;
-          }
+          keepTailVisible(sourceEl);
         }
       };
 
