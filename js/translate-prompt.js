@@ -4,19 +4,22 @@
  * An alternative to the gtx/link engines, routed from controller.js when
  * settings.translationMode === 'prompt'.
  *
- * Kept as a reference implementation rather than as a practical engine: a single
- * line costs ~800ms per target language on top of a ~17s one-off model load, and
- * target languages outside the API's supported set produce visibly wrong output.
- * See the note on buildCreateOpts() below.
+ * Kept as a reference implementation rather than as a practical engine — but
+ * read that as "not shown to be usable" rather than "shown to be unusable".
+ * Two things hold it back, and neither has been characterised properly.
  *
- * Those figures were re-measured on Chrome 151 (2026-08-24) and are unchanged
- * from Chrome 150, but they are a best case rather than a typical one. Inference
- * leans heavily on the GPU, so the engine needs capable hardware to perform at
- * all and degrades steeply without it — and it has to share that GPU with
- * whatever else is running, which for this app usually means OBS encoding a live
- * stream. What any given user sees therefore depends both on their machine and
- * on what is competing with it. Read ~800ms as the ceiling this API offers, and
- * note that even the ceiling is slow for live subtitles.
+ * Speed. On Chrome 151 (2026-08-24, unchanged from 150) a single line cost
+ * ~800ms per target language on top of a ~17s one-off model load. Inference
+ * leans heavily on the GPU and has to share it with whatever else is running,
+ * which for this app means OBS encoding a live stream; on a low-power machine
+ * with integrated graphics the same work takes tens of seconds and is simply
+ * unusable. Do not generalise those numbers in either direction — the machine
+ * they came from is already several generations behind what a streamer would
+ * typically run today, and current mainstream hardware has not been measured.
+ *
+ * Chinese output quality. Visibly weak: mixed scripts, invented proper nouns.
+ * The cause is genuinely unknown — see the note on buildCreateOpts() below, and
+ * do not attribute it to the 'en' pin there, which is not what it does.
  *
  * Design:
  *   - Availability is binary: only 'available' is usable. We never trigger the
@@ -81,15 +84,27 @@ export function isPromptSupported() {
     typeof self.LanguageModel?.create === 'function';
 }
 
-/* expectedInputs/expectedOutputs are pinned to 'en' on purpose. The API accepts
-   only [de, en, es, fr, ja] — notably NOT zh. Declaring a Chinese output makes
-   availability() return 'unavailable' outright ("The requested language options
-   are not supported"), which would kill the engine for this app's main language
-   pair. Declaring 'en' keeps it alive and does not change what the model
-   produces; the real target is carried by the prompt text. Treat any target
-   outside that set as working incidentally rather than supported — Chinese
-   output in particular mixes scripts and invents proper nouns, which is the
-   cost of the model never being told what language to emit.
+/* expectedInputs/expectedOutputs are pinned to 'en' because the API accepts only
+   [de, en, es, fr, ja]. Declaring a Chinese output makes availability() return
+   'unavailable' outright ("The requested language options are not supported"),
+   so the session could not be created at all for this app's main language pair.
+   Pinning 'en' keeps it creatable.
+
+   What the pin does NOT do is force English output. Per the spec these fields
+   are a declaration, not a constraint: "specifying a given language in
+   expectedOutputs does not actually influence the language model's output […]
+   what output language the model responds in will be governed by the language
+   model's own decisions." What they do influence is setup — the implementation
+   uses them to download supporting material (fine-tunings, safety models) and to
+   fail creation early. So the real target language stays where it always was, in
+   the prompt text, and the pin costs nothing in output terms.
+
+   Chinese output is nonetheless visibly weak — mixed scripts, invented proper
+   nouns. Do NOT record that as a consequence of the pin; the cause has not been
+   isolated. Candidates, untested: Gemini Nano's own limited Chinese ability; the
+   absence of Chinese supporting material, which by the paragraph above is a real
+   quality factor but cannot be requested while zh is rejected; and simply the
+   hardware. Any of the three, or all of them.
 
    Re-verified on Chrome 151 (2026-08-24): zh and zh-Hant both still answer
    'unavailable'. Chrome enumerates the accepted set in the rejection it logs
