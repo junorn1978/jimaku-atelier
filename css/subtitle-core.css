@@ -1,0 +1,50 @@
+/**
+ * subtitle-core.css
+ *
+ * The subtitle rendering contract, shared by the two places that draw subtitles:
+ * the in-app preview (index.html + css/styles.css) and the OBS browser source
+ * (overlay.html). Both load this file from the same local server, so there is
+ * exactly one definition of the numbers below.
+ *
+ * Why this file exists
+ * --------------------
+ * The clip heights are not free-standing values — they are multiples of the
+ * line height, and the "show only the newest line" and "show two lines" modes
+ * are only correct while that relationship holds. Those numbers used to be
+ * written out four times (twice in styles.css, twice in overlay.html), so
+ * changing the line height silently broke the clipping: text would be cut
+ * mid-glyph, or a second line would peek through the bottom of a one-line box.
+ * Nothing failed loudly; it just looked wrong on stream.
+ *
+ * Deriving the clips from the line height makes that breakage impossible.
+ * Change --sub-line-height and both clips follow.
+ *
+ * Scope
+ * -----
+ * Values only, deliberately. The selectors stay in each side's own stylesheet
+ * because the two documents are structured differently: the preview drives its
+ * modes from data attributes on .subtitle-display, while the overlay toggles
+ * classes on the line elements from the WebSocket payload. Those are two sound
+ * wirings for two different data sources, and forcing them into one shape would
+ * drag the overlay into the app's store/attribute conventions for no gain.
+ *
+ * If a future change does unify the selectors, the rules can move here too —
+ * but keep this file free of anything that assumes one document's structure.
+ *
+ * Note for the overlay: OBS caches browser sources. After editing this file,
+ * refresh the source's cache in OBS or the old values stay on screen.
+ */
+
+:root {
+  /* Unitless on purpose: it inherits as a ratio, so a line keeps its own
+     proportions when the user changes font size per subtitle slot. */
+  --sub-line-height: 1.3;
+
+  /* One line — the source (STT) line in "newest line only" mode. JS scrolls the
+     element to its bottom so the last wrapped line is the visible one. */
+  --sub-clip-1line: calc(var(--sub-line-height) * 1em);
+
+  /* Two lines — the target lines in "shrink" mode. JS cinema-scrolls through
+     anything taller than this. */
+  --sub-clip-2line: calc(var(--sub-line-height) * 2em);
+}

@@ -323,7 +323,7 @@
         text-align: var(--sub-align);
         font-family: var(--font-subtitle);
         width: 100%;
-        line-height: 1.3;
+        line-height: var(--sub-line-height);  /* css/subtitle-core.css */
         word-break: break-word;
         /* webkit text stroke produces sharper, OBS-friendly outlines */
         paint-order: stroke fill;
@@ -2210,17 +2210,18 @@
   .subtitle-display.is-recording .subtitle-line:empty::before { content: none; }
 
   /* subtitle overflow strategies, driven by [data-sub-overflow] on .subtitle-display.
-     Mirrors overlay.html so the preview matches OBS. */
+     Mirrors overlay.html so the preview matches OBS; the clip heights themselves
+     come from css/subtitle-core.css, which both sides load. */
   [data-sub-overflow="shrink"] .target-1,
   [data-sub-overflow="shrink"] .target-2 {
-    height: 2.6em;     /* two lines (line-height: 1.3) */
+    height: var(--sub-clip-2line);
     overflow: hidden;  /* JS cinema-scrolls through anything beyond 2 lines */
   }
 
   /* source (STT) limited to one visible line: clip to a single line height and
      let JS scroll to the bottom so the latest line stays in view. */
   [data-sub-source-single="true"] .source {
-    height: 1.3em;
+    height: var(--sub-clip-1line);
     overflow: hidden;
   }
 
