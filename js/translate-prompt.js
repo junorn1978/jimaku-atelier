@@ -4,10 +4,17 @@
  * An alternative to the gtx/link engines, routed from controller.js when
  * settings.translationMode === 'prompt'.
  *
- * Kept as a reference implementation rather than as a practical engine: measured
- * on Chrome 150, a single line costs ~800ms per target language on top of a
- * ~17s one-off model load, and target languages outside the API's supported set
- * produce visibly wrong output. See the note on buildCreateOpts() below.
+ * Kept as a reference implementation rather than as a practical engine: a single
+ * line costs ~800ms per target language on top of a ~17s one-off model load, and
+ * target languages outside the API's supported set produce visibly wrong output.
+ * See the note on buildCreateOpts() below.
+ *
+ * Those figures were re-measured on Chrome 151 (2026-08-24) and are unchanged
+ * from Chrome 150. They come from a low-power laptop (8th-gen Intel U-series,
+ * integrated graphics), so the load time in particular should be read as an
+ * upper bound — better hardware will do noticeably better. The ~800ms per line
+ * is what disqualifies it for live subtitles, and that one is inference cost per
+ * request rather than a one-off, so it scales down less forgivingly.
  *
  * Design:
  *   - Availability is binary: only 'available' is usable. We never trigger the
@@ -72,7 +79,7 @@ export function isPromptSupported() {
     typeof self.LanguageModel?.create === 'function';
 }
 
-/* expectedInputs/expectedOutputs are pinned to 'en' on purpose. Chrome 149+ also
+/* expectedInputs/expectedOutputs are pinned to 'en' on purpose. Chrome also
    accepts ja/es/de/fr here, but NOT zh — declaring a Chinese output makes
    availability() return 'unavailable' outright ("The requested language options
    are not supported"), which would kill the engine for this app's main language
@@ -80,6 +87,10 @@ export function isPromptSupported() {
    produces; the real target is carried by the prompt text. Treat any target
    outside en/ja/es/de/fr as working incidentally rather than supported —
    Chinese output in particular mixes scripts and invents proper nouns.
+
+   NOT re-verified since Chrome 149 — unlike the timings above, this one has not
+   been re-probed on 151. If Chinese output is ever wanted here, retest whether
+   declaring zh still forces 'unavailable' before assuming this still holds.
 
    temperature/topK are deliberately absent: on the web they need an origin
    trial (LanguageModel.params() is undefined without one) and are otherwise

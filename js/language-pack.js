@@ -17,14 +17,16 @@ import { isChrome } from './env.js';
 
 const SR = window.SpeechRecognition;
 
-/* en-US is SODA's base model: as of Chrome 149, installing any on-device
-   language pack also pulls en-US as a dependency, and recognition can't be used
-   until en-US has finished downloading too. So listing en-US here doesn't change
-   the outcome — it just downloads it up front in the same install() call rather
-   than letting it arrive implicitly. Kept explicit so the intent is visible and
-   the wait is front-loaded. Set to null to drop the explicit entry (en-US will
-   still be fetched alongside the target language). Re-verify on future Chrome
-   versions in case the implicit dependency changes. */
+/* en-US is SODA's base model: installing any on-device language pack also pulls
+   en-US as a dependency, and recognition can't be used until en-US has finished
+   downloading too. So listing en-US here doesn't change the outcome — it just
+   downloads it up front in the same install() call rather than letting it
+   arrive implicitly. Kept explicit so the intent is visible and the wait is
+   front-loaded. Set to null to drop the explicit entry (en-US will still be
+   fetched alongside the target language).
+
+   Confirmed on Chrome 151 (2026-08-24); first observed on 149. Re-verify on
+   future Chrome versions in case the implicit dependency changes. */
 const PRIMER_LANG = 'en-US';
 
 /* install() can resolve before the download actually finishes, so we poll
@@ -32,13 +34,17 @@ const PRIMER_LANG = 'en-US';
 const INSTALL_POLL_INTERVAL_MS = 1500;
 const INSTALL_POLL_TIMEOUT_MS  = 60000;
 
-/* On-device model quality floors we accept, best first (Chrome 150+). quality
-   is a "meets-or-exceeds" floor in the spec, so we probe the best floor and
-   fall back to a lower one when no model satisfies it. As of Chrome 150 only
-   'command' packs are shipped, so this resolves to 'command' today and will
-   pick up 'dictation' automatically once those packs ship — no code change.
-   Older Chrome / Edge ignore the unknown `quality` member, so it stays a no-op
-   there. The default 'command' floor in available()/install() = lowest bar. */
+/* On-device model quality floors we accept, best first. quality is a
+   "meets-or-exceeds" floor in the spec, so we probe the best floor and fall
+   back to a lower one when no model satisfies it. Only 'command' packs are
+   shipped, so this resolves to 'command' today and will pick up 'dictation'
+   automatically once those packs ship — no code change. Browsers that predate
+   the member (and Edge) ignore the unknown `quality`, so it stays a no-op
+   there. The default 'command' floor in available()/install() = lowest bar.
+
+   'dictation' still answered 'unavailable' for every language probed on
+   Chrome 151 (2026-08-24); same on 150. Note 'standard' is not a legal value
+   and throws TypeError. */
 const QUALITY_PREFERENCE = ['dictation', 'command'];
 
 let _button   = null;

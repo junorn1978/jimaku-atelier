@@ -4,9 +4,17 @@
  * language, updates the source subtitle, and forwards finalised chunks to
  * the translation controller.
  *
- * The module is intentionally provider-shaped — additional engines such as
- * Deepgram or Soniox would slot in beside the Web Speech adapter without
- * touching main.js. For now only Web Speech is wired.
+ * This is a Web Speech implementation, not a provider-agnostic one — do not
+ * read the layering as an adapter boundary, because there isn't one. The
+ * recogniser is constructed directly here, and the display logic is shaped
+ * around what Chrome's on-device (SODA) model actually does: the prefix hold in
+ * updateSource(), the rule that a final is never rendered, and the startup
+ * watchdog all encode its observed behaviour rather than anything general.
+ *
+ * Adding a second engine therefore means extracting that boundary first —
+ * roughly { start, stop, onPartial, onFinal }, with the filter, idle clear and
+ * source-display logic staying above it. Budget for that refactor; nothing here
+ * is a drop-in replacement point today.
  */
 
 import { isDebugEnabled } from './logger.js';
@@ -32,13 +40,15 @@ let previousText = '';
 
 /* Diagnostic only — every call below is a no-op unless debug logging is on.
    Recognition lifecycle events are reported relative to the moment start() was
-   called, so one session reads as a single timeline. Two questions this is
-   meant to answer:
-     1. How long does the on-device model take to produce its first results?
-        The 2000ms onsoundstart guard below assumes "fast", and that assumption
-        dates from the previous SODA model.
-     2. When the model dies mid-session, does it emit *any* event at all? If
-        nothing fires, onend never runs and autoRestart never gets a chance. */
+   called, so one session reads as a single timeline.
+
+   It was added to time the on-device model's first result, and that question is
+   settled: a healthy model delivers it ~1ms after onsoundstart, which is the
+   figure the startup watchdog below is calibrated against.
+
+   What it is still here for: when the model dies mid-session, does it emit
+   *any* event at all? If nothing fires, onend never runs and autoRestart never
+   gets a chance. Unanswered — the failure has not been caught in a trace yet. */
 let sessionStart = 0;
 let resultCount  = 0;
 
