@@ -10,10 +10,13 @@
  * See the note on buildCreateOpts() below.
  *
  * Those figures were re-measured on Chrome 151 (2026-08-24) and are unchanged
- * from Chrome 150. They move with the machine, so read them as indicative
- * rather than exact. What disqualifies the engine for live subtitles is the
- * ~800ms per line: that is inference cost paid on every request, not a one-off
- * like the model load, so faster hardware shifts it far less than the load time.
+ * from Chrome 150, but they are a best case rather than a typical one. Inference
+ * leans heavily on the GPU, so the engine needs capable hardware to perform at
+ * all and degrades steeply without it — and it has to share that GPU with
+ * whatever else is running, which for this app usually means OBS encoding a live
+ * stream. What any given user sees therefore depends both on their machine and
+ * on what is competing with it. Read ~800ms as the ceiling this API offers, and
+ * note that even the ceiling is slow for live subtitles.
  *
  * Design:
  *   - Availability is binary: only 'available' is usable. We never trigger the
