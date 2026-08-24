@@ -10,11 +10,10 @@
  * See the note on buildCreateOpts() below.
  *
  * Those figures were re-measured on Chrome 151 (2026-08-24) and are unchanged
- * from Chrome 150. They come from a low-power laptop (8th-gen Intel U-series,
- * integrated graphics), so the load time in particular should be read as an
- * upper bound — better hardware will do noticeably better. The ~800ms per line
- * is what disqualifies it for live subtitles, and that one is inference cost per
- * request rather than a one-off, so it scales down less forgivingly.
+ * from Chrome 150. They move with the machine, so read them as indicative
+ * rather than exact. What disqualifies the engine for live subtitles is the
+ * ~800ms per line: that is inference cost paid on every request, not a one-off
+ * like the model load, so faster hardware shifts it far less than the load time.
  *
  * Design:
  *   - Availability is binary: only 'available' is usable. We never trigger the
@@ -79,18 +78,21 @@ export function isPromptSupported() {
     typeof self.LanguageModel?.create === 'function';
 }
 
-/* expectedInputs/expectedOutputs are pinned to 'en' on purpose. Chrome also
-   accepts ja/es/de/fr here, but NOT zh — declaring a Chinese output makes
+/* expectedInputs/expectedOutputs are pinned to 'en' on purpose. The API accepts
+   only [de, en, es, fr, ja] — notably NOT zh. Declaring a Chinese output makes
    availability() return 'unavailable' outright ("The requested language options
    are not supported"), which would kill the engine for this app's main language
    pair. Declaring 'en' keeps it alive and does not change what the model
    produces; the real target is carried by the prompt text. Treat any target
-   outside en/ja/es/de/fr as working incidentally rather than supported —
-   Chinese output in particular mixes scripts and invents proper nouns.
+   outside that set as working incidentally rather than supported — Chinese
+   output in particular mixes scripts and invents proper nouns, which is the
+   cost of the model never being told what language to emit.
 
-   NOT re-verified since Chrome 149 — unlike the timings above, this one has not
-   been re-probed on 151. If Chinese output is ever wanted here, retest whether
-   declaring zh still forces 'unavailable' before assuming this still holds.
+   Re-verified on Chrome 151 (2026-08-24): zh and zh-Hant both still answer
+   'unavailable'. Chrome enumerates the accepted set in the rejection it logs
+   ("Please only specify supported language codes: [de, en, es, fr, ja]"), so
+   that message — not this comment — is the source of truth; re-probe
+   availability() to see whether zh has since been added.
 
    temperature/topK are deliberately absent: on the web they need an origin
    trial (LanguageModel.params() is undefined without one) and are otherwise
