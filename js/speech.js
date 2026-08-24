@@ -241,20 +241,24 @@ function setupRecognition() {
   if (!SpeechRecognitionImpl) return null;
   const rec = new SpeechRecognitionImpl();
 
-  let silenceThreshold = 1000;
   let silenceTimer     = null;
   let finalTranscript  = '';
   let interimTranscript = '';
 
-  /* Chrome-only. Edge runs per-utterance now, so it ends each session at its
-     own endpoint and a second guard here would only race that. */
+  /* Continuous sessions only — this is the backstop for a session that never
+     ends on its own. A per-utterance session already closes at the engine's own
+     endpoint, so a second guard here would only race it, and that holds equally
+     for Edge and for Chrome on a cloud recogniser: both run per-utterance now.
+     The test used to read isChrome, from when Chrome was always continuous;
+     rec.continuous is the condition it was actually describing. */
+  const SILENCE_TIMEOUT = 10000;
+
   const resetSilenceTimer = () => {
-    if (!isChrome) return;
+    if (!rec.continuous) return;
     if (silenceTimer) clearTimeout(silenceTimer);
-    const armed = silenceThreshold;  /* capture — the shared value may change before we fire */
-    markSession(`silence armed ${armed}ms`);
+    markSession(`silence armed ${SILENCE_TIMEOUT}ms`);
     silenceTimer = setTimeout(() => {
-      markSession(`silence FIRED after ${armed}ms interim="${interimTranscript}"`);
+      markSession(`silence FIRED after ${SILENCE_TIMEOUT}ms interim="${interimTranscript}"`);
       if (interimTranscript.trim()) {
         const text = filterSource(
           interimTranscript.replace(/[、。？\s]+/g, ' ').trim(),
@@ -270,7 +274,7 @@ function setupRecognition() {
         }
       }
       rec.abort();
-    }, silenceThreshold);
+    }, SILENCE_TIMEOUT);
   };
 
   /* Diagnostic-only lifecycle handlers: no behaviour, just the timeline. */
@@ -297,7 +301,10 @@ function setupRecognition() {
      that one needs the pack deleted and reinstalled (with Chrome's processes
      killed first, or the files are locked). Firing aborts silently: with no
      result yet there is nothing to flush, and flushing a fragment would send
-     half a word off to be translated. */
+     half a word off to be translated.
+
+     Continuous implies an on-device model, which implies Chrome (see
+     decideProcessLocally), so rec.continuous alone gates this. */
   const STARTUP_TIMEOUT = 3000;
   let startupTimer = null;
 
@@ -307,7 +314,7 @@ function setupRecognition() {
 
   rec.onsoundstart = () => {
     markSession('onsoundstart');
-    if (!isChrome || !rec.continuous || resultCount > 0) return;
+    if (!rec.continuous || resultCount > 0) return;
     clearStartupTimer();
     markSession(`startup watchdog armed ${STARTUP_TIMEOUT}ms`);
     startupTimer = setTimeout(() => {
@@ -322,8 +329,6 @@ function setupRecognition() {
        model takes to say anything at all after onsoundstart. */
     if (resultCount <= 3) markSession(`onresult #${resultCount}`);
     clearStartupTimer();
-
-    silenceThreshold = rec.continuous ? 10000 : 3000;
 
     interimTranscript = '';
     finalTranscript   = '';

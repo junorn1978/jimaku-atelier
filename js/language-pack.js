@@ -169,8 +169,20 @@ async function refreshButton(langId) {
     return setState('lang.offline.btn.unsupported', true);
   }
 
-  /* Chrome's on-device model for Traditional Chinese (zh-TW) is still
-     unstable, so the pack is intentionally withheld for now. */
+  /* Chrome ships no Chinese on-device (SODA) model, so the pack is withheld and
+     zh-TW runs on the cloud recogniser instead. Verified twice — 2026-06-18 on
+     Chrome 149 and again 2026-08-24: install() resolves true, but available()
+     answers 'downloadable' forever for zh-TW / cmn-Hant-TW / zh-Hant-TW and
+     never flips to 'available' (plain 'zh' answers 'unavailable', 'dictation'
+     quality is 'unavailable' throughout). en-US behaves correctly in the same
+     session, so the on-device machinery is fine — the model simply isn't there.
+     It is not a language-code mismatch; every code behaves identically.
+
+     To re-test, delete this block and watch the debug log: if the pack installs
+     but the next session still reports processLocally:false, nothing has
+     changed. When it does become 'available', note that rec.lang may then need
+     separating from the translation langId so a code like cmn-Hant-TW never
+     reaches getLang(). */
   if (lang.id === 'zh-TW') {
     setInfo('');
     return setState('lang.offline.btn.unavailable', true);
@@ -223,9 +235,17 @@ async function downloadPack(langId) {
     if (isDebugEnabled()) console.error('[language-pack] install failed:', err);
   }
 
-  /* install() can resolve/throw before the download completes — confirm via
-     available() and keep polling until the selected model is actually ready. */
-  const installed = ok || await waitUntilInstalled(lang.id);
+  /* available() is the only trustworthy signal. install() resolving true means
+     the request was accepted, NOT that the model is usable: for a language
+     Chrome has no model for it resolves true and available() still answers
+     'downloadable' forever (see the zh-TW note in refreshButton). Trusting `ok`
+     here reported "installed" for a pack that recognition then refused to use
+     with processLocally, so the button lied until the next reload. Always poll —
+     a genuine install satisfies the first probe and returns immediately. */
+  const installed = await waitUntilInstalled(lang.id);
+  if (isDebugEnabled() && ok && !installed) {
+    console.warn('[language-pack] install() resolved true but the model never became available:', lang.id);
+  }
   if (installed) {
     setState('lang.offline.btn.ready', true);
     setInfo('lang.offline.info.installed');
