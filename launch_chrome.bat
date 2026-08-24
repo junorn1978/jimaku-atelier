@@ -22,7 +22,6 @@ start chrome.exe "http://localhost:%PORT%/index.html" --window-size=1280,720 ^
 --disable-features=CalculateNativeWinOcclusion ^
 --user-data-dir="%translate_DIR%" ^
 --disable-extensions ^
---enable-features=AIPromptAPI ^
 --disable-default-apps
 
 exit /b
