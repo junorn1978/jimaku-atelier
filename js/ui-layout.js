@@ -32,6 +32,22 @@ const FOREGROUND = '.control-card, .manual-translate-panel, dialog, .color-popov
 /** Pointer travel (px) above which a click is treated as a drag, not a tap. */
 const DRAG_SLOP = 6;
 
+/* Anything open that light-dismisses on an outside click: the colour palette,
+   and every [popover] in the tabs (URL examples, the offline pack's help and
+   its download result). A click that closes one of these was aimed at closing
+   it, not at the panel behind it.
+   :popover-open is Chrome/Edge 114+, so every browser this app supports has
+   it — but a selector the engine cannot parse throws for the whole query, and
+   this runs on every press. Probe once rather than guarding each call. */
+const DISMISSIBLE = (() => {
+  try {
+    document.querySelector(':popover-open');
+    return '.color-popover.is-open, [popover]:popover-open';
+  } catch {
+    return '.color-popover.is-open';
+  }
+})();
+
 export function initLayoutToggles() {
   initPanelCollapse();
   initPanelLock();
@@ -54,28 +70,48 @@ function initPanelCollapse() {
   const isBackground = (node) =>
     node instanceof Element && !node.closest(FOREGROUND);
 
+  /* Press feedback. The press lands anywhere outside the card, so the card is
+     the only thing that can say what the press is about — it gives a little
+     under the pointer, the way a button does. Arming on pointerdown rather than
+     on the click is the point: feedback that waits for the release is feedback
+     that arrives after the decision.
+     Its absence carries the other half of the meaning. Nothing arms while the
+     gesture is locked, or while the click is only dismissing a popover, so a
+     dead press is the answer to "will this do anything?" — which is also what
+     makes the lock button legible without a label. */
+  let _card = null;
+  const setArmed = (on) => {
+    _card ??= document.querySelector('.control-card');
+    _card?.classList.toggle('is-arming', on);
+  };
+
   /* Where the press started matters as much as where it ended: a drag that
      begins on a slider inside the card and finishes over the preview is not a
      background click, and neither is a text selection swept across the
      subtitles. Both are ruled out by requiring one near-stationary press and
-     release, both on the background.
-     The colour popover is the other case worth remembering from the press: it
-     closes on an outside click, and that click is aimed at dismissing it, not
-     at the panel — collapsing the whole card on the way out of picking a
-     colour is not what the user asked for. */
+     release, both on the background. */
   let start = null;
 
   document.addEventListener('pointerdown', (e) => {
-    start = isBackground(e.target)
-      ? { x: e.clientX, y: e.clientY, dismissing: !!document.querySelector('.color-popover.is-open') }
-      : null;
+    if (!isBackground(e.target)) { start = null; return; }
+    /* Read once, at the press: by the time the click arrives the popover has
+       already light-dismissed itself and the evidence is gone. */
+    const inert = settings.panelLocked === true || !!document.querySelector(DISMISSIBLE);
+    start = { x: e.clientX, y: e.clientY, inert };
+    setArmed(!inert);
   });
+
+  document.addEventListener('pointerup',     () => setArmed(false));
+  document.addEventListener('pointercancel', () => setArmed(false));
+  /* A press dragged out of the window and released there never reports a
+     pointerup here, and the card would stay pressed. */
+  window.addEventListener('blur', () => { start = null; setArmed(false); });
 
   document.addEventListener('click', (e) => {
     const from = start;
     start = null;
-    if (settings.panelLocked === true) return;
-    if (!from || from.dismissing || !isBackground(e.target)) return;
+    setArmed(false);
+    if (!from || from.inert || !isBackground(e.target)) return;
     if (Math.hypot(e.clientX - from.x, e.clientY - from.y) > DRAG_SLOP) return;
     settings.panelCollapsed = !settings.panelCollapsed;
   });

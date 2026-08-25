@@ -8,9 +8,7 @@
 import { applyTo, t } from './i18n.js';
 import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
-
-/** Shown in the About section — the only place the version appears in the UI. */
-const APP_VERSION = 'v1.12.6';
+import { APP_VERSION } from './app-meta.js';
 
 export function mountSettingsDialog(container) {
   if (!container) return;
@@ -108,8 +106,9 @@ export function mountSettingsDialog(container) {
       <dl class="about-list">
         <div>
           <dt data-i18n="settings.about.app">App</dt>
-          <!-- The toolbar has no room for a watermark, so the app's identity
-               and version live here. Bump APP_VERSION on release. -->
+          <!-- The full statement of what this is. The Languages tab carries the
+               same name and version as a signature in its corner; that one is a
+               watermark, this one is the record. -->
           <dd><span data-i18n="app.title">字幕アトリエ</span>
               <span class="about-version">${APP_VERSION}</span></dd>
         </div>

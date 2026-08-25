@@ -35,6 +35,7 @@ import { getAllLanguages } from './languages.js';
 import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { isChrome } from './env.js';
+import { APP_VERSION } from './app-meta.js';
 import { setupLanguagePackButton } from './language-pack.js';
 import { wireSecretInputs } from './ui-secret-input.js';
 import { isPromptSupported, getPromptAvailability,
@@ -271,6 +272,11 @@ export function mountLanguagesTab(container) {
             <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
             <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
 
+            <!-- The tab's bottom edge, and the only strip of it that is the
+                 same in every engine mode: .engine-detail reserves this height
+                 whether or not an engine fills it, so a footer pinned here does
+                 not move when the engine changes. -->
+            <div class="engine-footer">
             <div class="lang-url-row" id="custom-url-row" hidden>
               <!-- Masked by default: this URL usually carries an API key in its
                    path or query, and the panel is on screen while streaming.
@@ -311,6 +317,18 @@ export function mountLanguagesTab(container) {
                   <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
                 </div>
               </div>
+            </div>
+
+              <!-- Signature. Which version is running is a real question while
+                   two machines are being kept in sync, and answering it costs
+                   an open of the settings dialog today. It lives in the tab
+                   body rather than the toolbar so that .panel-collapsed takes
+                   it away with everything else: on screen while setting up,
+                   gone before the window is captured. -->
+              <p class="app-signature">
+                <span data-i18n="app.title">字幕アトリエ</span>
+                <span class="app-signature-version">${APP_VERSION}</span>
+              </p>
             </div>
           </div>
         </section>

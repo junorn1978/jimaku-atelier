@@ -454,6 +454,17 @@
     /* Keeps the tab body's corners inside the card's radius. */
     overflow: hidden;
 
+    /* Press feedback for the background gesture (js/ui-layout.js). The press
+       lands outside this card, so the card is the only thing that can say what
+       the press is about; it gives under the pointer the way a button does, at
+       a fraction of the depth because the surface is a hundred times the size.
+       Armed on pointerdown, and deliberately NOT armed while the gesture is
+       locked — a press that produces nothing is how the lock explains itself
+       without a label. */
+    transition: transform 120ms var(--ease-out);
+
+    &.is-arming { transform: scale(0.995); }
+
     /* The tab picker gets the same inset track as .speech-switch and
        .seg-switch beside it — three controls in one row should be one material
        language, not three. */
@@ -1018,17 +1029,54 @@
   /* URL field and its help trigger on one line. Stacked they cost two rows in
      the shortest tab in the app, and the button is the field's companion — it
      belongs beside it, not under it. */
+  /* The engine column's bottom edge. margin-top: auto pins it there through
+     every engine mode, because .engine-detail reserves the height either way —
+     which is what lets the signature stay in one place while the URL row comes
+     and goes beside it. */
+  .engine-footer {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
   .lang-url-row {
     display: flex;
     align-items: center;
     gap: var(--space-2);
     min-width: 0;
+    /* Capped, not full-width. A field's width is a claim about how much you are
+       expected to type, and this one was claiming the whole panel for values
+       like http://localhost:8083 — while masked, so the width was carrying no
+       information at all. 52ch clears a Cloud Run URL and a key:// form with
+       room to spare; anything longer scrolls inside the field, which is the
+       normal way a URL field behaves. Still shrinkable, so a narrow window
+       takes it from here rather than from the signature. */
+    flex: 0 1 52ch;
 
     .text-input { min-width: 0; }
 
     /* The URL sits in a masking wrapper, so the wrapper — not the input — is
        what has to take up the row's spare width. */
     .secret-input-wrap { flex: 1; }
+  }
+
+  /* Name and version, quiet enough to read as a mark on the work rather than a
+     label in the layout. Two tones: the name is the constant, the version is
+     the part that is actually consulted. */
+  .app-signature {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: var(--text-xs);
+    color: var(--color-text-faint);
+    white-space: nowrap;
+    user-select: none;
+
+    .app-signature-version {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      letter-spacing: 0.02em;
+    }
   }
 
   .url-examples-toggle {
@@ -2288,6 +2336,14 @@
     .tab-btn:active,
     .seg-switch button:active,
     .seg-switch label:active > span { transform: none; }
+
+    /* The press still has to answer "did that register?", so the card keeps the
+       feedback and trades the movement for a lift in its edge. */
+    .control-card { transition: border-color 120ms var(--ease-out); }
+    .control-card.is-arming {
+      transform: none;
+      border-color: var(--color-border-strong);
+    }
 
     /* Same treatment as the dialogs: keep the fade, drop the scale — and this
        utilities-layer rule also outranks the components-layer @starting-style
