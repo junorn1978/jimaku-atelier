@@ -568,6 +568,21 @@
     svg { width: 18px; height: 18px; }
   }
 
+  /* --- background-click lock (toolbar) ---
+     Two glyphs in one button: an open shackle while a background click still
+     collapses/restores the panel, a closed one once it doesn't. The .is-active
+     tint alone would be too quiet for a state you check mid-stream, so the icon
+     carries it. Both are in the same inline-grid cell, hence display, not
+     opacity. --- */
+  .lock-btn {
+    .lock-icon-closed { display: none; }
+
+    &.is-active {
+      .lock-icon-open   { display: none; }
+      .lock-icon-closed { display: block; }
+    }
+  }
+
   /* --- segmented switch (button-based for i18n switcher,
          radio-based for settings via <label><input><span></label>).
          An inset track; the active segment is a raised chip. --- */
@@ -2159,6 +2174,17 @@
      Both the control panel and the manual overlay are fully manual — nothing is
      auto-hidden while recognising. The header always stays so the toggles (and
      start/stop) remain reachable. */
+
+  /* Collapsing and restoring is a click on the background — anywhere outside
+     the control card (js/ui-layout.js). An invisible hit area needs an
+     affordance, and the cursor is the only one available here, so it follows
+     the lock: pointer while the gesture is live, back to normal once
+     .panel-locked makes the background inert. `auto` rather than `default` on
+     the foreground surfaces, so text fields keep their I-beam. */
+  .app-main { cursor: pointer; }
+  .panel-locked .app-main { cursor: auto; }
+  .control-card,
+  .manual-translate-panel { cursor: auto; }
 
   /* Collapsing drops only the tab body, so the preview grows while the card
      shrinks to its toolbar — start/stop stays where it was instead of

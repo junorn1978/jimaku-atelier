@@ -44,7 +44,8 @@
       <!-- One row: start/stop, the tab picker, global actions. All three are
            segmented pills, so they read as the same kind of control. The
            toolbar survives .panel-collapsed (only the tab body is hidden), so
-           start/stop stays reachable while the preview fills the window. -->
+           start/stop stays reachable while the preview fills the window — which
+           is also why the card is the one region a background click ignores. -->
       <div class="control-toolbar">
         <div class="speech-switch">
           <button type="button" class="btn primary" id="btn-start" disabled>
@@ -107,12 +108,20 @@
             </svg>
           </button>
 
-          <button type="button" class="icon-btn" id="toggle-panel" aria-pressed="false"
-                  data-i18n-title="header.action.togglePanel" title="コントロールパネルの表示／非表示">
-            <!-- panel-bottom icon -->
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="2"/>
-              <path d="M3 15h18"/>
+          <!-- The panel is opened and closed by clicking the background, so this
+               is the lock for that gesture, not a second way to toggle it. Both
+               icons ship; CSS shows the one matching .is-active. -->
+          <button type="button" class="icon-btn lock-btn" id="toggle-lock" aria-pressed="false"
+                  data-i18n-title="header.action.toggleLock" title="背景クリックでの開閉をロック">
+            <!-- lock-open icon (shown while the gesture is live) -->
+            <svg class="lock-icon-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 9.9-1"/>
+            </svg>
+            <!-- lock icon (shown while locked) -->
+            <svg class="lock-icon-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
           </button>
 

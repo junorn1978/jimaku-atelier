@@ -18,7 +18,12 @@ const _defaults = Object.freeze({
   uiLang:             'ja',
 
   // --- Layout (capture mode): collapse the bottom control panel so the preview fills the window ---
+  /* Collapsing is driven by clicking the background (anywhere outside the
+     control card). panelLocked freezes that gesture so a mis-click mid-stream
+     cannot drop the panel in or out of the capture; it does not freeze the
+     state itself, so the OBS tab's "enter capture mode" button still works. */
   panelCollapsed:     false,      // bottom settings/control panel
+  panelLocked:        false,      // ignore background clicks while true
   activeTab:          'languages', // active settings tab: 'languages' | 'style' | 'filter' | 'obs'
 
   // --- Language selection ---
