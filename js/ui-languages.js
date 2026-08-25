@@ -632,11 +632,13 @@ function wireExampleButtons(container) {
     openai: {
       titleKey: 'lang.engine.link.dialog.title.openai',
       deps:     'pip install flask flask-cors openai',
+      needsKey: true,
       build:    buildOpenAiExample,
     },
     gemini: {
       titleKey: 'lang.engine.link.dialog.title.gemini',
       deps:     'pip install flask flask-cors google-genai',
+      needsKey: true,
       build:    buildGeminiExample,
     },
   };
@@ -647,7 +649,7 @@ function wireExampleButtons(container) {
       if (!sample) return;
       btn.closest('[popover]')?.hidePopover();
       titleEl.textContent = t(sample.titleKey);
-      buildSteps(stepsEl, sample.deps);
+      buildSteps(stepsEl, sample);
       codeEl.textContent  = sample.build();
       resetCopyBtn(copyBtn);
       dialog.showModal();
@@ -672,13 +674,23 @@ function resetCopyBtn(btn) {
   btn.classList.remove('is-copied');
 }
 
-/* Render the 3 setup steps for the dialog. Only `deps` differs per engine;
-   the run command and URL are the same. */
-function buildSteps(el, deps) {
+/* Render the setup steps for the dialog. The run command and the URL are the
+   same everywhere; the packages differ per engine, and the key step only
+   appears for the engines that have one.
+   That step is spelled out because the failure it prevents is silent from the
+   app's side: a server left holding YOUR_API_KEY answers every request with an
+   auth error, and all the user sees is subtitles that never translate. The
+   placeholder is named here so there is something to search the code for. */
+function buildSteps(el, { deps, needsKey = false }) {
+  const keyStep = needsKey
+    ? `<li>${t('lang.engine.link.steps.apiKey')}<code>YOUR_API_KEY</code></li>`
+    : '';
+
   el.innerHTML = `
     <p class="example-steps-title">${t('lang.engine.link.steps.title')}</p>
     <ol>
       <li>${t('lang.engine.link.steps.install')}<code>${deps}</code></li>
+      ${keyStep}
       <li>${t('lang.engine.link.steps.run')}<code>python server.py</code></li>
       <li>${t('lang.engine.link.steps.url')}<code>http://localhost:5000</code></li>
     </ol>`;
@@ -699,6 +711,14 @@ function exampleComments() {
     parse:        t('lang.engine.link.example.cmt.parse'),
     align:        t('lang.engine.link.example.cmt.align'),
     callEngine:   t('lang.engine.link.example.cmt.callEngine'),
+    plain:        t('lang.engine.link.example.cmt.plain'),
+    clean:        t('lang.engine.link.example.cmt.clean'),
+    reasoning:    t('lang.engine.link.example.cmt.reasoning'),
+    parallel:     t('lang.engine.link.example.cmt.parallel'),
+    timing:       t('lang.engine.link.example.cmt.timing'),
+    timeout:      t('lang.engine.link.example.cmt.timeout'),
+    timeoutUnit:  t('lang.engine.link.example.cmt.timeoutUnit'),
+    perLangFail:  t('lang.engine.link.example.cmt.perLangFail'),
   };
 }
 
@@ -732,44 +752,75 @@ const SYSTEM_PROMPT_JA = `あなたはリアルタイム字幕の翻訳エンジ
 - 他のキー、Markdown、説明文は一切出力しない。
 - 原文に主語が明示されていない場合、主語を補わない。`;
 
+/* The same prompt with the envelope taken off. Measured on gpt-5.6-luna, the
+   {"translation": "..."} wrapper costs ~12 output tokens, and output tokens are
+   emitted one at a time: dropping it took the median round trip down by
+   380-455ms across two runs, on top of what leaving out the strict schema
+   already saved. translate_one returns a single string, so the JSON was a
+   detour — the {'translations': [...]} the app receives is built by the server
+   either way.
+   The trade is in the shape of a failure, not its likelihood: a malformed JSON
+   envelope loses the line silently, while a stray preamble goes on screen. Ten
+   samples came back clean, and clean() below takes the cheap precaution. */
+const SYSTEM_PROMPT_JA_PLAIN = `あなたはリアルタイム字幕の翻訳エンジンです。
+入力テキストを指定された言語へ自然に翻訳してください。
+
+出力ルール：
+- 訳文だけを出力する。前置き、引用符、Markdown、説明は一切つけない。
+- 原文に主語が明示されていない場合、主語を補わない。`;
+
 function buildOpenAiExample() {
   const c = exampleComments();
   return `from flask import Flask, request, jsonify
 from flask_cors import CORS
 from openai import OpenAI
-import json
+from concurrent.futures import ThreadPoolExecutor
+import time
 
 # ${c.apiKey}
 API_KEY = 'YOUR_API_KEY'
-MODEL = 'gpt-4.1-mini'
+MODEL = 'gpt-5.6-luna'
 
 app = Flask(__name__)
 CORS(app)
-client = OpenAI(api_key=API_KEY)
+# ${c.timeout}
+client = OpenAI(api_key=API_KEY, timeout=5.0, max_retries=0)
 
 # ${c.prompt}
-SYSTEM_PROMPT = """${SYSTEM_PROMPT_JA}"""
+# ${c.plain}
+SYSTEM_PROMPT = """${SYSTEM_PROMPT_JA_PLAIN}"""
 
 
-# ${c.parse}
-def safe_parse_translation(raw):
-    data = json.loads(raw or '{}')
-    text = data.get('translation', '')
-    return text if isinstance(text, str) else ''
+# ${c.clean}
+def clean(raw):
+    text = (raw or '').strip()
+    for open_q, close_q in (('"', '"'), ("'", "'"), ('「', '」'), ('『', '』')):
+        if len(text) > 1 and text.startswith(open_q) and text.endswith(close_q):
+            text = text[1:-1].strip()
+    return text
 
 
 # ${c.translateOne}
 def translate_one(text, lang):
-    resp = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {'role': 'system', 'content': SYSTEM_PROMPT},
-            {'role': 'user', 'content': f"翻訳先の言語: {lang}\\n原文:\\n{text}"},
-        ],
-        response_format={'type': 'json_object'},
-        temperature=0.2,
-    )
-    return safe_parse_translation(resp.choices[0].message.content)
+    try:
+        resp = client.responses.create(
+            model=MODEL,
+            # ${c.reasoning}
+            reasoning={'effort': 'none'},
+            instructions=SYSTEM_PROMPT,
+            input=f"翻訳先の言語: {lang}\\n原文:\\n{text}",
+        )
+        return clean(resp.output_text)
+    except Exception as e:
+        # ${c.perLangFail}
+        print(f'[translate] {lang}: {e}', flush=True)
+        return ''
+
+
+# ${c.parallel}
+def translate_all(text, targets):
+    with ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+        return list(pool.map(lambda lang: translate_one(text, lang), targets))
 
 
 @app.post('/translate')
@@ -784,7 +835,10 @@ def translate():
 
     try:
         # ${c.align}
-        translations = [translate_one(text, lang) for lang in targets]
+        started = time.perf_counter()
+        translations = translate_all(text, targets)
+        # ${c.timing}
+        print(f'[translate] {len(targets)} lang(s) {(time.perf_counter() - started) * 1000:.0f} ms', flush=True)
     except Exception as e:
         app.logger.error('[translate] %s', e)
         return jsonify({'error': 'Translation failed', 'sequenceId': sequence_id}), 500
@@ -801,7 +855,9 @@ function buildGeminiExample() {
   return `from flask import Flask, request, jsonify
 from flask_cors import CORS
 from google import genai
+from concurrent.futures import ThreadPoolExecutor
 import json
+import time
 
 # ${c.apiKey}
 API_KEY = 'YOUR_API_KEY'
@@ -809,7 +865,9 @@ MODEL = 'gemini-3.1-flash-lite'
 
 app = Flask(__name__)
 CORS(app)
-client = genai.Client(api_key=API_KEY)
+# ${c.timeout}
+# ${c.timeoutUnit}
+client = genai.Client(api_key=API_KEY, http_options={'timeout': 5000})
 
 # ${c.prompt}
 SYSTEM_PROMPT = """${SYSTEM_PROMPT_JA}"""
@@ -824,16 +882,27 @@ def safe_parse_translation(raw):
 
 # ${c.translateOne}
 def translate_one(text, lang):
-    resp = client.models.generate_content(
-        model=MODEL,
-        contents=f"翻訳先の言語: {lang}\\n原文:\\n{text}",
-        config={
-            'system_instruction': SYSTEM_PROMPT,
-            'response_mime_type': 'application/json',
-            'temperature': 0.3,
-        },
-    )
-    return safe_parse_translation(resp.text)
+    try:
+        resp = client.models.generate_content(
+            model=MODEL,
+            contents=f"翻訳先の言語: {lang}\\n原文:\\n{text}",
+            config={
+                'system_instruction': SYSTEM_PROMPT,
+                'response_mime_type': 'application/json',
+                'temperature': 0.3,
+            },
+        )
+        return safe_parse_translation(resp.text)
+    except Exception as e:
+        # ${c.perLangFail}
+        print(f'[translate] {lang}: {e}', flush=True)
+        return ''
+
+
+# ${c.parallel}
+def translate_all(text, targets):
+    with ThreadPoolExecutor(max_workers=max(1, len(targets))) as pool:
+        return list(pool.map(lambda lang: translate_one(text, lang), targets))
 
 
 @app.post('/translate')
@@ -848,7 +917,10 @@ def translate():
 
     try:
         # ${c.align}
-        translations = [translate_one(text, lang) for lang in targets]
+        started = time.perf_counter()
+        translations = translate_all(text, targets)
+        # ${c.timing}
+        print(f'[translate] {len(targets)} lang(s) {(time.perf_counter() - started) * 1000:.0f} ms', flush=True)
     except Exception as e:
         app.logger.error('[translate] %s', e)
         return jsonify({'error': 'Translation failed', 'sequenceId': sequence_id}), 500

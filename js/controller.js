@@ -244,7 +244,20 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
     if (active.length === 0) return;
 
     const minDisplayTime = computeMinDisplayTime(text, sourceLangId);
+
+    /* The only place the translation round trip is measured. The four engines
+       differ by an order of magnitude, and 'link' adds a server the user wrote
+       themselves, so "which part is slow, and by how much" is not answerable
+       from watching the subtitles — an impression is all there is otherwise.
+       Logged for failures too: a slow error is worth seeing. */
+    const startedAt = performance.now();
     const data = await route(text, previousText, sourceLangId, targetLangIds, sequenceId);
+    if (isDebugEnabled()) console.debug(
+      `[controller] #${sequenceId} ${settings.translationMode} ` +
+      `${(performance.now() - startedAt).toFixed(0)}ms ` +
+      `${active.length} target(s), ${text.length} chars${data ? '' : ' (no result)'}`
+    );
+
     if (!data) return;
     if (epoch !== sessionEpoch) return;
 
