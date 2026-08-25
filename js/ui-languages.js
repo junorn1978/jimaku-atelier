@@ -850,6 +850,26 @@ if __name__ == '__main__':
     app.run(port=5000)`;
 }
 
+/* This example keeps the JSON envelope that the OpenAI one drops, and that
+   difference is deliberate — measured, not overlooked.
+
+   On gemini-3.1-flash-lite the envelope costs 29-67ms (median of 5, twice),
+   against a 153-262ms spread between the fastest and slowest call of the same
+   variant: the saving is smaller than the noise it hides in. On gpt-5.6-luna
+   the same change was worth 380-455ms, which is why only that one made it.
+   Plain text buys speed with a worse failure: a malformed envelope drops the
+   line, a stray preamble goes on screen. That trade pays at 400ms, not at 50.
+
+   Thinking is left alone for the same reason. Gemini 3.x uses thinking_level
+   (minimal/low/medium/high, NOT the older thinking_budget — mixing the two is
+   a 400), and flash-lite already defaults to minimal: stating it explicitly
+   measured -45ms then +17ms, a sign flip, i.e. nothing. thinking_level 'high'
+   costs ~1780ms and ~550 thought tokens, so the setting is real — it is simply
+   already where it should be.
+
+   What this example does share with the OpenAI one is everything that is not
+   provider-specific: the parallel fan-out, the short timeout, and per-language
+   failure isolation. */
 function buildGeminiExample() {
   const c = exampleComments();
   return `from flask import Flask, request, jsonify
