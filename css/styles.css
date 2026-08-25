@@ -309,6 +309,12 @@
        so the preview and the area around the card are one continuous surface. */
     min-width: 0;
     min-height: 0;
+    /* The lines below refuse to shrink, so on a short window the stack runs
+       past the bottom of this pane. The control card covers the middle of that
+       area but not the strips beside it (it stops at --panel-measure) or the
+       inset below it, and half a character floating next to the panel is worse
+       than a line that simply ends at the panel's edge. */
+    overflow: hidden;
 
     .subtitle-display {
       display: flex;
@@ -327,6 +333,21 @@
         word-break: break-word;
         /* webkit text stroke produces sharper, OBS-friendly outlines */
         paint-order: stroke fill;
+
+        /* Never absorb the pane's shortfall. A line that clips itself — the
+           source in 1-line mode, the targets in shrink mode — sets `overflow`
+           away from visible, and that switches off the automatic minimum size
+           that stops a flex item shrinking below its content. The lines that
+           don't clip keep that protection, so on a short window the whole
+           shortfall landed on the clipping line alone: its box dropped under
+           one line height and the glyph tops were sliced off (and
+           keepTailVisible, seeing scrollHeight exceed clientHeight, scrolled to
+           the bottom, guaranteeing the top was the end that went).
+           Full-height text ending at the panel's edge is the wanted failure
+           mode; a squeezed line cut through the middle of the characters is
+           not, and on stream it is the unusable one. Mirrors overlay.html,
+           where .text-line has carried flex-shrink: 0 all along. */
+        flex-shrink: 0;
 
         /* Placeholder shown when element has no live text. Inherits the
            same color/stroke as real text so the user sees a true preview
