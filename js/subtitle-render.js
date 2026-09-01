@@ -1,23 +1,25 @@
 /**
  * @file subtitle-render.js
  * @description Subtitle motion, shared by the two documents that draw subtitles:
- * the in-app preview (js/preview.js, js/speech.js) and the OBS browser source
- * (overlay.html). The counterpart to css/subtitle-core.css, which holds the
- * shared values; this holds the shared behaviour.
+ * the app window (js/preview.js, js/speech.js), which OBS takes by window
+ * capture behind a chroma key, and overlay.html, which OBS takes as a WebSocket
+ * browser source. Both are output, not one of each — see css/subtitle-core.css
+ * for why that matters. This is the counterpart to that file: it holds the
+ * shared values, this holds the shared behaviour.
  *
  * Both copies of this code used to be maintained by hand — preview.js and
  * overlay.html carried byte-identical implementations of the cinema scroll, and
  * speech.js and overlay.html carried byte-identical tail-scrolling. The comments
- * said "mirrored in overlay.html", but nothing enforced it, so the preview could
- * drift from what actually went out on stream — the one place the difference is
- * invisible until someone is watching.
+ * said "mirrored in overlay.html", but nothing enforced it, so the two could
+ * drift — and since both of them go out on stream, that difference stays
+ * invisible until someone is watching whichever one was left behind.
  *
  * Everything here is pure DOM motion: no store, no settings, no WebSocket. That
  * is what lets one implementation serve both sides. Where the two genuinely
  * differ — how each one knows the current overflow mode — the difference is
- * injected as a predicate rather than branched on here. The preview reads its
- * store, the overlay reads its last WebSocket payload, and neither has to know
- * about the other.
+ * injected as a predicate rather than branched on here. The app window reads
+ * its store, the overlay reads its last WebSocket payload, and neither has to
+ * know about the other.
  *
  * Loaded by overlay.html as an ES module, which needs Chrome 61+; OBS has
  * shipped CEF 103 or newer since OBS 28, so any current OBS is far past it.

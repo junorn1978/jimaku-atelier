@@ -1,10 +1,23 @@
 /**
  * subtitle-core.css
  *
- * The subtitle rendering contract, shared by the two places that draw subtitles:
- * the in-app preview (index.html + css/styles.css) and the OBS browser source
- * (overlay.html). Both load this file from the same local server, so there is
- * exactly one definition of the numbers below.
+ * The subtitle rendering contract, shared by the two documents that draw
+ * subtitles. Both of them are output: the OBS tab presents them as two equal
+ * modes (obs.mode.capture / obs.mode.ws), not as a rehearsal and a
+ * broadcast.
+ *
+ *   - index.html + css/styles.css is the window-capture path. OBS captures the
+ *     app window and a chroma key removes --sub-bg, so the subtitle area of
+ *     that window is what the viewer sees. Parts of this codebase call it the
+ *     "preview" (.preview-pane, js/preview.js, the preview.* i18n keys) because
+ *     it doubles as the surface the user styles against — that is a second job,
+ *     not a lesser one, and anything that spills onto --sub-bg there (a shadow,
+ *     subpixel antialiasing) reaches the stream as key residue.
+ *   - overlay.html is the WebSocket path, added to OBS as a browser source.
+ *
+ * A change that looks right in only one of them is broken for whoever uses the
+ * other. Both load this file from the same local server, so there is exactly
+ * one definition of the numbers below.
  *
  * Why this file exists
  * --------------------
@@ -22,8 +35,8 @@
  * Scope
  * -----
  * Values only, deliberately. The selectors stay in each side's own stylesheet
- * because the two documents are structured differently: the preview drives its
- * modes from data attributes on .subtitle-display, while the overlay toggles
+ * because the two documents are structured differently: the app window drives
+ * its modes from data attributes on .subtitle-display, while the overlay toggles
  * classes on the line elements from the WebSocket payload. Those are two sound
  * wirings for two different data sources, and forcing them into one shape would
  * drag the overlay into the app's store/attribute conventions for no gain.

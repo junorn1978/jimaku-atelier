@@ -153,17 +153,20 @@
 
   body {
     font-family: var(--font-ui);
-    /* The window IS the preview surface: the whole background is the
-       user-configured subtitle colour, and the control card floats on it. So
+    /* The window IS the output surface in window-capture mode
+       (obs.mode.capture): the whole background is the user-configured subtitle
+       colour for a chroma key to remove, and the control card floats on it. So
        changing the background colour moves everything together except the
        card, which keeps its own dark palette. (--color-bg stays the dark base
-       for wells inside the card — code blocks, readonly fields.) */
+       for wells inside the card — code blocks, readonly fields.)
+       Because this is what OBS keys, anything drawn on --sub-bg is judged by
+       whether a keyer can remove it — see css/subtitle-core.css. */
     background: var(--sub-bg);
     color: var(--color-text);
     min-width: 1000px;
     overflow: hidden;
-    /* A single row: .app-main owns the whole window. The green preview sits
-       flush with the top edge for OBS window capture, and the control card
+    /* A single row: .app-main owns the whole window. The keyed subtitle area
+       sits flush with the top edge for OBS window capture, and the control card
        floats over the background below it. */
     display: grid;
     grid-template-rows: minmax(0, 1fr);
@@ -287,12 +290,12 @@
   }
 
   .app-main {
-    /* Two stacked rows: the subtitle preview on top and the control card
-       below. Collapsing (.panel-collapsed) drops the card's tab body so the
-       green preview grows — handy for OBS window capture — while the card's
-       toolbar stays put. The manual-translate tool is an overlay over the
-       preview (see .manual-translate-panel) so opening it never resizes the
-       green box. */
+    /* Two stacked rows: the subtitle area on top and the control card below.
+       Collapsing (.panel-collapsed) drops the card's tab body so the green area
+       grows — this is the normal state while streaming a window capture — while
+       the card's toolbar stays put. The manual-translate tool is an overlay
+       over the subtitles (see .manual-translate-panel) so opening it never
+       resizes the green box. */
     display: grid;
     grid-template-rows: minmax(0, 1fr) auto;
     position: relative;
@@ -333,6 +336,16 @@
         word-break: break-word;
         /* webkit text stroke produces sharper, OBS-friendly outlines */
         paint-order: stroke fill;
+
+        /* Greyscale antialiasing instead of Chrome's LCD subpixel default.
+           Subpixel AA writes red- and blue-tinted pixels along every glyph
+           edge; over --sub-bg those fringes sit off the key colour's axis, so
+           an OBS Color Key leaves them as a coloured rim. Greyscale AA keeps
+           the edge pixels on the straight line between the key colour and the
+           text, which the filter's smoothness absorbs. overlay.html gets this
+           for free (a transparent background forces greyscale AA); this window
+           paints an opaque background, so it has to ask. */
+        -webkit-font-smoothing: antialiased;
 
         /* Never absorb the pane's shortfall. A line that clips itself — the
            source in 1-line mode, the targets in shrink mode — sets `overflow`
@@ -2238,7 +2251,7 @@
 
 /* ============ utilities ============ */
 @layer utilities {
-  /* Capture mode: hide a panel so the subtitle preview is unobstructed.
+  /* Capture mode: hide a panel so the subtitle area is unobstructed.
      Driven by body classes toggled from the header buttons (js/ui-layout.js).
      Both the control panel and the manual overlay are fully manual — nothing is
      auto-hidden while recognising. The header always stays so the toggles (and
@@ -2259,7 +2272,16 @@
      shrinks to its toolbar — start/stop stays where it was instead of
      disappearing with the settings. */
   .panel-collapsed .settings-body { display: none; }
-  .panel-collapsed .control-card  { height: auto; }
+  .panel-collapsed .control-card  {
+    height: auto;
+    /* Capture mode means the window is being keyed in OBS. --shadow-2 spills
+       translucent black about 16px past the card onto --sub-bg, so the pixels
+       around the edge are a gradient from rgb(0,129,0) back up to the flat key
+       colour. OBS Color Key measures RGB distance, so that band falls outside
+       the similarity range and survives as a dark rim. The card still reads as
+       a separate surface without it — it has its own opaque fill and border. */
+    box-shadow: none;
+  }
 
   /* The tab picker would drive a body that is no longer displayed, so it hands
      its cell to the read-only language readout. */
@@ -2305,8 +2327,8 @@
   .subtitle-display.is-recording .subtitle-line:empty::before { content: none; }
 
   /* subtitle overflow strategies, driven by [data-sub-overflow] on .subtitle-display.
-     Mirrors overlay.html so the preview matches OBS; the clip heights themselves
-     come from css/subtitle-core.css, which both sides load. */
+     Mirrors overlay.html so the two output paths agree; the clip heights
+     themselves come from css/subtitle-core.css, which both sides load. */
   [data-sub-overflow="shrink"] .target-1,
   [data-sub-overflow="shrink"] .target-2 {
     height: var(--sub-clip-2line);
