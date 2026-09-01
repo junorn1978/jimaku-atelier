@@ -18,7 +18,7 @@ if defined PID (
 )
 
 
-start msedge.exe "http://localhost:%PORT%/index.html" --window-size=1280,720 ^
+start msedge.exe --app="http://localhost:%PORT%/index.html" --window-size=1280,720 ^
 --disable-features=CalculateNativeWinOcclusion ^
 --user-data-dir="%translate_DIR%" ^
 --disable-extensions ^
