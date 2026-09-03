@@ -338,14 +338,27 @@
         paint-order: stroke fill;
 
         /* Greyscale antialiasing instead of Chrome's LCD subpixel default.
-           Subpixel AA writes red- and blue-tinted pixels along every glyph
-           edge; over --sub-bg those fringes sit off the key colour's axis, so
-           an OBS Color Key leaves them as a coloured rim. Greyscale AA keeps
-           the edge pixels on the straight line between the key colour and the
-           text, which the filter's smoothness absorbs. overlay.html gets this
-           for free (a transparent background forces greyscale AA); this window
-           paints an opaque background, so it has to ask. */
-        -webkit-font-smoothing: antialiased;
+           Subpixel AA writes red- and blue-tinted pixels wherever two colours
+           meet inside a glyph — with paint-order: stroke fill that is the whole
+           boundary between the fill and its outline — so on stream the text
+           carries an orange/cyan speckle along every stroke. Measured on this
+           window's own type (24px, 4px stroke): 1114 pixels with R != B and a
+           worst case of rgb(215,159,0) against rgb(0,159,215).
+           This does NOT cause key residue: at the outline's outer edge the
+           blend is black-to-green, where the subpixel weighting still leaves
+           R and B at 0, so those pixels stay on the key colour's axis either
+           way. It is a text-quality fix, not a keying one — the keying problem
+           was .control-card's drop shadow.
+           will-change, and not -webkit-font-smoothing: antialiased, because
+           that property is a no-op in Chrome on Windows — the same measurement
+           returns byte-identical fringing with and without it. What actually
+           turns LCD text off is compositing the line onto a layer whose
+           background is not opaque, which will-change forces. (backdrop-filter,
+           transform: translateZ(0) and opacity < 1 do it too; isolation and a
+           plain overflow: hidden do not.) overlay.html gets greyscale AA for
+           free from its transparent background; this window paints an opaque
+           one, so it has to ask. */
+        will-change: transform;
 
         /* Never absorb the pane's shortfall. A line that clips itself — the
            source in 1-line mode, the targets in shrink mode — sets `overflow`
@@ -424,7 +437,13 @@
     background: var(--color-surface-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-overlay);
+    /* No drop shadow, for the reason spelled out on .control-card — and this
+       one bit even while the drawer was closed. Parked below the window, its
+       --shadow-overlay (64px of blur) still reached up over the bottom edge:
+       the last 16 rows of the capture measured 20480 pixels running from
+       rgb(0,242,0) to rgb(0,204,0), a full-width dark green band that an OBS
+       Color Key cannot remove. Open, the same shadow would land on the keyed
+       area above the drawer instead. */
     padding: var(--space-3) var(--space-4);
     min-height: 0;
     /* Parked below its own height plus the inset, so it clears the window. */
@@ -462,7 +481,17 @@
     background: var(--color-surface-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-2);
+    /* No drop shadow, deliberately. The window is always the keyed surface in
+       obs.mode.capture, and --shadow-2 spills a 16px gradient of translucent
+       black onto --sub-bg: measured on a 1280x720 render, the 26 rows above the
+       card hold 15802 pixels that are green but not the key colour — a band
+       running from rgb(0,253,0) down to rgb(0,201,0) at the window's bottom
+       edge. OBS Color Key measures RGB distance, so rgb(0,201,0) sits 54 away
+       from the key and survives as a dark green halo around the whole card.
+       (The same page with the shadow removed measures 0.) The card still reads
+       as a separate surface: it has an opaque fill and a 1px border.
+       This used to be scoped to .panel-collapsed, which left the shadow on the
+       key colour in the expanded state — the state the app opens in. */
     min-height: 0;
     /* Keeps the tab body's corners inside the card's radius. */
     overflow: hidden;
@@ -2272,16 +2301,7 @@
      shrinks to its toolbar — start/stop stays where it was instead of
      disappearing with the settings. */
   .panel-collapsed .settings-body { display: none; }
-  .panel-collapsed .control-card  {
-    height: auto;
-    /* Capture mode means the window is being keyed in OBS. --shadow-2 spills
-       translucent black about 16px past the card onto --sub-bg, so the pixels
-       around the edge are a gradient from rgb(0,129,0) back up to the flat key
-       colour. OBS Color Key measures RGB distance, so that band falls outside
-       the similarity range and survives as a dark rim. The card still reads as
-       a separate surface without it — it has its own opaque fill and border. */
-    box-shadow: none;
-  }
+  .panel-collapsed .control-card  { height: auto; }
 
   /* The tab picker would drive a body that is no longer displayed, so it hands
      its cell to the read-only language readout. */
