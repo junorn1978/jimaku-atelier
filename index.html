@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" class="is-booting">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,24 +14,27 @@
        Each is requested as a variable range (100..900) rather than fixed
        weights, so any weight the CSS asks for is a real one instead of a
        browser-synthesised fake bold, which smears CJK strokes.
-       Huninn and M PLUS Rounded 1c stay for the subtitle preview only. -->
+       Huninn and M PLUS Rounded 1c stay for the subtitle output only. -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@100..900&family=Noto+Sans+TC:wght@100..900&family=Noto+Sans+JP:wght@100..900&family=Huninn&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
 
   <!-- Shared with overlay.html — defines the subtitle line height and the clip
        heights derived from it. Must load before styles.css, which consumes it. -->
   <link rel="stylesheet" href="css/subtitle-core.css">
   <link rel="stylesheet" href="css/styles.css">
+  <!-- The guided tour (js/tour.js). Separate because overlay.html has neither
+       a toolbar nor a tour, and because the whole feature lifts out together. -->
+  <link rel="stylesheet" href="css/tour.css">
 </head>
 <body>
 
   <main class="app-main">
 
-    <section class="preview-pane" data-i18n-aria-label="aria.preview" aria-label="字幕プレビュー">
+    <section class="output-pane" data-i18n-aria-label="aria.output" aria-label="字幕出力">
       <div class="subtitle-display" data-sub-overflow="normal" data-sub-show-source="true"
            data-target1-lang="none" data-target2-lang="none">
-        <div class="subtitle-line source"   id="display-source"   data-i18n-placeholder="preview.source"></div>
-        <div class="subtitle-line target-1" id="display-target-1" data-i18n-placeholder="preview.target1"></div>
-        <div class="subtitle-line target-2" id="display-target-2" data-i18n-placeholder="preview.target2"></div>
+        <div class="subtitle-line source"   id="display-source"   data-i18n-placeholder="output.source"></div>
+        <div class="subtitle-line target-1" id="display-target-1" data-i18n-placeholder="output.target1"></div>
+        <div class="subtitle-line target-2" id="display-target-2" data-i18n-placeholder="output.target2"></div>
       </div>
     </section>
 
@@ -44,7 +47,7 @@
       <!-- One row: start/stop, the tab picker, global actions. All three are
            segmented pills, so they read as the same kind of control. The
            toolbar survives .panel-collapsed (only the tab body is hidden), so
-           start/stop stays reachable while the preview fills the window — which
+           start/stop stays reachable while the output fills the window — which
            is also why the card is the one region a background click ignores. -->
       <div class="control-toolbar">
         <div class="speech-switch">
@@ -83,7 +86,7 @@
              drive a body that isn't displayed then, and the language routing
              disappears with it — this is the only place left to check what is
              being recognised and where it is going. Read-only by design:
-             collapsed means the preview is being captured, so the position
+             collapsed means the output is being captured, so the position
              that used to be a control must not invite a mid-stream click. -->
         <p class="toolbar-status" id="toolbar-status"></p>
 
@@ -131,6 +134,22 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="3"/>
               <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+            </svg>
+          </button>
+
+          <!-- The only entry to the walkthrough (js/tour.js). It sits in the
+               toolbar rather than beside the version signature in the Languages
+               tab because the toolbar is the one region that survives
+               .panel-collapsed and every tab switch — and "how do I get the
+               panel back?" is asked precisely when that signature is hidden.
+               On the first launches it wears a ring; see .is-hinting. -->
+          <button type="button" class="icon-btn" id="open-tour"
+                  data-i18n-title="header.action.tour" title="使い方ガイド">
+            <!-- circle-help icon -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/>
+              <path d="M12 17h.01"/>
             </svg>
           </button>
         </div>

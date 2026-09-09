@@ -25,7 +25,7 @@ export function mountSettingsDialog(container) {
     </section>
 
     <!-- Timing rather than styling, so it belongs here and not in the style
-         matrix: nothing about it is judged by looking at the preview. -->
+         matrix: nothing about it is judged by looking at the output. -->
     <section class="dialog-section">
       <div class="dialog-setting-row">
         <div>

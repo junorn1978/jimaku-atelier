@@ -1,0 +1,185 @@
+/* =========================================
+   字幕アトリエ — guided tour (js/tour.js)
+
+   Its own file, and deliberately not part of styles.css: overlay.html has no
+   toolbar and no tour, and none of this is reachable from there. Keeping it
+   separate also means the whole feature lifts out in one piece.
+
+   Unlayered on purpose. styles.css puts everything inside @layer, so anything
+   here outranks all of it without a single !important — which is what an
+   overlay wants, since it has to sit above components it does not know about.
+   It still reads the same tokens (:root in the tokens layer), so the card is
+   made of the same surfaces, radii and spacing as the rest of the app.
+   ========================================= */
+
+/* ============ the overlay ============ */
+
+/* Above .color-popover (900), which is the highest thing in styles.css. Modal
+   <dialog> lives in the top layer and would still win, but the tour is only
+   ever opened from the toolbar, which a modal covers — so the two never meet.
+   The root itself is transparent to the pointer; the children opt back in. */
+.tour-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Swallows every click aimed at the app, so a walkthrough of the controls
+   cannot be derailed by pressing one of them. */
+.tour-blocker {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+}
+
+/* The exception, for the one step that asks the user to perform the gesture
+   instead of reading about it: clicks fall through to the real handler in
+   js/ui-layout.js. The tour card stays clickable either way — it is a sibling,
+   not a child of the blocker. */
+.tour-root.is-interactive .tour-blocker {
+  pointer-events: none;
+}
+
+/* The dim and the hole in it are one element: a huge spread shadow paints
+   everything outside the box, so there is a single rect to move rather than
+   four panels to keep aligned, and the corners round with border-radius. The
+   shadow is not hit-tested, so it dims without blocking — that job belongs to
+   .tour-blocker, which can be switched off independently. */
+.tour-spot {
+  position: fixed;
+  border-radius: var(--radius-md);
+  /* Three rings from one property, and the order is load-bearing: later
+     shadows paint behind earlier ones, so the accent frame and its halo stay
+     on top of the 9999px spread that dims the rest of the window. A dimmed
+     surround alone says "look here"; the frame is what says "press this",
+     which is the question a step about a control actually raises. */
+  box-shadow: 0 0 0 2px var(--color-accent),
+              0 0 0 6px color-mix(in oklab, var(--color-accent) 22%, transparent),
+              0 0 0 9999px rgba(0, 0, 0, 0.62);
+  pointer-events: none;
+}
+
+/* Travel between steps is worth animating; the first placement is not — before
+   it, the box has no position of its own and would slide in from the corner.
+   js/tour.js adds .is-placed a frame after step 1 lands, which is what arms
+   both of these. */
+.tour-root.is-placed .tour-spot {
+  transition: top 0.26s var(--ease-in-out),
+              left 0.26s var(--ease-in-out),
+              width 0.26s var(--ease-in-out),
+              height 0.26s var(--ease-in-out);
+}
+
+.tour-root.is-placed .tour-card {
+  transition: top 0.26s var(--ease-in-out), left 0.26s var(--ease-in-out);
+}
+
+/* ============ the card ============ */
+
+.tour-card {
+  position: fixed;
+  pointer-events: auto;
+  width: min(340px, calc(100vw - 24px));
+  padding: var(--space-4);
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
+
+  &:focus-visible { outline: none; box-shadow: var(--shadow-overlay), var(--focus-ring); }
+}
+
+.tour-progress {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  color: var(--color-text-faint);
+}
+
+.tour-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.tour-body {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-md);
+  line-height: 1.65;
+  color: var(--color-text-dim);
+}
+
+/* Skip sits apart from the pair that moves through the tour: it leaves, they
+   navigate, and putting them in one row would invite the wrong one. */
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  .tour-skip { margin-right: auto; }
+}
+
+/* ============ the ring on the "?" ============ */
+
+/* A halo that grows out of the button and fades, once every couple of seconds.
+   Slow and monochrome by choice — the rest of this UI never bounces or flashes,
+   and a nagging button would read as an error rather than an offer. */
+.icon-btn.is-hinting {
+  position: relative;
+  color: var(--color-text);
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-md);
+    animation: tour-hint 2.4s var(--ease-out) infinite;
+    pointer-events: none;
+  }
+}
+
+@keyframes tour-hint {
+  0%   { opacity: 0;    transform: scale(1); }
+  12%  { opacity: 0.85; }
+  100% { opacity: 0;    transform: scale(1.85); }
+}
+
+/* Two states where the toolbar is on camera, and a pulsing button would be
+   captured with it: the panel collapsed for a window capture, and recognition
+   running. Both are readable straight from the DOM — #btn-stop is only enabled
+   while recognising — so neither needs js/speech.js to tell us. */
+body.panel-collapsed .icon-btn.is-hinting::after,
+body:has(#btn-stop:not(:disabled)) .icon-btn.is-hinting::after {
+  animation: none;
+  opacity: 0;
+}
+
+/* ============ reduced motion ============ */
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-root.is-placed .tour-spot,
+  .tour-root.is-placed .tour-card { transition: none; }
+
+  /* The ring's job is to be noticed, so it degrades to a mark rather than
+     disappearing: a dot in the corner of the button, which says "there is
+     something here" without moving. */
+  .icon-btn.is-hinting::after {
+    animation: none;
+    inset: auto -1px -1px auto;
+    width: 6px;
+    height: 6px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--color-accent);
+    opacity: 1;
+  }
+
+  body.panel-collapsed .icon-btn.is-hinting::after,
+  body:has(#btn-stop:not(:disabled)) .icon-btn.is-hinting::after {
+    opacity: 0;
+  }
+}

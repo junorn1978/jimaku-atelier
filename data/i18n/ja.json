@@ -1,6 +1,6 @@
 {
   "app.title":              "字幕アトリエ",
-  "aria.preview":           "字幕プレビュー",
+  "aria.output":            "字幕出力",
   "aria.settingsPane":      "設定パネル",
   "aria.settingsSections":  "設定項目",
   "aria.manualTranslate":   "テキスト翻訳",
@@ -9,9 +9,9 @@
   "header.action.settings": "設定",
   "header.action.toggleLock":      "背景クリックでの開閉をロック",
   "header.action.toggleManual":    "テキスト翻訳の表示／非表示",
-  "preview.source":         "音声認識の結果がここに表示されます",
-  "preview.target1":        "翻訳 1",
-  "preview.target2":        "翻訳 2",
+  "output.source":          "音声認識の結果がここに表示されます",
+  "output.target1":         "翻訳 1",
+  "output.target2":         "翻訳 2",
   "action.start":           "開始",
   "action.stop":            "停止",
 
@@ -237,5 +237,25 @@
   "settings.about.storage.value":"設定はこのブラウザ内にのみ保存されます。",
   "settings.about.engines": "対応機能",
   "settings.about.engines.value":"Web Speech、Google 翻訳、カスタム URL",
-  "dialog.close":           "閉じる"
+  "dialog.close":           "閉じる",
+
+  "header.action.tour":     "使い方ガイド",
+  "tour.skip":              "スキップ",
+  "tour.back":              "戻る",
+  "tour.next":              "次へ",
+  "tour.done":              "完了",
+  "tour.source.title":      "まず音声認識の言語",
+  "tour.source.body":       "自分が話す言語をここで選びます。選ぶまで「開始」は押せません。",
+  "tour.targets.title":     "翻訳先は最大 2 つ",
+  "tour.targets.body":      "片方だけでも構いません。「なし」にした行は字幕に出ません。",
+  "tour.engine.title":      "翻訳エンジン",
+  "tour.engine.body":       "既定の Google 翻訳のままで動きます。自前のサーバーに投げたいときはカスタム URL を選んでください。",
+  "tour.start.title":       "開始と停止",
+  "tour.start.body":        "最初に押したときだけ、ブラウザがマイクの許可を聞いてきます。許可しないと認識は始まりません。",
+  "tour.obs.title":         "配信への出し方",
+  "tour.obs.body":          "OBS タブを開いてください。WebSocket で送るか、この窓をキャプチャして背景を抜くかを選べて、それぞれの手順もそこに載っています。",
+  "tour.collapse.title":    "背景をクリックして畳む",
+  "tour.collapse.body":     "カードの外ならどこでも構いません。設定が畳まれて出力面が広がります。試しに一度クリックしてください。",
+  "tour.lock.title":        "誤操作を防ぐ鍵",
+  "tour.lock.body":         "配信中に背景を触ってしまうと面が動きます。鍵を掛けるとそのクリックだけが効かなくなり、開始と停止は残ります。"
 }

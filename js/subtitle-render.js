@@ -1,13 +1,13 @@
 /**
  * @file subtitle-render.js
  * @description Subtitle motion, shared by the two documents that draw subtitles:
- * the app window (js/preview.js, js/speech.js), which OBS takes by window
+ * the app window (js/output.js, js/speech.js), which OBS takes by window
  * capture behind a chroma key, and overlay.html, which OBS takes as a WebSocket
  * browser source. Both are output, not one of each — see css/subtitle-core.css
  * for why that matters. This is the counterpart to that file: it holds the
  * shared values, this holds the shared behaviour.
  *
- * Both copies of this code used to be maintained by hand — preview.js and
+ * Both copies of this code used to be maintained by hand — output.js and
  * overlay.html carried byte-identical implementations of the cinema scroll, and
  * speech.js and overlay.html carried byte-identical tail-scrolling. The comments
  * said "mirrored in overlay.html", but nothing enforced it, so the two could
@@ -27,7 +27,7 @@
 
 /* Cinema scroll timings. A translation taller than the two-line window holds
    still long enough to be read, then advances one line at a time until the tail
-   is shown. Shared so the preview and the overlay move in step. */
+   is shown. Shared so the output pane and the overlay move in step. */
 const SCROLL_READ_DELAY_MS    = 3000;
 const SCROLL_STEP_INTERVAL_MS = 2000;
 const SCROLL_STEP_ANIM_MS     = 800;
@@ -70,7 +70,7 @@ function smoothScrollToSlowly(el, to, duration) {
  *
  * @param {HTMLElement} el       the line to scroll
  * @param {() => boolean} isShrink reads the CURRENT overflow mode at call time.
- *   Injected because the two callers learn it differently — the preview from
+ *   Injected because the two callers learn it differently — the output pane from
  *   settings.subOverflow, the overlay from its last WebSocket payload — and it
  *   must be read live, not captured, since the mode changes while this runs.
  * @returns {() => void} re-evaluate; call it after a mode change, which does not

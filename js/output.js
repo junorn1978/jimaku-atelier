@@ -1,14 +1,13 @@
 /**
- * @file preview.js
+ * @file output.js
  * @description Projects subtitle-related settings onto the document's CSS
  * custom properties and data attributes, so the app window reflects every
  * change immediately. Keep this module pure: input is settings, output is DOM.
  *
- * "preview" in this file's name is about the second job the app window does —
- * it is the surface the user styles against. It is not a rehearsal surface: in
- * window-capture mode (obs.mode.capture) OBS captures this window and keys out
- * --sub-bg, so what this module paints is what the viewer sees. See
- * css/subtitle-core.css for the two output paths.
+ * What this module paints is what the viewer sees: in window-capture mode
+ * (obs.mode.capture) OBS captures this window and keys out --sub-bg. It also
+ * doubles as the surface the user styles against, which is a second job rather
+ * than a lesser one. See css/subtitle-core.css for the two output paths.
  */
 
 import { settings, subscribe } from './store.js';
@@ -71,7 +70,7 @@ function applyTargetLang(slot, value) {
    that differs: where the current overflow mode is read from. */
 const isShrink = () => settings.subOverflow === 'shrink';
 
-export function initPreviewBinding() {
+export function initOutputBinding() {
   /* Initial sync from store. */
   for (const key of Object.keys(_cssVarMap)) applyVar(key, settings[key]);
   applyOverflow(settings.subOverflow);

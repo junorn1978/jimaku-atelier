@@ -1,6 +1,6 @@
 {
   "app.title":              "字幕アトリエ",
-  "aria.preview":           "Subtitle preview",
+  "aria.output":            "Subtitle output",
   "aria.settingsPane":      "Settings panel",
   "aria.settingsSections":  "Settings sections",
   "aria.manualTranslate":   "Text translation",
@@ -9,9 +9,9 @@
   "header.action.settings": "Settings",
   "header.action.toggleLock":      "Lock the background click",
   "header.action.toggleManual":    "Text translation",
-  "preview.source":         "Recognized speech will appear here",
-  "preview.target1":        "Translation 1",
-  "preview.target2":        "Translation 2",
+  "output.source":          "Recognized speech will appear here",
+  "output.target1":         "Translation 1",
+  "output.target2":         "Translation 2",
   "action.start":           "Start",
   "action.stop":            "Stop",
 
@@ -237,5 +237,25 @@
   "settings.about.storage.value":"Settings are saved in this browser only.",
   "settings.about.engines": "Features",
   "settings.about.engines.value":"Web Speech, Google Translate, Custom URL",
-  "dialog.close":           "Close"
+  "dialog.close":           "Close",
+
+  "header.action.tour":     "How to use",
+  "tour.skip":              "Skip",
+  "tour.back":              "Back",
+  "tour.next":              "Next",
+  "tour.done":              "Done",
+  "tour.source.title":      "Start with the speech language",
+  "tour.source.body":       "Pick the language you will be speaking. Start stays disabled until this is set.",
+  "tour.targets.title":     "Up to two translations",
+  "tour.targets.body":      "One is enough. A row set to “none” is left off the subtitles entirely.",
+  "tour.engine.title":      "Translation engine",
+  "tour.engine.body":       "The default, Google Translate, works as it is. Choose Custom URL to send lines to a server of your own instead.",
+  "tour.start.title":       "Start and stop",
+  "tour.start.body":        "The first press asks the browser for microphone permission. Recognition cannot begin until you allow it.",
+  "tour.obs.title":         "Getting it into OBS",
+  "tour.obs.body":          "Open the OBS tab. It lets you choose between WebSocket and window capture, and carries the steps for both.",
+  "tour.collapse.title":    "Click the background to collapse",
+  "tour.collapse.body":     "Anywhere outside the card will do. The settings fold away and the output surface grows. Try it now.",
+  "tour.lock.title":        "The lock guards that gesture",
+  "tour.lock.body":         "A stray click on the background moves the surface mid-stream. Locking disables that one click and leaves start and stop working."
 }

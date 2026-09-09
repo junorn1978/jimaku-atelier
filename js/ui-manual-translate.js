@@ -1,7 +1,7 @@
 /**
  * @file ui-manual-translate.js
  * @description Manual text translation tool. It lives as a slide-up overlay
- * over the subtitle preview, opened on demand from the header (see ui-layout.js),
+ * over the subtitle output, opened on demand from the header (see ui-layout.js),
  * since it's a secondary tool. It follows the active translation engine but
  * keeps its target language independent from the live subtitle target slots.
  */

@@ -1,6 +1,6 @@
 {
   "app.title":              "字幕アトリエ",
-  "aria.preview":           "字幕預覽",
+  "aria.output":            "字幕輸出",
   "aria.settingsPane":      "設定面板",
   "aria.settingsSections":  "設定項目",
   "aria.manualTranslate":   "文字翻譯",
@@ -9,9 +9,9 @@
   "header.action.settings": "設定",
   "header.action.toggleLock":      "鎖定背景點擊開關",
   "header.action.toggleManual":    "文字翻譯",
-  "preview.source":         "語音辨識結果將顯示於此",
-  "preview.target1":        "翻譯 1",
-  "preview.target2":        "翻譯 2",
+  "output.source":          "語音辨識結果將顯示於此",
+  "output.target1":         "翻譯 1",
+  "output.target2":         "翻譯 2",
   "action.start":           "開始",
   "action.stop":            "停止",
 
@@ -237,5 +237,25 @@
   "settings.about.storage.value":"設定只會儲存在這個瀏覽器中。",
   "settings.about.engines": "支援功能",
   "settings.about.engines.value":"Web Speech、Google 翻譯、自訂 URL",
-  "dialog.close":           "關閉"
+  "dialog.close":           "關閉",
+
+  "header.action.tour":     "使用說明",
+  "tour.skip":              "略過",
+  "tour.back":              "上一步",
+  "tour.next":              "下一步",
+  "tour.done":              "完成",
+  "tour.source.title":      "先選語音辨識的語言",
+  "tour.source.body":       "這裡選你要說的語言。沒有選之前，「開始」是按不下去的。",
+  "tour.targets.title":     "翻譯目標最多兩個",
+  "tour.targets.body":      "只開一個也可以。設成「無」的那一行不會出現在字幕上。",
+  "tour.engine.title":      "翻譯引擎",
+  "tour.engine.body":       "維持預設的 Google 翻譯就能用。想丟給自己的伺服器，再選自訂 URL。",
+  "tour.start.title":       "開始與停止",
+  "tour.start.body":        "第一次按的時候瀏覽器會跳出麥克風授權，沒有允許就不會開始辨識。",
+  "tour.obs.title":         "怎麼送進直播",
+  "tour.obs.body":          "請點開 OBS 分頁。裡面可以選 WebSocket 或視窗擷取，兩種方式的操作步驟也都寫在那裡。",
+  "tour.collapse.title":    "點背景就能收合面板",
+  "tour.collapse.body":     "只要是卡片以外的地方都可以。收起來之後輸出面會變大。現在點一下試試看。",
+  "tour.lock.title":        "鎖住誤觸",
+  "tour.lock.body":         "直播中不小心點到背景，畫面就會跳動。上鎖之後只有那個手勢會失效，開始和停止照樣能按。"
 }

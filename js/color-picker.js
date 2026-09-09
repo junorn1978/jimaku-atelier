@@ -13,7 +13,7 @@
  * they are what [data-bind] is attached to. This module only hides them and
  * drives them: every change writes the input and dispatches a bubbling 'input'
  * event, which is exactly what ui-bind.js already listens for, so the settings
- * store and the live preview need no knowledge of any of this.
+ * store and the live output need no knowledge of any of this.
  *
  * Markup contract (authored, not injected — the triggers sit inside grid cells
  * whose layout the picker must not disturb):
@@ -192,7 +192,7 @@ function render() {
 
 /* Writes through to the hidden <input type="color">. The dispatched event is
    the whole integration: ui-bind.js listens for 'input' on the same element, so
-   the store, the preview and the OBS overlay all update from here. */
+   the store, the output pane and the OBS overlay all update from here. */
 function apply() {
   if (!activeInput) return;
   activeInput.value = hsvToHex(hsv);

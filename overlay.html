@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
 
-  <!-- Shared with the in-app preview (index.html + css/styles.css) — defines the
+  <!-- Shared with the app window (index.html + css/styles.css) — defines the
        subtitle line height and the clip heights derived from it, so both sides
        cannot drift apart. Served from the same local server that serves this
        page, so it adds no failure mode the overlay does not already have.
@@ -129,7 +129,7 @@
     function setStatus(text) { statusEl.textContent = text || ''; }
 
     /* Translation cinema scroll. The behaviour itself is in subtitle-render.js,
-       shared with the in-app preview so both move identically; this side only
+       shared with the app window so both move identically; this side only
        supplies where the current overflow mode comes from — here, the last
        broadcast payload rather than a settings store. */
     let lastOverflow = 'normal';

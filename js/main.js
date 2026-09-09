@@ -2,14 +2,14 @@
  * @file main.js
  * @description Application entry point. Loads infrastructure (i18n, language
  * config), mounts each tab's UI, applies form-to-store bindings, kicks off the
- * preview projection, and wires document-level interactions.
+ * output projection, and wires document-level interactions.
  */
 
 import { settings } from './store.js';
 import { setLanguage, getLanguage, applyTo } from './i18n.js';
 import { loadLanguages } from './languages.js';
 import { isDebugEnabled } from './logger.js';
-import { initPreviewBinding } from './preview.js';
+import { initOutputBinding } from './output.js';
 import { bindInputs } from './ui-bind.js';
 import { initColorPickers } from './color-picker.js';
 import { mountLanguagesTab } from './ui-languages.js';
@@ -22,12 +22,13 @@ import { initFilter } from './filter.js';
 import { initObs } from './obs.js';
 import { initLayoutToggles } from './ui-layout.js';
 import { initSettingsTabs } from './ui-tabs.js';
+import { initTour } from './tour.js';
 
 async function init() {
   /* Language metadata is the only thing that has to be fetched before the UI
      can render; the gtx credentials are literals in translate-gtx.js. */
   await loadLanguages();
-  await setLanguage(settings.uiLang || 'ja');
+  await setLanguage(settings.uiLang || 'en');
 
   /* Ahead of the mounts: initFilter() migrates blacklists written by an older
      version, and the filter tab renders that list. */
@@ -50,7 +51,7 @@ async function init() {
   initColorPickers();
 
   /* Project subtitle settings onto CSS variables. */
-  initPreviewBinding();
+  initOutputBinding();
 
   /* Manage OBS WS connection lifecycle. */
   initObs();
@@ -64,6 +65,11 @@ async function init() {
   wireDialogs();
   initLayoutToggles();
   initSettingsTabs();
+
+  /* Last: it reads the toolbar button it wires, and on the first launches it
+     puts a ring on it. Nothing is opened here — the tour only ever runs when
+     the user asks for it. */
+  initTour();
 
   if (isDebugEnabled()) console.debug('[main] init complete');
 }
@@ -109,4 +115,9 @@ function wireDialogs() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+/* The UI is cloaked until this finishes — see .is-booting in css/styles.css.
+   Revealing from .finally() rather than from the end of init(): a boot that
+   throws half-way has to hand over whatever did mount, not an empty window. */
+document.addEventListener('DOMContentLoaded', () => {
+  init().finally(() => document.documentElement.classList.remove('is-booting'));
+});

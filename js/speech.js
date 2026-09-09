@@ -119,7 +119,7 @@ function markSourceSent() {
 }
 
 /* Re-decorate the currently shown source line when the symbols change so the
-   local preview updates live (the OBS overlay re-syncs via obs.js). */
+   local output updates live (the OBS overlay re-syncs via obs.js). */
 function redecorateSource() {
   const el = getSourceEl();
   if (el && _lastSource) {
@@ -182,7 +182,7 @@ function clearAllSubtitles() {
 }
 
 /* Re-arming on change rather than letting a pending timer run out on the old
-   value: the setting is adjusted by watching the preview, so it should take
+   value: the setting is adjusted by watching the output, so it should take
    effect on the line currently on screen. */
 function onClearIdleChanged() {
   if (idleClearTimer) armIdleClear();

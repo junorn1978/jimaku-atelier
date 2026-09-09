@@ -220,7 +220,7 @@
     /* Hidden until .panel-collapsed swaps it in. The transparent border and
        6px padding reproduce the tab track's box (1px border + 3px + the
        button's own 3px), so swapping one for the other cannot change the
-       toolbar's height and jolt the preview. */
+       toolbar's height and jolt the output. */
     .toolbar-status {
       display: none;
       margin: 0;
@@ -305,11 +305,11 @@
     overflow: clip;
   }
 
-  .preview-pane {
+  .output-pane {
     display: grid;
     grid-template-rows: minmax(0, 1fr);
     /* No background of its own — body paints --sub-bg across the whole window
-       so the preview and the area around the card are one continuous surface. */
+       so the output pane and the area around the card are one continuous surface. */
     min-width: 0;
     min-height: 0;
     /* The lines below refuse to shrink, so on a short window the stack runs
@@ -376,8 +376,8 @@
         flex-shrink: 0;
 
         /* Placeholder shown when element has no live text. Inherits the
-           same color/stroke as real text so the user sees a true preview
-           when adjusting style. -webkit-text-stroke is not inherited by
+           same color/stroke as real text, so style is judged against what
+           will actually go out. -webkit-text-stroke is not inherited by
            ::before, so each line re-applies it below. */
         &:empty::before {
           content: attr(data-placeholder);
@@ -416,7 +416,7 @@
   }
 
   /* Manual text-translation slide-up overlay. Anchored to the bottom of
-     .app-main (not the preview) so it rises from the very bottom of the window
+     .app-main (not the output pane) so it rises from the very bottom of the window
      and covers the control panel. Hidden by default (translated fully below its
      own height); .manual-open slides it into view. */
   .manual-translate-panel {
@@ -472,7 +472,7 @@
        control-strip-at-the-bottom arrangement sandwiched the content between
        two bands, which read as an I-beam on wide displays.
        .panel-collapsed hides only the tab body, so the toolbar (and start/stop
-       with it) stays reachable while the preview fills the window. */
+       with it) stays reachable while the output fills the window. */
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     width: min(100% - var(--card-inset) * 2, var(--panel-measure));
@@ -2280,6 +2280,27 @@
 
 /* ============ utilities ============ */
 @layer utilities {
+  /* Nothing in index.html is ready to be looked at. Its static text is the
+     Japanese the file is authored in, and the three tab panels are empty
+     until their modules mount — both are corrected by init() in js/main.js,
+     a fetch or two later. Painting that intermediate state cost nothing while
+     ja was also the default interface language; now that the language is
+     detected (see _detectUiLang() in js/store.js), an English or Chinese
+     visitor would watch the app flash Japanese on every launch.
+
+     visibility rather than display or opacity: the layout underneath settles
+     while it is hidden, so the reveal has nothing left to reflow.
+
+     The animation is a dead man's switch, not an effect. init() removes
+     .is-booting itself, which cancels this long before it fires; it only ever
+     runs if the module never executed at all (a parse error, a blocked
+     import), and a broken app the user can see beats a blank window. */
+  .is-booting body {
+    visibility: hidden;
+    animation: boot-reveal 0s linear 3s forwards;
+  }
+  @keyframes boot-reveal { to { visibility: visible; } }
+
   /* Capture mode: hide a panel so the subtitle area is unobstructed.
      Driven by body classes toggled from the header buttons (js/ui-layout.js).
      Both the control panel and the manual overlay are fully manual — nothing is
@@ -2297,7 +2318,7 @@
   .control-card,
   .manual-translate-panel { cursor: auto; }
 
-  /* Collapsing drops only the tab body, so the preview grows while the card
+  /* Collapsing drops only the tab body, so the output grows while the card
      shrinks to its toolbar — start/stop stays where it was instead of
      disappearing with the settings. */
   .panel-collapsed .settings-body { display: none; }
@@ -2308,7 +2329,7 @@
   .panel-collapsed .settings-tabs  { display: none; }
   .panel-collapsed .toolbar-status { display: block; }
 
-  /* Manual text-translation overlay: slide it up into view over the preview.
+  /* Manual text-translation overlay: slide it up into view over the output.
      Enter is deliberately slower (300ms) than the 200ms exit on the base rule. */
   .manual-open .manual-translate-panel {
     transform: translateY(0);
@@ -2343,7 +2364,7 @@
 
   /* During recording the placeholder hint is suppressed — once the user has
      hit Start, an empty line should read as "no subtitle right now", not as
-     stale preview text. */
+     stale placeholder text. */
   .subtitle-display.is-recording .subtitle-line:empty::before { content: none; }
 
   /* subtitle overflow strategies, driven by [data-sub-overflow] on .subtitle-display.

@@ -10,7 +10,7 @@
  * their cells join the outer grid and same-kind controls line up vertically.
  *
  * Beside the matrix, in the width it leaves — the settings you judge against
- * the preview: the source line's wrap symbols and one-line limit, plus
+ * the output pane: the source line's wrap symbols and one-line limit, plus
  * alignment and background. Deliberately unheaded: every row is labelled, and
  * the row a title would cost is needed for the fourth control.
  *
@@ -135,7 +135,7 @@ export function mountLanguagesTab(container) {
         </div>
       </div>
 
-      <!-- The settings you judge against the preview, filling the space the
+      <!-- The settings you judge against the output, filling the space the
            matrix leaves: the source line's symbols and one-line limit,
            alignment, background. They belong beside the colours rather than a
            tab away, because they are adjusted the same way — by looking. -->
