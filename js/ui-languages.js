@@ -600,9 +600,20 @@ function setupPromptEngine(container) {
   }).catch(() => disable('lang.engine.prompt.unavailable', true));
 }
 
+/* Withheld on every browser for now. On Chrome 156 (2026-09-26) the packs'
+   availability stopped being predictable: the same build offered 'dictation'
+   packs in one profile and reported them 'unavailable' in a freshly created
+   one, and available() kept answering stale results within a page until it
+   was reloaded (suspected per-profile field trials; unconfirmed). A button
+   whose outcome changes from one profile to the next is worse than no
+   button, so the row stays hidden (the layout
+   already handles that — it is the Edge state). Flip back to true once the
+   behaviour settles; language-pack.js is untouched. */
+const OFFLINE_PACK_ENABLED = false;
+
 function setupOfflinePack(container) {
   /* On-device packs are Chrome-only — leave the row hidden elsewhere. */
-  if (!isChrome) return;
+  if (!OFFLINE_PACK_ENABLED || !isChrome) return;
   const row    = container.querySelector('#offline-pack-row');
   const button = container.querySelector('#btn-offline-pack');
   const status = container.querySelector('#offline-pack-status');
