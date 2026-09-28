@@ -1,8 +1,8 @@
 /**
  * @file audio-input.js
- * @description The microphone as a MediaStreamTrack the recogniser can be
- * started on — recognition.start(track) instead of letting it open the default
- * device itself. Owning the audio is what makes three things possible:
+ * @description The microphone as a MediaStreamTrack the recogniser is started
+ * on — recognition.start(track) instead of letting it open the default device
+ * itself. Owning the audio is what makes three things possible:
  *
  *  - choosing the device;
  *  - knowing when the speaker pauses, independently of the recogniser, so a

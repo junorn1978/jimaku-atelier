@@ -74,7 +74,7 @@ const _defaults = Object.freeze({
   panelLocked:        false,      // ignore background clicks while true
   activeTab:          'languages', // active settings tab: 'languages' | 'style' | 'filter' | 'obs'
 
-  // --- Microphone (cloud recognition only; see ui-mic.js) ---
+  // --- Microphone (see ui-mic.js) ---
   /* '' is the system default. The label rides along so a device whose id was
      reset (cleared site data) can still be found by name. */
   micDeviceId:        '',

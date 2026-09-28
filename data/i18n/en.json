@@ -213,7 +213,7 @@
 
   "dialog.settings.title":  "Settings",
   "settings.mic.title":     "Microphone",
-  "settings.mic.desc": "Microphone used for speech recognition. While an offline recognition pack is in use, the default microphone is always used.",
+  "settings.mic.desc": "Microphone used for speech recognition.",
   "settings.mic.systemDefault": "System default",
   "settings.mic.unnamed": "Unnamed microphone",
   "settings.mic.needPermission": "The list appears after the first start",

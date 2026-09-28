@@ -213,7 +213,7 @@
 
   "dialog.settings.title":  "設定",
   "settings.mic.title":     "マイク",
-  "settings.mic.desc": "音声認識に使うマイク。オフライン音声認識パックで認識しているときは、常に既定のマイクが使われます。",
+  "settings.mic.desc": "音声認識に使うマイク。",
   "settings.mic.systemDefault": "システムの既定",
   "settings.mic.unnamed": "名前のないマイク",
   "settings.mic.needPermission": "一度開始すると一覧が表示されます",

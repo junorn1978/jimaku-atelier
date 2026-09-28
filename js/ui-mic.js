@@ -1,9 +1,8 @@
 /**
  * @file ui-mic.js
  * @description Microphone picker in the settings dialog. Stores the choice as
- * micDeviceId (+ its label); speech.js opens that device for the cloud
- * recogniser. The on-device model opens the default device by itself and
- * ignores the choice (see the note in speech.js).
+ * micDeviceId (+ its label); speech.js opens that device and starts the
+ * recogniser on it.
  *
  * The list is rebuilt whenever the dialog opens rather than kept live: device
  * labels only exist once microphone permission has been granted, which happens

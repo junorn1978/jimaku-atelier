@@ -38,9 +38,10 @@ let recognition  = null;
 let isActive     = false;
 let previousText = '';
 
-/* Which recogniser this run uses, decided per start: the on-device model, or
-   the cloud one fed from our own audio track (input). The two are run
-   differently — see configureRecognition and the session rotation below. */
+/* Which recogniser this run uses, decided per start: the on-device model or
+   the cloud one. Both listen to our own audio track (input); what differs is
+   how their sessions are run — see configureRecognition and the session
+   rotation below. */
 let usingLocal   = false;
 let input        = null;
 let inputHooks   = null;   // { onPause, onSpeech }, from setupRecognition
@@ -533,11 +534,8 @@ function setupRecognition() {
   return rec;
 }
 
-/* The cloud recogniser listens to our own track; the on-device one opens the
-   default microphone itself, as it always has. */
 function startRecognition() {
-  if (input) recognition.start(input.track);
-  else       recognition.start();
+  recognition.start(input.track);
 }
 
 function autoRestart(options = { delay: 0 }) {
@@ -580,18 +578,12 @@ async function handleStart() {
   document.querySelector('.subtitle-display')?.classList.add('is-recording');
 
   /* Opening the microphone doubles as the permission prompt (and is what lets
-     the settings dialog list devices by name). The cloud recogniser keeps the
-     stream, on the device picked in settings — it is started on it. For the
-     on-device model this is only the permission check: it opens the default
-     device itself, and start() on a track is untested with it. */
+     the settings dialog list devices by name). Both recognisers are started on
+     this track, from the device picked in settings — the on-device model hears
+     it the same as the cloud one (checked in the hamham extension). */
   try {
     usingLocal = await configureRecognition(recognition, lang);
-    if (usingLocal) {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach(t => t.stop());
-    } else {
-      input = await openInput();
-    }
+    input = await openInput();
   } catch (err) {
     if (isDebugEnabled()) console.warn('[speech] mic unavailable:', err);
     closeInput();
@@ -632,7 +624,7 @@ function closeInput() {
 /* Reopens the input from the current settings and moves recognition onto it.
    Returns false when no device could be opened. */
 async function switchInput(reason) {
-  if (!isActive || usingLocal) return true;
+  if (!isActive) return true;
   markSession(`switching input (${reason})`);
   let next;
   try {

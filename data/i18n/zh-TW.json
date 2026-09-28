@@ -213,7 +213,7 @@
 
   "dialog.settings.title":  "設定",
   "settings.mic.title":     "麥克風",
-  "settings.mic.desc": "語音辨識使用的麥克風。使用離線辨識語言包辨識時，一律使用預設麥克風。",
+  "settings.mic.desc": "語音辨識使用的麥克風。",
   "settings.mic.systemDefault": "系統預設",
   "settings.mic.unnamed": "未命名的麥克風",
   "settings.mic.needPermission": "開始過一次後會顯示清單",
