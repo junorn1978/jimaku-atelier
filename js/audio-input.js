@@ -34,7 +34,8 @@ const EDGE_SAMPLE_RATE = 16000;
  * @param {Function} [opts.onSpeech]  speaker is talking (repeats while they do)
  * @param {Function} [opts.onEnded]   the device went away
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
- *   fellBack: boolean, hold: Function, release: Function, close: Function }>}
+ *   fellBack: boolean, hold: Function, release: Function, isBacklogged: Function,
+ *   close: Function }>}
  */
 export async function openAudioInput({ deviceId = '', onPause, onSpeech, onEnded } = {}) {
   const base = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
@@ -70,9 +71,14 @@ export async function openAudioInput({ deviceId = '', onPause, onSpeech, onEnded
   dest.channelCount = 1;
   ctx.createMediaStreamSource(stream).connect(node).connect(dest);
 
+  /* Audio is queued from hold() until the worklet reports the queue empty
+     again, i.e. the recogniser has caught up with the speaker. */
+  let backlogged = false;
+
   node.port.onmessage = ({ data }) => {
-    if (data.type === 'pause')  onPause?.();
-    if (data.type === 'speech') onSpeech?.();
+    if (data.type === 'pause')   onPause?.();
+    if (data.type === 'speech')  onSpeech?.();
+    if (data.type === 'drained') backlogged = false;
   };
 
   let closed = false;
@@ -83,8 +89,12 @@ export async function openAudioInput({ deviceId = '', onPause, onSpeech, onEnded
     label:    source.label,
     deviceId: source.getSettings().deviceId || '',
     fellBack,
-    hold:     () => node.port.postMessage('hold'),
+    hold() {
+      backlogged = true;
+      node.port.postMessage('hold');
+    },
     release:  () => node.port.postMessage('release'),
+    isBacklogged: () => backlogged,
     close() {
       if (closed) return;
       closed = true;

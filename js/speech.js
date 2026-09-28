@@ -26,6 +26,7 @@ import { decorateSource } from './source-decoration.js';
 import { normalizeRecognised } from './normalize-ja.js';
 import { isChrome } from './env.js';
 import { keepTailVisible } from './subtitle-render.js';
+import { openAudioInput } from './audio-input.js';
 
 /* ============ environment ============ */
 
@@ -36,6 +37,13 @@ const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRec
 let recognition  = null;
 let isActive     = false;
 let previousText = '';
+
+/* Which recogniser this run uses, decided per start: the on-device model, or
+   the cloud one fed from our own audio track (input). The two are run
+   differently — see configureRecognition and the session rotation below. */
+let usingLocal   = false;
+let input        = null;
+let inputHooks   = null;   // { onPause, onSpeech }, from setupRecognition
 
 /* ============ session timing trace ============ */
 
@@ -88,8 +96,11 @@ function updateSource(text, pending = false) {
      the next result slot. While a pending update is only a shorter prefix of
      what's already on screen, keep the longer text — the display then only
      moves forward within a sentence, and resumes updating as soon as the
-     replay catches up with or diverges from it. */
-  if (pending && _lastSource && normForHold(_lastSource).startsWith(normForHold(text))) {
+     replay catches up with or diverges from it.
+     On-device only: a cloud session starts every sentence from nothing, so a
+     new one that happens to open with the last one's words would be held back
+     for no reason. */
+  if (usingLocal && pending && _lastSource && normForHold(_lastSource).startsWith(normForHold(text))) {
     return;
   }
 
@@ -221,21 +232,23 @@ async function configureRecognition(rec, lang) {
   rec.unspokenPunctuation = true;
   rec.interimResults      = true;
   rec.lang                = lang;
-  /* Continuous only where there is no connection to lose. A cloud recogniser's
-     socket dies on its own after roughly a minute — on Edge as a `network`
-     error raised seconds after it had already stopped returning results, so
-     the speech in between is gone with no event to react to. Per-utterance
-     sessions hand the teardown back to the engine's own endpointing instead:
-     it closes at a pause it has just detected, and the restart costs ~200ms of
-     audio inside that same pause. The on-device model has no socket to lose
-     and runs the session unbroken. */
-  rec.continuous          = processLocally;
+  /* Continuous on both recognisers. The on-device model runs one session
+     unbroken. The cloud one is continuous too, but never left running: a
+     cloud session goes quiet on its own after a minute or two, so it is ended
+     and restarted at the speaker's pauses (see session rotation below).
+     It used to be per-utterance (continuous=false), handing the teardown to
+     the engine's own endpointing. The engine ends a session mid-sentence on
+     slower speech, and the words spoken before the next session is up were
+     simply gone: on the same 3 minutes of an English stream, Chrome kept 852
+     characters that way against 1311 with rotation at pauses. */
+  rec.continuous          = true;
   rec.maxAlternatives     = 1;
   if ('phrases' in rec) rec.phrases = [];
 
   if (isDebugEnabled()) console.debug('[speech] configured', {
     lang, processLocally, continuous: rec.continuous,
   });
+  return processLocally;
 }
 
 function setupRecognition() {
@@ -246,41 +259,131 @@ function setupRecognition() {
   let finalTranscript  = '';
   let interimTranscript = '';
 
-  /* Continuous sessions only — this is the backstop for a session that never
-     ends on its own. A per-utterance session already closes at the engine's own
-     endpoint, so a second guard here would only race it, and that holds equally
-     for Edge and for Chrome on a cloud recogniser: both run per-utterance now.
-     The test used to read isChrome, from when Chrome was always continuous;
-     rec.continuous is the condition it was actually describing. */
+  /* Sends the pending interim as if it were the sentence's final. Used wherever
+     a session is ended on purpose: abort() discards whatever the recogniser had
+     not finalised, so what is on screen is all that is left of it. */
+  const flushInterim = () => {
+    const raw = interimTranscript;
+    interimTranscript = '';
+    if (!raw.trim()) return;
+    const text = filterSource(raw.replace(/[、。？\s]+/g, ' ').trim(), rec.lang);
+    if (!text) return;
+    if (isDebugEnabled()) console.info('[speech] flush →', text);
+    sendTranslationRequest(text, previousText, rec.lang);
+    previousText = text;
+    updateSource(text);
+    /* This flush is the sentence's final — it never reaches onresult, so arm
+       here or the flushed line would stay on screen for good. */
+    armIdleClear();
+  };
+
+  /* On-device only — this is the backstop for a session that never ends on its
+     own. A cloud session is ended at the speaker's pauses (rotation below),
+     which already covers everything this would. */
   const SILENCE_TIMEOUT = 10000;
 
   const resetSilenceTimer = () => {
-    if (!rec.continuous) return;
+    if (!usingLocal) return;
     if (silenceTimer) clearTimeout(silenceTimer);
     markSession(`silence armed ${SILENCE_TIMEOUT}ms`);
     silenceTimer = setTimeout(() => {
       markSession(`silence FIRED after ${SILENCE_TIMEOUT}ms interim="${interimTranscript}"`);
-      if (interimTranscript.trim()) {
-        const text = filterSource(
-          interimTranscript.replace(/[、。？\s]+/g, ' ').trim(),
-          rec.lang
-        );
-        if (text) {
-          sendTranslationRequest(text, previousText, rec.lang);
-          previousText = text;
-          updateSource(text);
-          /* This flush is the sentence's final — it never reaches onresult, so
-             arm here or the flushed line would stay on screen for good. */
-          armIdleClear();
-        }
-      }
+      flushInterim();
       rec.abort();
     }, SILENCE_TIMEOUT);
   };
 
+  /* ---- session rotation (cloud) ----
+
+     A cloud session is ended and restarted by us, at the speaker's pauses as
+     reported by audio-input.js, instead of by the engine. Two things were
+     learned measuring this on stream audio (track-buffer-test, 2026-09-28):
+
+     - Where a session ends is what loses words, not how long the restart takes.
+       Cut mid-speech, 0.3–1s of the old session's tail is gone — audio the
+       engine had received but not yet turned into an interim, which abort()
+       throws away. That held with a 20ms restart just as with a 110ms one. Cut
+       at a pause, nothing was lost.
+     - When a cut mid-speech cannot be avoided, feeding the engine silence
+       first lets it finish: interims kept changing for up to ~750ms (median
+       ~300ms) after the audio stopped. Meanwhile the real audio is queued and
+       replayed into the next session, so the silence costs latency, not words.
+
+     Parameters are the ones those tests ran with. */
+  const ROTATE_MIN_AGE_MS = 3000;    // at a pause, rotate once the session is this old
+  const ROTATE_CAP_MS     = 20000;   // no pause in sight: rotate anyway (with a drain)
+  /* Talking, yet not a single result for this long: the session is dead (seen
+     on Edge as a 7s session that returned nothing). Not shorter — a healthy
+     cloud session took up to ~6s to return its first result over music. */
+  const STALL_MS          = 8000;
+  const DRAIN_SETTLE_MS   = 300;     // drain ends once interims stop changing this long…
+  const DRAIN_MAX_MS      = 900;     // …or after this, whichever is first
+
+  let sessionStartedAt = 0;
+  let lastResultAt     = 0;
+  let lastInterimAt    = 0;
+  let finalDuringDrain = false;
+  let rotating         = false;
+  let drainTimer       = null;
+
+  const cancelDrain = () => {
+    if (drainTimer) { clearInterval(drainTimer); drainTimer = null; }
+  };
+
+  const cutSession = () => {
+    cancelDrain();
+    markSession(`rotate cut interim="${interimTranscript}"`);
+    flushInterim();
+    rec.abort();
+  };
+
+  const rotate = (reason) => {
+    if (rotating || !isActive || usingLocal || !sessionStartedAt) return;
+    rotating = true;
+    const now = performance.now();
+    markSession(`rotate (${reason}) age=${(now - sessionStartedAt).toFixed(0)}ms`);
+
+    /* A pause is already silence reaching the engine, unless the recogniser is
+       still behind on audio queued by an earlier drain — then the "pause" it is
+       hearing has not happened yet, and it gets drained like any other cut. A
+       stall has nothing in flight to wait for. */
+    if (reason === 'stall' || (reason === 'pause' && !input?.isBacklogged())) {
+      cutSession();
+      return;
+    }
+    input?.hold();
+    finalDuringDrain = false;
+    drainTimer = setInterval(() => {
+      const t = performance.now();
+      if (finalDuringDrain
+          || t - Math.max(lastInterimAt, now) >= DRAIN_SETTLE_MS
+          || t - now >= DRAIN_MAX_MS) cutSession();
+    }, 20);
+  };
+
+  inputHooks = {
+    onPause() {
+      if (sessionStartedAt && performance.now() - sessionStartedAt >= ROTATE_MIN_AGE_MS) rotate('pause');
+    },
+    onSpeech() {
+      if (!sessionStartedAt) return;
+      const now = performance.now();
+      if (now - sessionStartedAt >= ROTATE_CAP_MS) rotate('cap');
+      else if (now - lastResultAt >= STALL_MS)     rotate('stall');
+    },
+  };
+
+  rec.onstart = () => {
+    markSession('onstart');
+    sessionStartedAt = lastResultAt = performance.now();
+  };
+  /* The next session is listening: let any audio held during a drain through. */
+  rec.onaudiostart = () => {
+    markSession('onaudiostart');
+    input?.release();
+  };
+
   /* Diagnostic-only lifecycle handlers: no behaviour, just the timeline. */
-  rec.onstart       = () => markSession('onstart');
-  rec.onaudiostart  = () => markSession('onaudiostart');
   rec.onspeechstart = () => markSession('onspeechstart');
   rec.onspeechend   = () => markSession('onspeechend');
   rec.onsoundend    = () => markSession('onsoundend');
@@ -304,8 +407,8 @@ function setupRecognition() {
      result yet there is nothing to flush, and flushing a fragment would send
      half a word off to be translated.
 
-     Continuous implies an on-device model, which implies Chrome (see
-     decideProcessLocally), so rec.continuous alone gates this. */
+     On-device only. A cloud session can legitimately take seconds to return
+     its first result, and a dead one is caught by the stall check above. */
   const STARTUP_TIMEOUT = 3000;
   let startupTimer = null;
 
@@ -315,7 +418,7 @@ function setupRecognition() {
 
   rec.onsoundstart = () => {
     markSession('onsoundstart');
-    if (!rec.continuous || resultCount > 0) return;
+    if (!usingLocal || resultCount > 0) return;
     clearStartupTimer();
     markSession(`startup watchdog armed ${STARTUP_TIMEOUT}ms`);
     startupTimer = setTimeout(() => {
@@ -330,7 +433,9 @@ function setupRecognition() {
        model takes to say anything at all after onsoundstart. */
     if (resultCount <= 3) markSession(`onresult #${resultCount}`);
     clearStartupTimer();
+    lastResultAt = performance.now();
 
+    const previousInterim = interimTranscript;
     interimTranscript = '';
     finalTranscript   = '';
     let hasFinal = false;
@@ -340,6 +445,8 @@ function setupRecognition() {
       if (event.results[i].isFinal) { finalTranscript += t; hasFinal = true; }
       else                          { interimTranscript += t; }
     }
+    if (interimTranscript !== previousInterim) lastInterimAt = lastResultAt;
+    if (hasFinal) finalDuringDrain = true;
 
     /* Armed off the interim this event actually carried — reading it before the
        parse loop above meant the previous round's leftover value decided it,
@@ -390,7 +497,10 @@ function setupRecognition() {
   rec.onend = () => {
     markSession('onend');
     clearStartupTimer();
+    cancelDrain();
     if (silenceTimer) clearTimeout(silenceTimer);
+    sessionStartedAt  = 0;
+    rotating          = false;
     finalTranscript   = '';
     interimTranscript = '';
     autoRestart();
@@ -408,12 +518,19 @@ function setupRecognition() {
   return rec;
 }
 
+/* The cloud recogniser listens to our own track; the on-device one opens the
+   default microphone itself, as it always has. */
+function startRecognition() {
+  if (input) recognition.start(input.track);
+  else       recognition.start();
+}
+
 function autoRestart(options = { delay: 0 }) {
   if (!isActive) return;
   setTimeout(() => {
     try {
       beginSession(`autoRestart delay=${options.delay}ms`);
-      recognition.start();
+      startRecognition();
       options.delay = 0;
     } catch {
       markSession('start() threw — previous instance still tearing down');
@@ -431,6 +548,7 @@ function autoRestart(options = { delay: 0 }) {
 async function showDefaultMic() {
   const el = document.getElementById('default-mic-name');
   if (!el) return;
+  if (input?.label) { el.textContent = input.label; return; }
   if (!navigator.mediaDevices?.enumerateDevices) return;
   try {
     const devices = await navigator.mediaDevices.enumerateDevices();
@@ -464,13 +582,23 @@ async function handleStart() {
   resetController();
   document.querySelector('.subtitle-display')?.classList.add('is-recording');
 
-  /* Permission first — also lets us read the device label for the header. */
+  /* Opening the microphone doubles as the permission prompt, and lets us read
+     the device label for the settings dialog. The cloud recogniser keeps the
+     stream (it is started on it); for the on-device one this is only the
+     permission check, and the model opens the default device itself. */
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach(t => t.stop());
+    usingLocal = await configureRecognition(recognition, lang);
+    if (usingLocal) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach(t => t.stop());
+    } else {
+      input = await openAudioInput({ ...inputHooks, onEnded: handleInputEnded });
+    }
     await showDefaultMic();
   } catch (err) {
-    if (isDebugEnabled()) console.warn('[speech] mic permission denied:', err);
+    if (isDebugEnabled()) console.warn('[speech] mic unavailable:', err);
+    closeInput();
+    document.querySelector('.subtitle-display')?.classList.remove('is-recording');
     return;
   }
 
@@ -478,20 +606,33 @@ async function handleStart() {
   updateButtons();
 
   try {
-    await configureRecognition(recognition, lang);
     beginSession('handleStart');
-    recognition.start();
+    startRecognition();
   } catch (err) {
     if (isDebugEnabled()) console.error('[speech] start failed:', err);
     isActive = false;
+    closeInput();
     updateButtons();
   }
+}
+
+function closeInput() {
+  input?.close();
+  input = null;
+}
+
+/* The device went away mid-run (unplugged, disabled). There is nothing left
+   to listen to, so stop the way the stop button does. */
+function handleInputEnded() {
+  markSession('input device ended');
+  handleStop();
 }
 
 function handleStop() {
   if (!isActive) return;
   isActive = false;
   if (recognition) recognition.abort();
+  closeInput();
   /* Stop means "taking a break", so the display goes with it rather than
      freezing the last line on screen (and in the overlay) for the duration. */
   clearAllSubtitles();
