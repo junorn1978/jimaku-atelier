@@ -1242,6 +1242,81 @@
     text-overflow: ellipsis;
   }
 
+  /* --- microphone level test (settings dialog; ui-mic.js) ---
+     One block with three states: idle shows the button and a hint, running
+     the prompt and a live bar, done the two measured bars and the advice. */
+  .mic-test {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+
+    .mic-test-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+    .mic-test-step {
+      color: var(--color-text);
+      font-weight: 600;
+    }
+
+    &[data-state="idle"]    :is(.mic-test-step, .mic-test-live, .mic-test-result) { display: none; }
+    &[data-state="running"] :is(.mic-test-hint, .mic-test-result)                 { display: none; }
+    &[data-state="done"]    :is(.mic-test-step, .mic-test-live)                   { display: none; }
+
+    .mic-test-bars {
+      display: grid;
+      gap: var(--space-2);
+    }
+    .mic-test-row {
+      display: grid;
+      grid-template-columns: 5em 1fr 4.5em;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+    }
+    .level-value {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--color-text-dim);
+    }
+    /* Background above the line: that bar is the problem. */
+    .mic-test-bg.is-over .level-fill {
+      background: var(--color-danger);
+    }
+    .mic-test-verdict {
+      font-size: var(--text-sm);
+      &[data-tone="ok"]   { color: var(--color-success); }
+      &[data-tone="warn"] { color: var(--color-warning); }
+      &[data-tone="bad"]  { color: color-mix(in oklab, var(--color-danger) 85%, white); }
+    }
+  }
+
+  .level-bar {
+    position: relative;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--color-surface-2);
+
+    .level-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--color-accent);
+      transition: width 60ms linear;
+    }
+    /* The line the background has to stay under. */
+    .level-mark {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 2px;
+      margin-left: -1px;
+      background: var(--color-warning);
+    }
+  }
+
   /* --- language controls: source side | translation side --- */
   .lang-grid {
     display: flex;

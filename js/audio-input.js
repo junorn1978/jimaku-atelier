@@ -22,6 +22,28 @@ import { isEdge } from './env.js';
 
 const WORKLET_URL = new URL('./audio-worklet.js', import.meta.url);
 
+/* The pause detector's thresholds (see audio-worklet.js): quiet is below
+   PAUSE_DROP_DB under the speech level, and never above PAUSE_GATE_DB.
+   Exported for the level test, which has to judge by the same numbers or its
+   verdict would not describe what recognition actually does. */
+export const PAUSE_GATE_DB = -50;
+export const PAUSE_DROP_DB = 12;
+
+const PROCESSING_OFF = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+
+/* The picked device, or the default one when it is gone (fellBack). Permission
+   errors are not a missing device and go straight up. */
+async function openStream(deviceId) {
+  if (deviceId) {
+    try {
+      return { stream: await navigator.mediaDevices.getUserMedia({ audio: { ...PROCESSING_OFF, deviceId: { exact: deviceId } } }), fellBack: false };
+    } catch (err) {
+      if (err?.name !== 'OverconstrainedError' && err?.name !== 'NotFoundError') throw err;
+    }
+  }
+  return { stream: await navigator.mediaDevices.getUserMedia({ audio: PROCESSING_OFF }), fellBack: !!deviceId };
+}
+
 /* Edge's recogniser only accepts a 16kHz track; 48kHz mono yields nothing.
    (Measured in the hamham extension, 2026-09-27.) Chrome takes the native rate. */
 const EDGE_SAMPLE_RATE = 16000;
@@ -39,22 +61,9 @@ const EDGE_SAMPLE_RATE = 16000;
  *   fellBack: boolean, hold: Function, release: Function, close: Function }>}
  */
 export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onEnded } = {}) {
-  const base = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-
-  let stream;
-  let fellBack = false;
-  if (deviceId) {
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { ...base, deviceId: { exact: deviceId } } });
-    } catch (err) {
-      /* The chosen device is gone (unplugged, renamed). Fall back rather than
-         refuse to start; the caller tells the user. Permission errors are not
-         a missing device and go straight up. */
-      if (err?.name !== 'OverconstrainedError' && err?.name !== 'NotFoundError') throw err;
-      fellBack = true;
-    }
-  }
-  if (!stream) stream = await navigator.mediaDevices.getUserMedia({ audio: base });
+  /* A device that is gone (unplugged, renamed) falls back rather than refusing
+     to start; the settings dialog shows it as not connected. */
+  const { stream, fellBack } = await openStream(deviceId);
 
   const source = stream.getAudioTracks()[0];
   const ctx = new AudioContext(isEdge ? { sampleRate: EDGE_SAMPLE_RATE } : undefined);
@@ -67,7 +76,10 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
     throw err;
   }
 
-  const node = new AudioWorkletNode(ctx, 'speech-input', { outputChannelCount: [1] });
+  const node = new AudioWorkletNode(ctx, 'speech-input', {
+    outputChannelCount: [1],
+    processorOptions: { gateDb: PAUSE_GATE_DB, dropDb: PAUSE_DROP_DB },
+  });
   const dest = ctx.createMediaStreamDestination();
   dest.channelCount = 1;
   ctx.createMediaStreamSource(stream).connect(node).connect(dest);
@@ -95,6 +107,37 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
       node.port.onmessage = null;
       source.stop();
       dest.stream.getTracks().forEach(t => t.stop());
+      ctx.close();
+    },
+  };
+}
+
+/**
+ * A plain level meter on the picked device, for the level test in settings.
+ * Same capture settings as recognition; no worklet, nothing sent anywhere.
+ * @returns {Promise<{ read: () => number, label: string, fellBack: boolean, close: Function }>}
+ *   read() is the current RMS in dBFS, over the last ~40ms.
+ */
+export async function openLevelMeter(deviceId = '') {
+  const { stream, fellBack } = await openStream(deviceId);
+  const source = stream.getAudioTracks()[0];
+  const ctx = new AudioContext();
+  const analyser = ctx.createAnalyser();
+  analyser.fftSize = 2048;
+  ctx.createMediaStreamSource(stream).connect(analyser);
+  const buf = new Float32Array(analyser.fftSize);
+
+  return {
+    label: source.label,
+    fellBack,
+    read() {
+      analyser.getFloatTimeDomainData(buf);
+      let sum = 0;
+      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
+      return 10 * Math.log10(sum / buf.length + 1e-12);
+    },
+    close() {
+      source.stop();
       ctx.close();
     },
   };

@@ -19,12 +19,11 @@
 
 /* Level tracking (ported from the hamham extension, tuned there on stream
    audio with background music): quiet is the level below whichever is higher
-   — a fixed gate, or dropDb under the recent speech level. The speech level
+   — a fixed gate, or dropDb under the recent speech level. Both come in from
+   audio-input.js, which the level test shares them with. The speech level
    follows speech with a time constant, not a per-block factor: a per-block
    factor sinks it to the music's level within ~0.1s, and then nothing is ever
    12dB below it. */
-const GATE_DB        = -50;
-const DROP_DB        = 12;
 const LEVEL_SEC      = 0.05;   // RMS smoothing
 const SPEECH_SEC     = 1.5;    // speech-level tracking
 
@@ -44,12 +43,12 @@ const BLOCK = 128;
 /* Smoothed level and how long it has been quiet. Used twice: on the input, to
    tag queued blocks for catch-up; on the output, for the pause events. */
 class LevelTracker {
-  constructor(blockSec) {
+  constructor(blockSec, gateDb, dropDb) {
     this.blockSec   = blockSec;
     this.levelCoef  = 1 - Math.exp(-blockSec / LEVEL_SEC);
     this.speechCoef = 1 - Math.exp(-blockSec / SPEECH_SEC);
-    this.gate       = 10 ** (GATE_DB / 20);
-    this.drop       = 10 ** (-DROP_DB / 20);
+    this.gate       = 10 ** (gateDb / 20);
+    this.drop       = 10 ** (-dropDb / 20);
     this.meanSquare = 0;
     this.speechLevel = 0.05;
     this.quietSec   = 0;
@@ -72,12 +71,12 @@ class LevelTracker {
 }
 
 class InputProcessor extends AudioWorkletProcessor {
-  constructor() {
+  constructor({ processorOptions: { gateDb, dropDb } }) {
     super();
     const blockSec = BLOCK / sampleRate;
     this.blockSec = blockSec;
-    this.inLevel  = new LevelTracker(blockSec);
-    this.outLevel = new LevelTracker(blockSec);
+    this.inLevel  = new LevelTracker(blockSec, gateDb, dropDb);
+    this.outLevel = new LevelTracker(blockSec, gateDb, dropDb);
     this.paused    = true;
     this.shortSent = true;
     this.sinceBeat = 0;
