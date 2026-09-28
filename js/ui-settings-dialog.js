@@ -9,19 +9,21 @@ import { applyTo, t } from './i18n.js';
 import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 import { APP_VERSION } from './app-meta.js';
+import { mountMicPicker } from './ui-mic.js';
 
 export function mountSettingsDialog(container) {
   if (!container) return;
 
   container.innerHTML = `
     <section class="dialog-section">
-      <h3 data-i18n="settings.mic.title">マイク</h3>
-      <dl class="about-list">
+      <div class="dialog-setting-row">
         <div>
-          <dt data-i18n="settings.mic.default">既定のマイク</dt>
-          <dd id="default-mic-name" data-i18n="header.mic.unknown">未選択</dd>
+          <h3 data-i18n="settings.mic.title">マイク</h3>
+          <p data-i18n="settings.mic.desc">説明</p>
         </div>
-      </dl>
+        <select class="select select-device" id="settings-mic-select"
+                data-i18n-aria-label="settings.mic.title" aria-label="マイク"></select>
+      </div>
     </section>
 
     <!-- Timing rather than styling, so it belongs here and not in the style
@@ -125,6 +127,7 @@ export function mountSettingsDialog(container) {
   `;
 
   applyTo(container);
+  mountMicPicker(container.querySelector('#settings-mic-select'));
 
   const debugToggle = container.querySelector('#settings-debug-toggle');
   if (debugToggle) {

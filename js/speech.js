@@ -371,6 +371,15 @@ function setupRecognition() {
       if (now - sessionStartedAt >= ROTATE_CAP_MS) rotate('cap');
       else if (now - lastResultAt >= STALL_MS)     rotate('stall');
     },
+    /* The input was replaced mid-run: end this session so the next one starts
+       on the new track. Between sessions there is nothing to do — the restart
+       already in flight reads the new input. */
+    restart() {
+      if (!sessionStartedAt || rotating) return;
+      rotating = true;
+      markSession('rotate (input switched)');
+      cutSession();
+    },
   };
 
   rec.onstart = () => {
@@ -549,24 +558,6 @@ function autoRestart(options = { delay: 0 }) {
   }, options.delay);
 }
 
-/* ============ mic info ============ */
-
-async function showDefaultMic() {
-  const el = document.getElementById('default-mic-name');
-  if (!el) return;
-  if (input?.label) { el.textContent = input.label; return; }
-  if (!navigator.mediaDevices?.enumerateDevices) return;
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const audioInputs = devices.filter(d => d.kind === 'audioinput');
-    if (!audioInputs.length) return;
-    const def = audioInputs.find(d => d.deviceId === 'default') || audioInputs[0];
-    if (def?.label) el.textContent = def.label;
-  } catch (err) {
-    if (isDebugEnabled()) console.warn('[speech] enumerateDevices failed:', err);
-  }
-}
-
 /* ============ buttons ============ */
 
 function updateButtons() {
@@ -588,19 +579,19 @@ async function handleStart() {
   resetController();
   document.querySelector('.subtitle-display')?.classList.add('is-recording');
 
-  /* Opening the microphone doubles as the permission prompt, and lets us read
-     the device label for the settings dialog. The cloud recogniser keeps the
-     stream (it is started on it); for the on-device one this is only the
-     permission check, and the model opens the default device itself. */
+  /* Opening the microphone doubles as the permission prompt (and is what lets
+     the settings dialog list devices by name). The cloud recogniser keeps the
+     stream, on the device picked in settings — it is started on it. For the
+     on-device model this is only the permission check: it opens the default
+     device itself, and start() on a track is untested with it. */
   try {
     usingLocal = await configureRecognition(recognition, lang);
     if (usingLocal) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stream.getTracks().forEach(t => t.stop());
     } else {
-      input = await openAudioInput({ ...inputHooks, onEnded: handleInputEnded });
+      input = await openInput();
     }
-    await showDefaultMic();
   } catch (err) {
     if (isDebugEnabled()) console.warn('[speech] mic unavailable:', err);
     closeInput();
@@ -622,16 +613,47 @@ async function handleStart() {
   }
 }
 
+function openInput() {
+  return openAudioInput({
+    deviceId: settings.micDeviceId,
+    ...inputHooks,
+    onEnded: handleInputEnded,
+  }).then((opened) => {
+    if (opened.fellBack) markSession(`picked mic missing, using default: ${opened.label}`);
+    return opened;
+  });
+}
+
 function closeInput() {
   input?.close();
   input = null;
 }
 
-/* The device went away mid-run (unplugged, disabled). There is nothing left
-   to listen to, so stop the way the stop button does. */
-function handleInputEnded() {
-  markSession('input device ended');
-  handleStop();
+/* Reopens the input from the current settings and moves recognition onto it.
+   Returns false when no device could be opened. */
+async function switchInput(reason) {
+  if (!isActive || usingLocal) return true;
+  markSession(`switching input (${reason})`);
+  let next;
+  try {
+    next = await openInput();
+  } catch (err) {
+    if (isDebugEnabled()) console.warn('[speech] reopening mic failed:', err);
+    return false;
+  }
+  if (!isActive) { next.close(); return true; }
+  const old = input;
+  input = next;
+  old?.close();
+  inputHooks.restart();
+  return true;
+}
+
+/* The device went away mid-run (unplugged, disabled). Carry on with whatever
+   the settings now resolve to — the default device, if the picked one is the
+   one that went — and stop only when there is no microphone left at all. */
+async function handleInputEnded() {
+  if (!(await switchInput('device ended'))) handleStop();
 }
 
 function handleStop() {
@@ -662,6 +684,7 @@ export function initSpeech() {
 
   updateButtons();
   subscribe('sourceLangId', updateButtons);
+  subscribe('micDeviceId', () => switchInput('picked in settings'));
   subscribe('subClearIdleSec', onClearIdleChanged);
   subscribe('subSourcePrefix', redecorateSource);
   subscribe('subSourceSuffix', redecorateSource);

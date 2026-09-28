@@ -1234,6 +1234,14 @@
     flex-shrink: 0;
   }
 
+  /* Device names run long ("CABLE Output (VB-Audio Virtual Cable)"); wider than
+     the language selects, and cut with an ellipsis past that. */
+  .select-device {
+    width: 240px;
+    flex-shrink: 0;
+    text-overflow: ellipsis;
+  }
+
   /* --- language controls: source side | translation side --- */
   .lang-grid {
     display: flex;
