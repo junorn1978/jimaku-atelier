@@ -260,6 +260,16 @@ function setupRecognition() {
   let finalTranscript  = '';
   let interimTranscript = '';
 
+  /* Set when we abort a session ourselves, having flushed what it had. A
+     result can still arrive between abort() and onend; left in, it refills the
+     interim and onend's flush sends the same line a second time (seen on a
+     live stream). Results from a session we have ended are ignored. */
+  let aborting = false;
+  const abortSession = () => {
+    aborting = true;
+    rec.abort();
+  };
+
   /* Sends the pending interim as if it were the sentence's final. Used wherever
      a session is ended on purpose: abort() discards whatever the recogniser had
      not finalised, so what is on screen is all that is left of it. */
@@ -290,7 +300,7 @@ function setupRecognition() {
     silenceTimer = setTimeout(() => {
       markSession(`silence FIRED after ${SILENCE_TIMEOUT}ms interim="${interimTranscript}"`);
       flushInterim();
-      rec.abort();
+      abortSession();
     }, SILENCE_TIMEOUT);
   };
 
@@ -319,6 +329,13 @@ function setupRecognition() {
      Parameters are the ones those tests ran with, except the drain settle,
      widened after a live stream showed interims 500ms apart. */
   const ROTATE_MIN_AGE_MS = 3000;    // at a pause, rotate once the session is this old
+  /* Some speakers barely pause: on one live stream, 9 sessions in 5 minutes
+     ran to the cap, with no 350ms pause but plenty of 100–250ms breaths
+     between phrases. Past this age a 150ms breath is taken instead — six of
+     those nine would have ended there — with a drain, since 150ms does not
+     give the engine time to finish the way a full pause does. Speakers who do
+     pause are unaffected: 90% of their sessions end before this. */
+  const ROTATE_SHORT_AGE_MS = 10000;
   const ROTATE_CAP_MS     = 20000;   // no pause in sight: rotate anyway (with a drain)
   /* Talking, yet not a single result for this long: the session is dead (seen
      on Edge as a 7s session that returned nothing). Not shorter — a healthy
@@ -342,7 +359,7 @@ function setupRecognition() {
     cancelDrain();
     markSession(`rotate cut interim="${interimTranscript}"`);
     flushInterim();
-    rec.abort();
+    abortSession();
   };
 
   const rotate = (reason) => {
@@ -353,9 +370,10 @@ function setupRecognition() {
 
     /* Held until the next session's onaudiostart, whatever the reason. A pause
        is already silence reaching the engine and a stall has nothing in flight,
-       so those are cut at once; only a cut mid-speech waits for the engine. */
+       so those are cut at once; a breath or a cut mid-speech waits for the
+       engine. */
     input?.hold();
-    if (reason !== 'cap') {
+    if (reason !== 'cap' && reason !== 'short') {
       cutSession();
       return;
     }
@@ -372,6 +390,9 @@ function setupRecognition() {
     onPause() {
       if (sessionStartedAt && performance.now() - sessionStartedAt >= ROTATE_MIN_AGE_MS) rotate('pause');
     },
+    onShortPause() {
+      if (sessionStartedAt && performance.now() - sessionStartedAt >= ROTATE_SHORT_AGE_MS) rotate('short');
+    },
     onSpeech() {
       if (!sessionStartedAt) return;
       const now = performance.now();
@@ -387,8 +408,8 @@ function setupRecognition() {
       markSession('rotate (input switched)');
       cutSession();
     },
-    onGap(ms) {
-      markSession(`gap ${ms}ms age=${sessionStartedAt ? (performance.now() - sessionStartedAt).toFixed(0) : '-'}ms`);
+    onGap(ms, queuedMs) {
+      markSession(`gap ${ms}ms age=${sessionStartedAt ? (performance.now() - sessionStartedAt).toFixed(0) : '-'}ms queued=${queuedMs}ms`);
     },
   };
 
@@ -447,6 +468,7 @@ function setupRecognition() {
   };
 
   rec.onresult = (event) => {
+    if (aborting) return;
     resultCount++;
     /* Traced for the first few results only: what matters is how long the
        model takes to say anything at all after onsoundstart. */
@@ -524,6 +546,7 @@ function setupRecognition() {
        on 3 minutes of English stream this was 4 lines. Our own cuts have
        flushed already, and after the stop button nothing should be sent. */
     if (isActive) flushInterim();
+    aborting          = false;
     sessionStartedAt  = 0;
     rotating          = false;
     finalTranscript   = '';

@@ -29,6 +29,7 @@ const LEVEL_SEC      = 0.05;   // RMS smoothing
 const SPEECH_SEC     = 1.5;    // speech-level tracking
 
 const PAUSE_SEC      = 0.35;   // quiet this long is a pause
+const SHORT_SEC      = 0.15;   // …and this long a short one (a breath between phrases)
 const HEARTBEAT_SEC  = 0.5;    // 'speech' repeats this often while talking
 const GAP_REPORT_SEC = 0.1;    // quiet stretches from this long are reported (diagnostics)
 
@@ -78,6 +79,7 @@ class InputProcessor extends AudioWorkletProcessor {
     this.inLevel  = new LevelTracker(blockSec);
     this.outLevel = new LevelTracker(blockSec);
     this.paused    = true;
+    this.shortSent = true;
     this.sinceBeat = 0;
 
     /* Ring buffer of whole blocks, each with the input's quiet time at capture. */
@@ -154,8 +156,13 @@ class InputProcessor extends AudioWorkletProcessor {
     const quietBefore = level.quietSec;
     if (level.update(block)) {
       if (quietBefore >= GAP_REPORT_SEC) {
-        this.port.postMessage({ type: 'gap', ms: Math.round(quietBefore * 1000) });
+        this.port.postMessage({
+          type: 'gap',
+          ms: Math.round(quietBefore * 1000),
+          queuedMs: Math.round(this.count * this.blockSec * 1000),
+        });
       }
+      this.shortSent = false;
       this.sinceBeat += this.blockSec;
       if (this.paused || this.sinceBeat >= HEARTBEAT_SEC) {
         this.paused = false;
@@ -163,6 +170,10 @@ class InputProcessor extends AudioWorkletProcessor {
         this.port.postMessage({ type: 'speech' });
       }
       return;
+    }
+    if (!this.shortSent && level.quietSec >= SHORT_SEC) {
+      this.shortSent = true;
+      this.port.postMessage({ type: 'shortPause' });
     }
     if (!this.paused && level.quietSec >= PAUSE_SEC) {
       this.paused = true;

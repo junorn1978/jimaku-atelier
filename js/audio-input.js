@@ -31,13 +31,14 @@ const EDGE_SAMPLE_RATE = 16000;
  * @param {object} opts
  * @param {string}   [opts.deviceId]  '' / undefined → the system default
  * @param {Function} [opts.onPause]   what the recogniser hears went quiet
+ * @param {Function} [opts.onShortPause] …went quiet briefly (150ms, a breath)
  * @param {Function} [opts.onSpeech]  …is speech (repeats while it is)
- * @param {Function} [opts.onGap]     a quiet stretch just ended, (ms) — diagnostics
+ * @param {Function} [opts.onGap]     a quiet stretch just ended, (ms, queuedMs) — diagnostics
  * @param {Function} [opts.onEnded]   the device went away
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
  *   fellBack: boolean, hold: Function, release: Function, close: Function }>}
  */
-export async function openAudioInput({ deviceId = '', onPause, onSpeech, onGap, onEnded } = {}) {
+export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onEnded } = {}) {
   const base = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
   let stream;
@@ -73,8 +74,9 @@ export async function openAudioInput({ deviceId = '', onPause, onSpeech, onGap, 
 
   node.port.onmessage = ({ data }) => {
     if (data.type === 'pause')  onPause?.();
+    if (data.type === 'shortPause') onShortPause?.();
     if (data.type === 'speech') onSpeech?.();
-    if (data.type === 'gap')    onGap?.(data.ms);
+    if (data.type === 'gap')    onGap?.(data.ms, data.queuedMs);
   };
 
   let closed = false;
