@@ -499,6 +499,12 @@ function setupRecognition() {
     clearStartupTimer();
     cancelDrain();
     if (silenceTimer) clearTimeout(silenceTimer);
+    /* A session can end with text still pending — the engine ended it (a
+       network error, a no-speech timeout), not us. That interim is never going
+       to become a final, and dropping it drops speech the user saw on screen;
+       on 3 minutes of English stream this was 4 lines. Our own cuts have
+       flushed already, and after the stop button nothing should be sent. */
+    if (isActive) flushInterim();
     sessionStartedAt  = 0;
     rotating          = false;
     finalTranscript   = '';
