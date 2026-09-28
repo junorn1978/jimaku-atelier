@@ -79,6 +79,10 @@ const _defaults = Object.freeze({
      reset (cleared site data) can still be found by name. */
   micDeviceId:        '',
   micDeviceLabel:     '',
+  /* How cloud recognition splits sentences. 'auto': we end sessions at the
+     speaker's pauses. 'engine': the recogniser ends each utterance itself —
+     for background music loud enough to hide the pauses (see speech.js). */
+  segmentMode:        'auto',
 
   // --- Language selection ---
   sourceLangId:       '',

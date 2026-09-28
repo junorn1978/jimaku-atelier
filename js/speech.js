@@ -43,6 +43,9 @@ let previousText = '';
    how their sessions are run — see configureRecognition and the session
    rotation below. */
 let usingLocal   = false;
+/* Cloud only, from settings.segmentMode: the engine ends each utterance itself
+   instead of us ending sessions at pauses. See configureRecognition. */
+let engineSegments = false;
 let input        = null;
 let inputHooks   = null;   // { onPause, onSpeech }, from setupRecognition
 
@@ -241,13 +244,22 @@ async function configureRecognition(rec, lang) {
      the engine's own endpointing. The engine ends a session mid-sentence on
      slower speech, and the words spoken before the next session is up were
      simply gone: on the same 3 minutes of an English stream, Chrome kept 852
-     characters that way against 1311 with rotation at pauses. */
-  rec.continuous          = true;
+     characters that way against 1311 with rotation at pauses.
+
+     Per-utterance survives as the 'engine' segment mode, for loud background
+     music. Our pause detector only sees level; the engine's endpointing tells
+     speech from music. With BGM ~12dB under the voice (a stream whose music
+     was mixed into the same input), per-utterance kept 476 characters against
+     367 — and making our sessions shorter did not close that gap (370), so it
+     is the mode, not the session length. The words lost at each engine-chosen
+     end are now covered: audio is held from onaudioend to the next session. */
+  engineSegments          = !processLocally && settings.segmentMode === 'engine';
+  rec.continuous          = !engineSegments;
   rec.maxAlternatives     = 1;
   if ('phrases' in rec) rec.phrases = [];
 
   if (isDebugEnabled()) console.debug('[speech] configured', {
-    lang, processLocally, continuous: rec.continuous,
+    lang, processLocally, continuous: rec.continuous, engineSegments,
   });
   return processLocally;
 }
@@ -363,7 +375,7 @@ function setupRecognition() {
   };
 
   const rotate = (reason) => {
-    if (rotating || !isActive || usingLocal || !sessionStartedAt) return;
+    if (rotating || !isActive || usingLocal || engineSegments || !sessionStartedAt) return;
     rotating = true;
     const now = performance.now();
     markSession(`rotate (${reason}) age=${(now - sessionStartedAt).toFixed(0)}ms`);
@@ -427,7 +439,14 @@ function setupRecognition() {
   rec.onspeechstart = () => markSession('onspeechstart');
   rec.onspeechend   = () => markSession('onspeechend');
   rec.onsoundend    = () => markSession('onsoundend');
-  rec.onaudioend    = () => markSession('onaudioend');
+  /* Per-utterance: the engine has stopped taking audio for this session and
+     will end it; hold what comes next until the following session is up
+     (onaudiostart releases it). With the mic track that gap is ~60ms,
+     up to ~140ms, and it falls right where the next utterance may begin. */
+  rec.onaudioend = () => {
+    markSession('onaudioend');
+    if (engineSegments && isActive && !aborting) input?.hold();
+  };
   rec.onnomatch     = () => markSession('onnomatch');
 
   /* Startup watchdog. Sound is reaching the recogniser but nothing has come
