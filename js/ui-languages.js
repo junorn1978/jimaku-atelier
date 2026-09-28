@@ -16,10 +16,10 @@
  *
  * Bottom — two columns matching the matrix's sides: the Chrome-only offline
  * recognition pack on the recognition side, and HOW to translate on the other
- * (engine picker plus an .engine-detail region that absorbs the rest of the
- * column, so switching engines never resizes the tab). The columns are sized to
- * their contents rather than split evenly, and the engine inlines its heading
- * with the picker (.col-head) since this is the shortest tab in the app. The
+ * (one row: heading, picker, whatever the chosen engine needs, and the
+ * signature at the far end). The columns are sized to their contents rather
+ * than split evenly, and everything is inlined (.col-head) since this is the
+ * shortest tab in the app. The
  * verbose URL format help lives in a dialog (#dialog-url-format in index.html).
  *
  * This tab absorbed the old Style tab entirely; the only subtitle setting that
@@ -255,9 +255,8 @@ export function mountLanguagesTab(container) {
           </div>
         </section>
 
-        <!-- How to translate. The engine's own detail (status messages, the
-             custom URL row) sits beside the picker; the region below absorbs
-             the rest of the column, so switching engines never resizes the tab. -->
+        <!-- How to translate: the picker, then whatever the chosen engine needs
+             (a status line, the custom URL row), then the signature — one row. -->
         <section class="panel-col lang-engine">
           <div class="col-head">
             <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
@@ -317,25 +316,18 @@ export function mountLanguagesTab(container) {
                   </div>
                 </div>
             </div>
-          </div>
-          <div class="engine-detail">
 
-            <!-- The tab's bottom edge, and the only strip of it that is the
-                 same in every engine mode: .engine-detail reserves this height
-                 whether or not an engine fills it, so a footer pinned here does
-                 not move when the engine changes. -->
-            <div class="engine-footer">
-              <!-- Signature. Which version is running is a real question while
-                   two machines are being kept in sync, and answering it costs
-                   an open of the settings dialog today. It lives in the tab
-                   body rather than the toolbar so that .panel-collapsed takes
-                   it away with everything else: on screen while setting up,
-                   gone before the window is captured. -->
-              <p class="app-signature">
-                <span data-i18n="app.title">字幕アトリエ</span>
-                <span class="app-signature-version">${APP_VERSION}</span>
-              </p>
-            </div>
+            <!-- Signature, at the far end of the engine row. Which version is
+                 running is a real question while two machines are being kept
+                 in sync. It lives in the tab body rather than the toolbar so
+                 that .panel-collapsed takes it away with everything else: on
+                 screen while setting up, gone before the window is captured.
+                 It used to sit on a footer row of its own, which cost the
+                 panel a row of empty height in every engine mode. -->
+            <p class="app-signature">
+              <span data-i18n="app.title">字幕アトリエ</span>
+              <span class="app-signature-version">${APP_VERSION}</span>
+            </p>
           </div>
         </section>
       </div>

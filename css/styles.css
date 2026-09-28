@@ -88,12 +88,12 @@
     --focus-ring:     0 0 0 3px color-mix(in oklab, var(--color-accent) 40%, transparent);
 
     /* --- layout sizing --- */
-    /* The control card (toolbar + tab body); the manual panel matches it. Grew
-       from 300px when the Style tab's controls merged into the Languages tab —
-       that is a real increase in content, not slack. Even so the app spends
-       less vertical chrome than it used to: the old layout was this panel plus
-       a separate 52px control strip. */
-    --control-panel-h: 324px;
+    /* The control card (toolbar + tab body); the manual panel matches it.
+       Sized to the Languages tab, the one people sit on, rather than to the
+       tallest tab: the OBS tab's instructions scroll instead (.tab-panel is
+       overflow-y: auto). It was 324px while the engine column kept a footer
+       row for the signature; moving that into the engine row freed 46px. */
+    --control-panel-h: 280px;
     --panel-measure:   1200px;    /* widest the card grows to before it centres
                                      itself in the window */
     --radius-sm:       6px;
@@ -1071,17 +1071,6 @@
   /* URL field and its help trigger on one line. Stacked they cost two rows in
      the shortest tab in the app, and the button is the field's companion — it
      belongs beside it, not under it. */
-  /* The engine column's bottom edge. margin-top: auto pins it there through
-     every engine mode, because .engine-detail reserves the height either way,
-     so the signature stays in one place whichever engine is picked. */
-  .engine-footer {
-    margin-top: auto;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-width: 0;
-  }
-
   /* Beside the engine picker (see ui-languages.js). Takes what the row has
      left; the heading row wraps it underneath when that is too little. */
   .engine-inline {
@@ -1584,19 +1573,6 @@
       flex-wrap: wrap;
       max-width: 100%;
     }
-  }
-
-  /* The rest of the engine column below the picker row. The per-engine detail
-     moved up beside the picker (.engine-inline); this region still takes the
-     column's remaining height rather than a height of its own, so the tab is
-     the same size in every engine mode and the footer stays put. */
-  .engine-detail {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    min-height: 0;
-    overflow-y: auto;
   }
 
   .secret-input-wrap {
