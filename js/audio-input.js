@@ -30,14 +30,14 @@ const EDGE_SAMPLE_RATE = 16000;
  * Opens the device and builds the graph.
  * @param {object} opts
  * @param {string}   [opts.deviceId]  '' / undefined → the system default
- * @param {Function} [opts.onPause]   speaker went quiet
- * @param {Function} [opts.onSpeech]  speaker is talking (repeats while they do)
+ * @param {Function} [opts.onPause]   what the recogniser hears went quiet
+ * @param {Function} [opts.onSpeech]  …is speech (repeats while it is)
+ * @param {Function} [opts.onGap]     a quiet stretch just ended, (ms) — diagnostics
  * @param {Function} [opts.onEnded]   the device went away
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
- *   fellBack: boolean, hold: Function, release: Function, isBacklogged: Function,
- *   close: Function }>}
+ *   fellBack: boolean, hold: Function, release: Function, close: Function }>}
  */
-export async function openAudioInput({ deviceId = '', onPause, onSpeech, onEnded } = {}) {
+export async function openAudioInput({ deviceId = '', onPause, onSpeech, onGap, onEnded } = {}) {
   const base = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
   let stream;
@@ -71,14 +71,10 @@ export async function openAudioInput({ deviceId = '', onPause, onSpeech, onEnded
   dest.channelCount = 1;
   ctx.createMediaStreamSource(stream).connect(node).connect(dest);
 
-  /* Audio is queued from hold() until the worklet reports the queue empty
-     again, i.e. the recogniser has caught up with the speaker. */
-  let backlogged = false;
-
   node.port.onmessage = ({ data }) => {
-    if (data.type === 'pause')   onPause?.();
-    if (data.type === 'speech')  onSpeech?.();
-    if (data.type === 'drained') backlogged = false;
+    if (data.type === 'pause')  onPause?.();
+    if (data.type === 'speech') onSpeech?.();
+    if (data.type === 'gap')    onGap?.(data.ms);
   };
 
   let closed = false;
@@ -89,12 +85,8 @@ export async function openAudioInput({ deviceId = '', onPause, onSpeech, onEnded
     label:    source.label,
     deviceId: source.getSettings().deviceId || '',
     fellBack,
-    hold() {
-      backlogged = true;
-      node.port.postMessage('hold');
-    },
+    hold:     () => node.port.postMessage('hold'),
     release:  () => node.port.postMessage('release'),
-    isBacklogged: () => backlogged,
     close() {
       if (closed) return;
       closed = true;

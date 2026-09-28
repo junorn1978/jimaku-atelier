@@ -310,15 +310,22 @@ function setupRecognition() {
        ~300ms) after the audio stopped. Meanwhile the real audio is queued and
        replayed into the next session, so the silence costs latency, not words.
 
-     Parameters are the ones those tests ran with. */
+     Every cut holds the audio from just before abort() until the next session
+     reports onaudiostart, so the ~20ms restart gap loses nothing either. The
+     pauses themselves are detected on what the recogniser hears, not on the
+     microphone (see audio-worklet.js): after a drain it runs behind the
+     speaker, and a pause in the room is then mid-word to the recogniser.
+
+     Parameters are the ones those tests ran with, except the drain settle,
+     widened after a live stream showed interims 500ms apart. */
   const ROTATE_MIN_AGE_MS = 3000;    // at a pause, rotate once the session is this old
   const ROTATE_CAP_MS     = 20000;   // no pause in sight: rotate anyway (with a drain)
   /* Talking, yet not a single result for this long: the session is dead (seen
      on Edge as a 7s session that returned nothing). Not shorter — a healthy
      cloud session took up to ~6s to return its first result over music. */
   const STALL_MS          = 8000;
-  const DRAIN_SETTLE_MS   = 300;     // drain ends once interims stop changing this long…
-  const DRAIN_MAX_MS      = 900;     // …or after this, whichever is first
+  const DRAIN_SETTLE_MS   = 500;     // drain ends once interims stop changing this long…
+  const DRAIN_MAX_MS      = 1000;    // …or after this, whichever is first
 
   let sessionStartedAt = 0;
   let lastResultAt     = 0;
@@ -344,15 +351,14 @@ function setupRecognition() {
     const now = performance.now();
     markSession(`rotate (${reason}) age=${(now - sessionStartedAt).toFixed(0)}ms`);
 
-    /* A pause is already silence reaching the engine, unless the recogniser is
-       still behind on audio queued by an earlier drain — then the "pause" it is
-       hearing has not happened yet, and it gets drained like any other cut. A
-       stall has nothing in flight to wait for. */
-    if (reason === 'stall' || (reason === 'pause' && !input?.isBacklogged())) {
+    /* Held until the next session's onaudiostart, whatever the reason. A pause
+       is already silence reaching the engine and a stall has nothing in flight,
+       so those are cut at once; only a cut mid-speech waits for the engine. */
+    input?.hold();
+    if (reason !== 'cap') {
       cutSession();
       return;
     }
-    input?.hold();
     finalDuringDrain = false;
     drainTimer = setInterval(() => {
       const t = performance.now();
@@ -380,6 +386,9 @@ function setupRecognition() {
       rotating = true;
       markSession('rotate (input switched)');
       cutSession();
+    },
+    onGap(ms) {
+      markSession(`gap ${ms}ms age=${sessionStartedAt ? (performance.now() - sessionStartedAt).toFixed(0) : '-'}ms`);
     },
   };
 
