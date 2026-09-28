@@ -1,12 +1,19 @@
 /**
  * @file ui-mic.js
- * @description Microphone picker in the settings dialog. Stores the choice as
- * micDeviceId (+ its label); speech.js opens that device and starts the
- * recogniser on it.
+ * @description The microphone button next to start/stop and the panel it
+ * opens: which device to use, a level test, and how cloud recognition splits
+ * sentences. The choice is stored as micDeviceId (+ its label); speech.js
+ * opens that device and starts the recogniser on it.
  *
- * The list is rebuilt whenever the dialog opens rather than kept live: device
+ * It lives on the toolbar rather than in the settings dialog because it is
+ * what gets checked right before pressing start, and a gear is easy to never
+ * open. The button carries a dot when something needs attention — the picked
+ * device is unplugged, or the last test found a problem — so the panel does
+ * not have to be opened to find out.
+ *
+ * The device list is rebuilt each time the panel opens rather than kept live:
  * labels only exist once microphone permission has been granted, which happens
- * on the first start, and the dialog is the only place the list is read.
+ * on the first start.
  */
 
 import { settings, subscribe } from './store.js';
@@ -17,7 +24,38 @@ import { openLevelMeter, PAUSE_GATE_DB, PAUSE_DROP_DB } from './audio-input.js';
    means that, so listing them again would only offer the same thing twice. */
 const ALIASES = new Set(['default', 'communications']);
 
-export function mountMicPicker(select) {
+/* What the button's dot reports. Both reset when the device changes: a new
+   device has not been tested, and is not the one that went missing. */
+const status = { missing: false, testTone: '' };
+let _button = null;
+
+function renderButton() {
+  if (!_button) return;
+  const label = settings.micDeviceLabel || t('settings.mic.systemDefault');
+  _button.title = `${t('settings.mic.title')}: ${label}`;
+  _button.setAttribute('aria-label', _button.title);
+  /* Missing outranks a test result: until the device is back, the test says
+     nothing about what recognition is actually listening to. */
+  _button.dataset.alert = status.missing ? 'warn' : (status.testTone === 'bad' ? 'bad' : '');
+}
+
+export function mountMicPanel(button, panel) {
+  if (!button || !panel) return;
+  _button = button;
+  mountPicker(panel.querySelector('.mic-select'), panel);
+  mountTest(panel.querySelector('.mic-test'), panel);
+  subscribe('micDeviceLabel', renderButton);
+  /* The tooltip mixes a translated word with the device name, so it cannot be
+     a data-i18n attribute; built when it is about to be read instead, which
+     also follows a language switch without listening for one. */
+  button.addEventListener('pointerenter', renderButton);
+  button.addEventListener('focus', renderButton);
+  renderButton();
+}
+
+/* ============ device picker ============ */
+
+function mountPicker(select, panel) {
   if (!select || !navigator.mediaDevices?.enumerateDevices) return;
 
   const option = (value, text, disabled = false) => {
@@ -50,12 +88,16 @@ export function mountMicPicker(select) {
     for (const d of devices) opts.push(option(d.deviceId, d.label || t('settings.mic.unnamed')));
     if (!devices.length) opts.push(option('-', t('settings.mic.needPermission'), true));
     /* Kept selected while it is unplugged, so plugging it back in picks up
-       where it left off; recognition meanwhile falls back to the default. */
+       where it left off; recognition meanwhile falls back to the default.
+       Without permission there are no ids to compare against, so nothing can
+       be called missing yet. */
+    status.missing = !!id && devices.length > 0 && !devices.some(d => d.deviceId === id);
     if (id && !devices.some(d => d.deviceId === id)) {
       opts.push(option(id, t('settings.mic.missing').replace('{label}', label || id.slice(0, 8))));
     }
     select.replaceChildren(...opts);
     select.value = id;
+    renderButton();
   }
 
   select.addEventListener('change', () => {
@@ -64,14 +106,11 @@ export function mountMicPicker(select) {
   });
 
   navigator.mediaDevices.addEventListener?.('devicechange', refresh);
-  subscribe('micDeviceId', refresh);
-
-  /* <dialog> has no open event to listen for; its open attribute is the signal. */
-  const dialog = select.closest('dialog');
-  if (dialog) {
-    new MutationObserver(() => { if (dialog.open) refresh(); })
-      .observe(dialog, { attributes: true, attributeFilter: ['open'] });
-  }
+  subscribe('micDeviceId', () => {
+    status.testTone = '';
+    refresh();
+  });
+  panel.addEventListener('toggle', (e) => { if (e.newState === 'open') refresh(); });
   refresh();
 }
 
@@ -117,20 +156,28 @@ const barWidth = (db) => `${Math.max(0, Math.min(100, (db + SCALE_DB) / SCALE_DB
 const audible = (db) => Number.isFinite(db) && db >= SILENT_DB;
 const fmtDb = (db) => (audible(db) ? `${Math.round(db)} dB` : '—');
 
-export function mountMicTest(root) {
+function mountTest(root, panel) {
   if (!root) return;
-  const button  = root.querySelector('.mic-test-btn');
-  const step    = root.querySelector('.mic-test-step');
-  const live    = root.querySelector('.mic-test-live .level-fill');
-  const result  = root.querySelector('.mic-test-result');
-  const bars    = root.querySelector('.mic-test-bars');
-  const verdict = root.querySelector('.mic-test-verdict');
+  const button    = root.querySelector('.mic-test-btn');
+  const step      = root.querySelector('.mic-test-step');
+  const live      = root.querySelector('.mic-test-live .level-fill');
+  const result    = root.querySelector('.mic-test-result');
+  const bars      = root.querySelector('.mic-test-bars');
+  const verdict   = root.querySelector('.mic-test-verdict');
+  const switchBtn = root.querySelector('.mic-test-switch');
   if (!button) return;
 
   let running = null;   // { cancel } while a test is in progress
 
   const isRecording = () => !document.getElementById('btn-stop')?.disabled;
   const show = (state) => { root.dataset.state = state; };   // idle | running | done
+
+  /* Background too loud for the pause detector: the one case where changing
+     how sentences are split helps (see speech.js). Offered right under the
+     advice, and only while that mode is not already on. */
+  const offerSwitch = (kind) => {
+    switchBtn.hidden = !(kind === 'noisy' && settings.segmentMode !== 'engine');
+  };
 
   function showResult(voiceDb, backgroundDb) {
     const kind = judge(voiceDb, backgroundDb);
@@ -148,12 +195,16 @@ export function mountMicTest(root) {
       .replace('{need}', PAUSE_DROP_DB);
     verdict.textContent = t(`settings.mic.test.verdict.${kind}`);
     verdict.dataset.tone = VERDICT_TONE[kind];
+    offerSwitch(kind);
+    status.testTone = VERDICT_TONE[kind];
+    renderButton();
     button.textContent = t('settings.mic.test.again');
     show('done');
   }
 
   function fail(key) {
     bars.hidden = true;
+    switchBtn.hidden = true;
     verdict.textContent = t(key);
     verdict.dataset.tone = 'bad';
     show('done');
@@ -200,21 +251,25 @@ export function mountMicTest(root) {
       meter.close();
       running = null;
       button.disabled = false;
+      if (cancelled) show('idle');
     }
   }
 
   button.addEventListener('click', run);
+  switchBtn.addEventListener('click', () => {
+    settings.segmentMode = 'engine';
+    switchBtn.hidden = true;
+  });
 
-  /* Closing the dialog ends a test in progress — the microphone should not
-     stay open behind a closed dialog — and reopening starts from the button. */
-  const dialog = root.closest('dialog');
-  if (dialog) {
-    new MutationObserver(() => {
-      if (dialog.open) return;
-      running?.cancel();
-      button.textContent = t('settings.mic.test.button');
-      show('idle');
-    }).observe(dialog, { attributes: true, attributeFilter: ['open'] });
-  }
+  /* Closing the panel ends a test in progress — the microphone should not stay
+     open behind it. A finished result stays, so reopening still shows it. */
+  panel.addEventListener('toggle', (e) => {
+    if (e.newState === 'closed') running?.cancel();
+  });
+  /* A different device makes the old result about the wrong microphone. */
+  subscribe('micDeviceId', () => {
+    button.textContent = t('settings.mic.test.button');
+    show('idle');
+  });
   show('idle');
 }

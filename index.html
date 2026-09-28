@@ -50,19 +50,82 @@
            start/stop stays reachable while the output fills the window — which
            is also why the card is the one region a background click ignores. -->
       <div class="control-toolbar">
-        <div class="speech-switch">
-          <button type="button" class="btn primary" id="btn-start" disabled>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-              <circle cx="12" cy="12" r="6"/>
+        <!-- Start/stop and the microphone that feeds them, as one group. -->
+        <div class="toolbar-start">
+          <div class="speech-switch">
+            <button type="button" class="btn primary" id="btn-start" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="12" r="6"/>
+              </svg>
+              <span data-i18n="action.start">開始</span>
+            </button>
+            <button type="button" class="btn" id="btn-stop" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+              </svg>
+              <span data-i18n="action.stop">停止</span>
+            </button>
+          </div>
+
+          <!-- Microphone button and its panel (js/ui-mic.js). Beside start
+               because it is what gets checked right before pressing it. Hidden
+               while the panel is collapsed: switching the input mid-stream
+               should not be one stray click away. data-alert puts a dot on it. -->
+          <button type="button" class="icon-btn mic-btn" id="mic-btn" popovertarget="mic-panel"
+                  data-i18n-title="settings.mic.title" title="マイク">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="9" y="2" width="6" height="12" rx="3"/>
+              <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+              <path d="M12 18v4"/>
             </svg>
-            <span data-i18n="action.start">開始</span>
           </button>
-          <button type="button" class="btn" id="btn-stop" disabled>
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-              <rect x="6" y="6" width="12" height="12" rx="1"/>
-            </svg>
-            <span data-i18n="action.stop">停止</span>
-          </button>
+
+          <div class="mic-panel" id="mic-panel" popover>
+            <div class="mic-panel-row">
+              <h3 data-i18n="settings.mic.title">マイク</h3>
+              <select class="select mic-select" data-i18n-aria-label="settings.mic.title" aria-label="マイク"></select>
+            </div>
+
+            <!-- data-state (idle | running | done) decides which part shows. -->
+            <div class="mic-test">
+              <div class="mic-test-head">
+                <button type="button" class="btn mic-test-btn" data-i18n="settings.mic.test.button">音量テスト</button>
+                <p class="mic-test-hint" data-i18n="settings.mic.test.hint">説明</p>
+                <p class="mic-test-step" aria-live="polite"></p>
+              </div>
+              <div class="level-bar mic-test-live"><div class="level-fill"></div></div>
+              <div class="mic-test-result">
+                <div class="mic-test-bars">
+                  <div class="mic-test-row mic-test-voice">
+                    <span data-i18n="settings.mic.test.voice">話し声</span>
+                    <div class="level-bar"><div class="level-fill"></div></div>
+                    <span class="level-value"></span>
+                  </div>
+                  <div class="mic-test-row mic-test-bg">
+                    <span data-i18n="settings.mic.test.background">背景音</span>
+                    <div class="level-bar"><div class="level-fill"></div><div class="level-mark"></div></div>
+                    <span class="level-value"></span>
+                  </div>
+                  <p class="mic-test-gap"></p>
+                </div>
+                <p class="mic-test-verdict" aria-live="polite"></p>
+                <button type="button" class="btn mic-test-switch" hidden
+                        data-i18n="settings.segment.switch">切り替える</button>
+              </div>
+            </div>
+
+            <!-- Cloud recognition only; see speech.js (engineSegments). -->
+            <div class="mic-panel-row mic-segment">
+              <div>
+                <h3 data-i18n="settings.segment.title">文の区切り</h3>
+                <p data-i18n="settings.segment.desc">説明</p>
+              </div>
+              <div class="seg-switch" role="group" data-i18n-aria-label="settings.segment.title" aria-label="文の区切り">
+                <label><input type="radio" name="segmentMode" value="auto" data-bind="segmentMode"><span data-i18n="settings.segment.auto">自動</span></label>
+                <label><input type="radio" name="segmentMode" value="engine" data-bind="segmentMode"><span data-i18n="settings.segment.engine">エンジン</span></label>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Settings are split across three tabs. Each tab panel is filled by

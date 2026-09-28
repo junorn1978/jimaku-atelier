@@ -87,6 +87,12 @@ const STEPS = [
     before: inLanguages,
   },
   {
+    key: 'mic',
+    target: () => $('#mic-btn'),
+    place: 'top',
+    before: inLanguages,
+  },
+  {
     /* Points at the tab instead of opening it and paraphrasing what is inside.
        The OBS tab already carries the mode descriptions and a numbered
        procedure (obs.help.step1..4), so the useful thing to say here is where

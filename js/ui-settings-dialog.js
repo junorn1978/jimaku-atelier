@@ -9,50 +9,11 @@ import { applyTo, t } from './i18n.js';
 import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 import { APP_VERSION } from './app-meta.js';
-import { mountMicPicker, mountMicTest } from './ui-mic.js';
 
 export function mountSettingsDialog(container) {
   if (!container) return;
 
   container.innerHTML = `
-    <section class="dialog-section">
-      <div class="dialog-setting-row">
-        <div>
-          <h3 data-i18n="settings.mic.title">マイク</h3>
-          <p data-i18n="settings.mic.desc">説明</p>
-        </div>
-        <select class="select select-device" id="settings-mic-select"
-                data-i18n-aria-label="settings.mic.title" aria-label="マイク"></select>
-      </div>
-
-      <!-- Level test (ui-mic.js). data-state (idle | running | done) decides
-           which of the parts below is visible. -->
-      <div class="mic-test" id="settings-mic-test">
-        <div class="mic-test-head">
-          <button type="button" class="btn mic-test-btn" data-i18n="settings.mic.test.button">音量テスト</button>
-          <p class="mic-test-hint" data-i18n="settings.mic.test.hint">説明</p>
-          <p class="mic-test-step" aria-live="polite"></p>
-        </div>
-        <div class="level-bar mic-test-live"><div class="level-fill"></div></div>
-        <div class="mic-test-result">
-          <div class="mic-test-bars">
-            <div class="mic-test-row mic-test-voice">
-              <span data-i18n="settings.mic.test.voice">話し声</span>
-              <div class="level-bar"><div class="level-fill"></div></div>
-              <span class="level-value"></span>
-            </div>
-            <div class="mic-test-row mic-test-bg">
-              <span data-i18n="settings.mic.test.background">背景音</span>
-              <div class="level-bar"><div class="level-fill"></div><div class="level-mark"></div></div>
-              <span class="level-value"></span>
-            </div>
-            <p class="mic-test-gap"></p>
-          </div>
-          <p class="mic-test-verdict" aria-live="polite"></p>
-        </div>
-      </div>
-    </section>
-
     <!-- Timing rather than styling, so it belongs here and not in the style
          matrix: nothing about it is judged by looking at the output. -->
     <section class="dialog-section">
@@ -154,8 +115,6 @@ export function mountSettingsDialog(container) {
   `;
 
   applyTo(container);
-  mountMicPicker(container.querySelector('#settings-mic-select'));
-  mountMicTest(container.querySelector('#settings-mic-test'));
 
   const debugToggle = container.querySelector('#settings-debug-toggle');
   if (debugToggle) {

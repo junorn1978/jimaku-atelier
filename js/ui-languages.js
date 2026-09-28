@@ -256,8 +256,8 @@ export function mountLanguagesTab(container) {
         </section>
 
         <!-- How to translate. The engine's own detail (status messages, the
-             custom URL row) sits in a region that absorbs the rest of the
-             column, so switching engines never resizes the tab. -->
+             custom URL row) sits beside the picker; the region below absorbs
+             the rest of the column, so switching engines never resizes the tab. -->
         <section class="panel-col lang-engine">
           <div class="col-head">
             <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
@@ -267,58 +267,64 @@ export function mountLanguagesTab(container) {
               <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
               <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
             </div>
+
+            <!-- Whatever the selected engine needs — a status line, the custom
+                 URL row, or nothing — beside the picker, in the space the row
+                 leaves free. The heading row wraps, so a narrow window moves
+                 it underneath instead of squeezing it. -->
+            <div class="engine-inline">
+              <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
+              <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
+                <div class="lang-url-row" id="custom-url-row" hidden>
+                  <!-- Masked by default: this URL usually carries an API key in its
+                       path or query, and the panel is on screen while streaming.
+                       Not type="password" on purpose — see js/ui-secret-input.js. -->
+                  <div class="secret-input-wrap" data-secret-visible="false"
+                       data-secret-show="lang.engine.link.url.show"
+                       data-secret-hide="lang.engine.link.url.hide">
+                    <input type="url" class="text-input secret-input" placeholder="https://..."
+                           data-bind="customTranslateUrl" autocomplete="off" spellcheck="false">
+                    <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
+                      <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                        <path d="M1 1l22 22"/>
+                      </svg>
+                      <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    </button>
+                  </div>
+
+                  <button type="button" class="btn url-examples-toggle" id="btn-url-examples"
+                          popovertarget="popover-url-examples">
+                    <span data-i18n="lang.engine.link.help.more">範例與說明</span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </button>
+
+                  <div class="help-popover url-popover" id="popover-url-examples" popover>
+                    <div class="format-help-examples">
+                      <span data-i18n="lang.engine.link.help.examples">可直接使用的範例：</span>
+                      <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
+                      <button type="button" class="btn" data-example="openai">OpenAI</button>
+                      <button type="button" class="btn" data-example="gemini">Gemini</button>
+                      <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
+                    </div>
+                  </div>
+                </div>
+            </div>
           </div>
           <div class="engine-detail">
-            <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
-            <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
 
             <!-- The tab's bottom edge, and the only strip of it that is the
                  same in every engine mode: .engine-detail reserves this height
                  whether or not an engine fills it, so a footer pinned here does
                  not move when the engine changes. -->
             <div class="engine-footer">
-            <div class="lang-url-row" id="custom-url-row" hidden>
-              <!-- Masked by default: this URL usually carries an API key in its
-                   path or query, and the panel is on screen while streaming.
-                   Not type="password" on purpose — see js/ui-secret-input.js. -->
-              <div class="secret-input-wrap" data-secret-visible="false"
-                   data-secret-show="lang.engine.link.url.show"
-                   data-secret-hide="lang.engine.link.url.hide">
-                <input type="url" class="text-input secret-input" placeholder="https://..."
-                       data-bind="customTranslateUrl" autocomplete="off" spellcheck="false">
-                <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
-                  <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                    <path d="M1 1l22 22"/>
-                  </svg>
-                  <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </button>
-              </div>
-
-              <button type="button" class="btn url-examples-toggle" id="btn-url-examples"
-                      popovertarget="popover-url-examples">
-                <span data-i18n="lang.engine.link.help.more">範例與說明</span>
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="m6 9 6 6 6-6"/>
-                </svg>
-              </button>
-
-              <div class="help-popover url-popover" id="popover-url-examples" popover>
-                <div class="format-help-examples">
-                  <span data-i18n="lang.engine.link.help.examples">可直接使用的範例：</span>
-                  <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
-                  <button type="button" class="btn" data-example="openai">OpenAI</button>
-                  <button type="button" class="btn" data-example="gemini">Gemini</button>
-                  <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
-                </div>
-              </div>
-            </div>
-
               <!-- Signature. Which version is running is a real question while
                    two machines are being kept in sync, and answering it costs
                    an open of the settings dialog today. It lives in the tab

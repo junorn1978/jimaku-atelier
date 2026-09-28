@@ -692,6 +692,17 @@ async function switchInput(reason) {
   return true;
 }
 
+/* Switching how sentences are split mid-run: continuous can only change
+   between sessions, so end this one (sending what it has) and let the restart
+   pick the new mode up. The on-device model is not affected. */
+function onSegmentModeChanged() {
+  if (!isActive || usingLocal) return;
+  engineSegments = settings.segmentMode === 'engine';
+  recognition.continuous = !engineSegments;
+  markSession(`segment mode → ${settings.segmentMode}`);
+  inputHooks.restart();
+}
+
 /* The device went away mid-run (unplugged, disabled). Carry on with whatever
    the settings now resolve to — the default device, if the picked one is the
    one that went — and stop only when there is no microphone left at all. */
@@ -728,6 +739,7 @@ export function initSpeech() {
   updateButtons();
   subscribe('sourceLangId', updateButtons);
   subscribe('micDeviceId', () => switchInput('picked in settings'));
+  subscribe('segmentMode', onSegmentModeChanged);
   subscribe('subClearIdleSec', onClearIdleChanged);
   subscribe('subSourcePrefix', redecorateSource);
   subscribe('subSourceSuffix', redecorateSource);

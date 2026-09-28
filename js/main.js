@@ -23,6 +23,7 @@ import { initObs } from './obs.js';
 import { initLayoutToggles } from './ui-layout.js';
 import { initSettingsTabs } from './ui-tabs.js';
 import { initTour } from './tour.js';
+import { mountMicPanel } from './ui-mic.js';
 
 async function init() {
   /* Language metadata is the only thing that has to be fetched before the UI
@@ -41,6 +42,7 @@ async function init() {
   mountObsTab(document.getElementById('tab-obs'));
   mountManualTranslate(document.getElementById('manual-translate-panel'));
   mountSettingsDialog(document.querySelector('#dialog-settings .dialog-body'));
+  mountMicPanel(document.getElementById('mic-btn'), document.getElementById('mic-panel'));
 
   /* New DOM was just injected — re-apply translations and hook up bindings. */
   applyTo(document);

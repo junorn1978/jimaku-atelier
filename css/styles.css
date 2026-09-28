@@ -1072,15 +1072,26 @@
      the shortest tab in the app, and the button is the field's companion — it
      belongs beside it, not under it. */
   /* The engine column's bottom edge. margin-top: auto pins it there through
-     every engine mode, because .engine-detail reserves the height either way —
-     which is what lets the signature stay in one place while the URL row comes
-     and goes beside it. */
+     every engine mode, because .engine-detail reserves the height either way,
+     so the signature stays in one place whichever engine is picked. */
   .engine-footer {
     margin-top: auto;
     display: flex;
     align-items: center;
     gap: var(--space-3);
     min-width: 0;
+  }
+
+  /* Beside the engine picker (see ui-languages.js). Takes what the row has
+     left; the heading row wraps it underneath when that is too little. */
+  .engine-inline {
+    flex: 1 1 24ch;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+
+    &:not(:has(> :not([hidden]))) { display: none; }
   }
 
   .lang-url-row {
@@ -1242,13 +1253,98 @@
     text-overflow: ellipsis;
   }
 
-  /* --- microphone level test (settings dialog; ui-mic.js) ---
+  /* --- microphone button + panel (toolbar; ui-mic.js) --- */
+  .toolbar-start {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .mic-btn {
+    position: relative;
+    anchor-name: --mic-btn;
+
+    /* Something needs attention: the picked device is unplugged (warn), or
+       the last level test found a problem (bad). */
+    &[data-alert="warn"]::after,
+    &[data-alert="bad"]::after {
+      content: "";
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-warning);
+      box-shadow: 0 0 0 2px var(--color-surface-1);
+    }
+    &[data-alert="bad"]::after { background: var(--color-danger); }
+
+    &:has(+ .mic-panel:popover-open) {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+  }
+
+  /* Opens upward: the toolbar sits at the bottom of the window. */
+  .mic-panel {
+    position-anchor: --mic-btn;
+    position-area: top span-right;
+    inset: auto;
+    /* Clears the card's top edge, which sits a toolbar-padding above the button. */
+    margin: 0 0 calc(var(--space-2) + var(--space-3));
+    width: min(440px, calc(100vw - 2 * var(--space-4)));
+    /* The area above the button is the containing block here, so 100% is all
+       the room there is; a short window scrolls the panel instead of letting
+       it spill down over the toolbar. */
+    max-height: 100%;
+    overflow-y: auto;
+    padding: var(--space-4);
+    display: none;
+    gap: var(--space-4);
+    background: var(--color-surface-1);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+    &:popover-open { display: grid; }
+
+    h3 {
+      font-size: var(--text-md);
+      font-weight: 600;
+    }
+    p {
+      color: var(--color-text-dim);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+    }
+  }
+
+  .mic-panel-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: var(--space-3);
+
+    .mic-select { min-width: 0; text-overflow: ellipsis; }
+  }
+
+  .mic-segment {
+    grid-template-columns: 1fr auto;
+    padding-top: var(--space-3);
+    border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+  }
+
+  .panel-collapsed .mic-btn { display: none; }
+
+  /* --- level test (inside the mic panel) ---
      One block with three states: idle shows the button and a hint, running
      the prompt and a live bar, done the two measured bars and the advice. */
   .mic-test {
     display: grid;
     gap: var(--space-2);
-    margin-top: var(--space-3);
 
     .mic-test-head {
       display: flex;
@@ -1265,9 +1361,15 @@
     &[data-state="running"] :is(.mic-test-hint, .mic-test-result)                 { display: none; }
     &[data-state="done"]    :is(.mic-test-step, .mic-test-live)                   { display: none; }
 
+    .mic-test-result {
+      display: grid;
+      gap: var(--space-2);
+      justify-items: start;
+    }
     .mic-test-bars {
       display: grid;
       gap: var(--space-2);
+      justify-self: stretch;
     }
     .mic-test-row {
       display: grid;
@@ -1286,7 +1388,6 @@
       background: var(--color-danger);
     }
     .mic-test-verdict {
-      font-size: var(--text-sm);
       &[data-tone="ok"]   { color: var(--color-success); }
       &[data-tone="warn"] { color: var(--color-warning); }
       &[data-tone="bad"]  { color: color-mix(in oklab, var(--color-danger) 85%, white); }
@@ -1485,10 +1586,10 @@
     }
   }
 
-  /* Whatever the selected engine needs to show — a status line, the custom-URL
-     row, or nothing at all. It takes the column's remaining height rather than
-     a height of its own, so the four engines all leave the tab exactly the same
-     size and switching between them never reflows the panel. */
+  /* The rest of the engine column below the picker row. The per-engine detail
+     moved up beside the picker (.engine-inline); this region still takes the
+     column's remaining height rather than a height of its own, so the tab is
+     the same size in every engine mode and the footer stays put. */
   .engine-detail {
     flex: 1;
     display: flex;
