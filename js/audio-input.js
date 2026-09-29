@@ -56,11 +56,13 @@ const EDGE_SAMPLE_RATE = 16000;
  * @param {Function} [opts.onShortPause] …went quiet briefly (150ms, a breath)
  * @param {Function} [opts.onSpeech]  …is speech (repeats while it is)
  * @param {Function} [opts.onGap]     a quiet stretch just ended, (ms, queuedMs) — diagnostics
+ * @param {Function} [opts.onLag]     how far behind the recogniser is, (sec, rate) — diagnostics;
+ *   every second while audio is queued, and once with 0 when caught up
  * @param {Function} [opts.onEnded]   the device went away
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
  *   fellBack: boolean, hold: Function, release: Function, close: Function }>}
  */
-export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onEnded } = {}) {
+export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onEnded } = {}) {
   /* A device that is gone (unplugged, renamed) falls back rather than refusing
      to start; the settings dialog shows it as not connected. */
   const { stream, fellBack } = await openStream(deviceId);
@@ -89,6 +91,7 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
     if (data.type === 'shortPause') onShortPause?.();
     if (data.type === 'speech') onSpeech?.();
     if (data.type === 'gap')    onGap?.(data.ms, data.queuedMs);
+    if (data.type === 'lag')    onLag?.(data.sec, data.rate);
   };
 
   let closed = false;

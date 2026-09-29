@@ -4,7 +4,13 @@
  * through to the recogniser's track, and on the way:
  *
  *  - can hold the output (silence to the recogniser, real audio queued) and
- *    later release the queue, catching up by dropping quiet blocks;
+ *    later release the queue;
+ *  - catches up on what the queue costs in latency: plays it at SPEEDUP
+ *    (WSOLA, pitch kept) and skips quiet stretches. Skipping alone is not
+ *    enough — a speaker who never pauses leaves nothing to skip, and every
+ *    session switch then adds another 0.5–0.8s for good (ported from the hamham
+ *    extension, where 3 minutes of non-stop talk drifted from 0.23s to 1.89s
+ *    behind with skipping only, and stayed at 0.13–0.21s with the speed-up);
  *  - detects pauses in what the recogniser is hearing, so speech.js can end a
  *    session where nobody is talking.
  *
@@ -32,11 +38,21 @@ const SHORT_SEC      = 0.15;   // …and this long a short one (a breath between
 const HEARTBEAT_SEC  = 0.5;    // 'speech' repeats this often while talking
 const GAP_REPORT_SEC = 0.1;    // quiet stretches from this long are reported (diagnostics)
 
-/* Catch-up after a release: a queued block is dropped only when it sits inside
-   a quiet stretch at least this long, so gaps between syllables survive and
-   speech itself is never shortened. */
+/* Catch-up: a queued block is skipped only when it sits inside a quiet
+   stretch at least this long, so gaps between syllables survive. */
 const SKIP_QUIET_SEC = 0.1;
 const QUEUE_SEC      = 10;     // past this the oldest audio is lost
+
+/* More than TARGET_LAG_SEC queued: play at SPEEDUP until back within it.
+   1.25 is what the hamham extension measured recognition to still cope with,
+   fast-talking streamers included. */
+const SPEEDUP        = 1.25;
+const TARGET_LAG_SEC = 0.15;
+/* WSOLA: 20ms frames at 50% overlap; each seam is placed where the waveform
+   fits best within ±SEARCH_SEC. */
+const FRAME_SEC      = 0.02;
+const SEARCH_SEC     = 0.005;
+const LAG_REPORT_SEC = 1;      // while queueing, the lag is reported this often (diagnostics)
 
 const BLOCK = 128;
 
@@ -80,17 +96,36 @@ class InputProcessor extends AudioWorkletProcessor {
     this.paused    = true;
     this.shortSent = true;
     this.sinceBeat = 0;
+    this.mono      = new Float32Array(BLOCK);
+    this.holding   = false;
 
-    /* Ring buffer of whole blocks, each with the input's quiet time at capture. */
-    this.capacity = Math.ceil(QUEUE_SEC / blockSec);
-    this.samples  = new Float32Array(this.capacity * BLOCK);
-    this.quietAt  = new Float32Array(this.capacity);
-    this.head     = 0;   // oldest queued block
-    this.count    = 0;
-    this.lastQuiet = 0;
-    this.mono     = new Float32Array(BLOCK);
+    /* Sample ring buffer. w / rd are running write / read positions in
+       samples; each written block also records how long the input had been
+       quiet, which is what catch-up skips by. */
+    this.blocksCap = Math.ceil(QUEUE_SEC / blockSec);
+    this.capacity  = this.blocksCap * BLOCK;
+    this.samples   = new Float32Array(this.capacity);
+    this.quietAt   = new Float32Array(this.blocksCap);
+    this.w         = 0;
+    this.rd        = 0;
+    /* Once audio is queued, output comes from WSOLA until the queue is caught
+       up and quiet; only then does it go back to passing straight through. */
+    this.queueing  = false;
 
-    this.holding  = false;
+    /* WSOLA */
+    this.hop      = Math.round(FRAME_SEC * sampleRate / 2);   // output samples per frame
+    this.frameLen = this.hop * 2;
+    this.search   = Math.round(SEARCH_SEC * sampleRate);
+    this.window   = new Float32Array(this.frameLen);
+    for (let i = 0; i < this.frameLen; i++) {
+      this.window[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / this.frameLen);   // sums to 1 at 50% overlap
+    }
+    this.ola     = new Float32Array(this.hop);                  // last frame's second half, awaiting the next
+    this.outBuf  = new Float32Array(this.frameLen + BLOCK);     // synthesised, not yet sent
+    this.outLen  = 0;
+    this.prevPos = -1;   // where the last frame was read from; -1 = no continuity (start, skip, overflow)
+    this.rdFrac  = 0;    // fractional read position while sped up
+    this.sinceLagReport = 0;
 
     this.port.onmessage = ({ data }) => {
       if (data === 'hold')    this.holding = true;
@@ -110,44 +145,137 @@ class InputProcessor extends AudioWorkletProcessor {
     }
     this.inLevel.update(mono);
 
-    if (!this.holding && this.count === 0) {
+    if (!this.holding && !this.queueing) {
       /* Fast path: nothing queued and nothing held — straight through. */
       out.set(mono);
-    } else {
-      this.enqueue(mono);
-      if (this.holding) {
-        /* The recogniser hears nothing it should react to, and neither does
-           the pause detector: its clock stops until the audio flows again. */
-        out.fill(0);
-        return true;
-      }
-      this.dequeue(out);
-      if (this.count > 0 && this.lastQuiet >= SKIP_QUIET_SEC && this.quietAt[this.head] >= SKIP_QUIET_SEC) {
-        this.dequeue(out);
-      }
+      this.detect(out);
+      return true;
     }
 
+    this.queueing = true;
+    this.enqueue(mono);
+    this.reportLag();
+    if (this.holding) {
+      /* The recogniser hears nothing it should react to, and neither does
+         the pause detector: its clock stops until the audio flows again. */
+      out.fill(0);
+      return true;
+    }
+
+    /* Caught up, and everything still queued is quiet (the room has been
+       quiet longer than the queue is long): drop it and pass straight
+       through again, at zero lag. */
+    const lag = this.lagSec();
+    if (lag < TARGET_LAG_SEC && this.inLevel.quietSec >= Math.max(SKIP_QUIET_SEC, lag + this.blockSec)) {
+      this.resetQueue();
+      out.set(mono);
+    } else {
+      this.render(out);
+    }
     this.detect(out);
     return true;
   }
 
-  enqueue(block) {
-    if (this.count === this.capacity) {
-      this.head = (this.head + 1) % this.capacity;
-      this.count--;
-    }
-    const slot = (this.head + this.count) % this.capacity;
-    this.samples.set(block, slot * BLOCK);
-    this.quietAt[slot] = this.inLevel.quietSec;
-    this.count++;
+  lagSec() {
+    return (this.w - this.rd) / sampleRate;
   }
 
-  dequeue(out) {
-    const slot = this.head;
-    out.set(this.samples.subarray(slot * BLOCK, slot * BLOCK + BLOCK));
-    this.lastQuiet = this.quietAt[slot];
-    this.head = (this.head + 1) % this.capacity;
-    this.count--;
+  at(i) {
+    return this.samples[i % this.capacity];
+  }
+
+  enqueue(block) {
+    this.samples.set(block, this.w % this.capacity);
+    this.quietAt[(this.w / BLOCK) % this.blocksCap] = this.inLevel.quietSec;
+    this.w += BLOCK;
+    if (this.w - this.rd > this.capacity - BLOCK) {
+      /* Full: the oldest audio goes, and the seam there cannot be matched. */
+      this.rd = this.w - this.capacity + BLOCK;
+      this.prevPos = -1;
+    }
+  }
+
+  resetQueue() {
+    this.rd       = this.w;
+    this.rdFrac   = 0;
+    this.outLen   = 0;
+    this.ola.fill(0);
+    this.prevPos  = -1;
+    this.queueing = false;
+    this.sinceLagReport = 0;
+    this.port.postMessage({ type: 'lag', sec: 0, rate: 1 });
+  }
+
+  isQuietAt(pos) {
+    return this.quietAt[Math.floor(pos / BLOCK) % this.blocksCap] >= SKIP_QUIET_SEC;
+  }
+
+  /* One block of synthesised output; silence while there is not yet enough
+     queued for a frame (just after queueing starts). */
+  render(out) {
+    while (this.outLen < BLOCK && this.synthFrame()) {}
+    if (this.outLen < BLOCK) {
+      out.fill(0);
+      return;
+    }
+    out.set(this.outBuf.subarray(0, BLOCK));
+    this.outBuf.copyWithin(0, BLOCK, this.outLen);
+    this.outLen -= BLOCK;
+  }
+
+  /* Synthesises one frame (hop output samples). False when too little is queued. */
+  synthFrame() {
+    const hop  = this.hop;
+    const need = this.frameLen + this.search * 2;
+    if (this.w - this.rd < need) return false;
+
+    const behind = this.lagSec() > TARGET_LAG_SEC;
+    const rate   = behind ? SPEEDUP : 1;
+
+    /* Behind: quiet stretches are skipped whole. */
+    if (behind) {
+      while (this.w - this.rd >= need + BLOCK && this.isQuietAt(this.rd) && this.isQuietAt(this.rd + BLOCK)) {
+        this.rd += BLOCK;
+        this.prevPos = -1;
+      }
+    }
+
+    /* Sped up: pick the start within [rd, rd + 2*search] that best continues
+       the last frame. At 1× it is always rd, and the overlapped Hann frames
+       add back up to the original exactly. */
+    let pos = this.rd;
+    if (rate > 1 && this.prevPos >= 0) {
+      const ref = this.prevPos + hop;
+      let best = -Infinity;
+      for (let k = 0; k <= this.search * 2; k += 2) {
+        let c = 0;
+        for (let i = 0; i < hop; i += 2) c += this.at(this.rd + k + i) * this.at(ref + i);
+        if (c > best) { best = c; pos = this.rd + k; }
+      }
+    }
+
+    const outBuf = this.outBuf;
+    const win    = this.window;
+    for (let i = 0; i < hop; i++) {
+      outBuf[this.outLen + i] = this.ola[i] + this.at(pos + i) * win[i];
+      this.ola[i] = this.at(pos + hop + i) * win[hop + i];
+    }
+    this.outLen += hop;
+    this.prevPos = pos;
+
+    const advance = hop * rate + this.rdFrac;
+    const whole   = Math.floor(advance);
+    this.rdFrac   = advance - whole;
+    this.rd      += whole;
+    return true;
+  }
+
+  reportLag() {
+    this.sinceLagReport += this.blockSec;
+    if (this.sinceLagReport < LAG_REPORT_SEC) return;
+    this.sinceLagReport = 0;
+    const sec = this.lagSec();
+    this.port.postMessage({ type: 'lag', sec, rate: sec > TARGET_LAG_SEC ? SPEEDUP : 1 });
   }
 
   detect(block) {
@@ -158,7 +286,7 @@ class InputProcessor extends AudioWorkletProcessor {
         this.port.postMessage({
           type: 'gap',
           ms: Math.round(quietBefore * 1000),
-          queuedMs: Math.round(this.count * this.blockSec * 1000),
+          queuedMs: Math.round(this.lagSec() * 1000),
         });
       }
       this.shortSent = false;

@@ -361,6 +361,7 @@ function setupRecognition() {
   let lastInterimAt    = 0;
   let finalDuringDrain = false;
   let rotating         = false;
+  let lastLagSec       = 0;
   let drainTimer       = null;
 
   const cancelDrain = () => {
@@ -422,6 +423,12 @@ function setupRecognition() {
     },
     onGap(ms, queuedMs) {
       markSession(`gap ${ms}ms age=${sessionStartedAt ? (performance.now() - sessionStartedAt).toFixed(0) : '-'}ms queued=${queuedMs}ms`);
+    },
+    /* Only while there is something to see: a queue that sits at zero would
+       otherwise log every second. */
+    onLag(sec, rate) {
+      if (sec >= 0.05 || lastLagSec >= 0.05) markSession(`lag ${sec.toFixed(2)}s${rate > 1 ? ` (catching up at ${rate}×)` : ''}`);
+      lastLagSec = sec;
     },
   };
 
