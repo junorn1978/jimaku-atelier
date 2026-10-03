@@ -100,11 +100,12 @@ async function buildGraph(stream, { reportLevel = false } = {}) {
  * @param {Function} [opts.onLag]     how far behind the recogniser is, (sec, rate) — diagnostics;
  *   every second while audio is queued, and once with 0 when caught up
  * @param {Function} [opts.onDenoise] whether the pause detector is denoising, (on, error) — diagnostics
+ * @param {Function} [opts.onProbe]   one window of a probe (see probe below) — diagnostics
  * @param {Function} [opts.onEnded]   the device went away
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
- *   fellBack: boolean, hold: Function, release: Function, close: Function }>}
+ *   fellBack: boolean, hold: Function, release: Function, probe: Function, close: Function }>}
  */
-export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onDenoise, onEnded } = {}) {
+export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onDenoise, onProbe, onEnded } = {}) {
   /* A device that is gone (unplugged, renamed) falls back rather than refusing
      to start; the settings dialog shows it as not connected. */
   const { stream, fellBack } = await openStream(deviceId);
@@ -126,6 +127,7 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
     if (data.type === 'speech') onSpeech?.();
     if (data.type === 'gap')    onGap?.(data.ms, data.queuedMs);
     if (data.type === 'lag')    onLag?.(data.sec, data.rate);
+    if (data.type === 'probe')  onProbe?.(data);
   };
 
   let closed = false;
@@ -138,6 +140,9 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
     fellBack,
     hold:     () => node.port.postMessage('hold'),
     release:  () => node.port.postMessage('release'),
+    /* Reports what the recogniser is fed from now on, in windows of fineMs
+       for the first fineSec and of ms after; a new probe replaces the last. */
+    probe:    (windows) => node.port.postMessage({ probe: windows }),
     close() {
       if (closed) return;
       closed = true;

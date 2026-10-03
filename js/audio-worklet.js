@@ -237,9 +237,17 @@ class InputProcessor extends AudioWorkletProcessor {
     this.rdFrac  = 0;    // fractional read position while sped up
     this.sinceLagReport = 0;
 
+    /* Audio the catch-up threw away rather than played: quiet stretches
+       skipped while behind, a quiet queue dropped on catching up, and the
+       oldest audio when the queue overflows. Running totals, for the probe. */
+    this.skipped = 0;
+    this.dropped = 0;
+    this.probe   = null;
+
     this.port.onmessage = ({ data }) => {
       if (data === 'hold')    this.holding = true;
       if (data === 'release') this.holding = false;
+      if (data?.probe)        this.startProbe(data.probe);
     };
   }
 
@@ -261,6 +269,7 @@ class InputProcessor extends AudioWorkletProcessor {
       /* Fast path: nothing queued and nothing held — straight through. */
       out.set(mono);
       this.detect(out);
+      this.probeBlock(out);
       return true;
     }
 
@@ -271,6 +280,7 @@ class InputProcessor extends AudioWorkletProcessor {
       /* The recogniser hears nothing it should react to, and neither does
          the pause detector: its clock stops until the audio flows again. */
       out.fill(0);
+      this.probeBlock(out);
       return true;
     }
 
@@ -285,6 +295,7 @@ class InputProcessor extends AudioWorkletProcessor {
       this.render(out);
     }
     this.detect(out);
+    this.probeBlock(out);
     return true;
   }
 
@@ -302,12 +313,14 @@ class InputProcessor extends AudioWorkletProcessor {
     this.w += BLOCK;
     if (this.w - this.rd > this.capacity - BLOCK) {
       /* Full: the oldest audio goes, and the seam there cannot be matched. */
+      this.dropped += this.w - this.capacity + BLOCK - this.rd;
       this.rd = this.w - this.capacity + BLOCK;
       this.prevPos = -1;
     }
   }
 
   resetQueue() {
+    this.dropped += this.w - this.rd;
     this.rd       = this.w;
     this.rdFrac   = 0;
     this.outLen   = 0;
@@ -348,6 +361,7 @@ class InputProcessor extends AudioWorkletProcessor {
     if (behind) {
       while (this.w - this.rd >= need + BLOCK && this.isQuietAt(this.rd) && this.isQuietAt(this.rd + BLOCK)) {
         this.rd += BLOCK;
+        this.skipped += BLOCK;
         this.prevPos = -1;
       }
     }
@@ -388,6 +402,50 @@ class InputProcessor extends AudioWorkletProcessor {
     this.sinceLagReport = 0;
     const sec = this.lagSec();
     this.port.postMessage({ type: 'lag', sec, rate: sec > TARGET_LAG_SEC ? SPEEDUP : 1 });
+  }
+
+  /* ---- probe (diagnostics) ----
+     What the recogniser is actually fed, window by window: the output level
+     as is, the detector's (denoised) view of it, and how much audio the
+     catch-up threw away in the window. speech.js starts one at each session's
+     onaudiostart and it runs until the next one replaces it, so a session
+     fed speech that returned nothing shows as such end to end. Windows are
+     fine-grained for the first `fineSec`, where the start-up questions are,
+     and coarser after. */
+  startProbe({ fineSec, fineMs, ms }) {
+    this.probe = {
+      fine:   Math.round(fineSec / this.blockSec),
+      fineEvery: Math.max(1, Math.round(fineMs / 1000 / this.blockSec)),
+      every:  Math.max(1, Math.round(ms / 1000 / this.blockSec)),
+      n: 0, sum: 0, t: 0, held: 0,
+      skipped: this.skipped,
+      dropped: this.dropped,
+    };
+  }
+
+  probeBlock(out) {
+    const p = this.probe;
+    if (!p) return;
+    for (let i = 0; i < BLOCK; i++) p.sum += out[i] * out[i];
+    if (this.holding) p.held++;
+    p.n++;
+    if (p.n < (p.t < p.fine ? p.fineEvery : p.every)) return;
+    const toMs = (samples) => Math.round(samples / sampleRate * 1000);
+    p.t += p.n;
+    this.port.postMessage({
+      type:     'probe',
+      atMs:     Math.round(p.t * this.blockSec * 1000),
+      outDb:    10 * Math.log10(p.sum / (p.n * BLOCK) + 1e-12),
+      judgedDb: 10 * Math.log10(this.outLevel.meanSquare + 1e-12),
+      speech:   this.outLevel.quietSec === 0,
+      heldMs:   Math.round(p.held * this.blockSec * 1000),
+      lagMs:    Math.round(this.lagSec() * 1000),
+      skippedMs: toMs(this.skipped - p.skipped),
+      droppedMs: toMs(this.dropped - p.dropped),
+    });
+    p.n = p.sum = p.held = 0;
+    p.skipped = this.skipped;
+    p.dropped = this.dropped;
   }
 
   /* Mean squares, smoothed like the detector's: raw over the same window, and

@@ -425,6 +425,12 @@ function setupRecognition() {
     onDenoise(on, error) {
       markSession(on ? 'pause detector: denoised' : `pause detector: raw (denoiser failed: ${error})`);
     },
+    onProbe({ atMs, outDb, judgedDb, speech, heldMs, lagMs, skippedMs, droppedMs }) {
+      const db = (v) => (v < -100 ? '—' : v.toFixed(0));
+      markSession(`fed @${atMs}ms: out ${db(outDb)}dB detector ${db(judgedDb)}dB ${speech ? 'speech' : 'quiet'}`
+        + (heldMs ? ` held ${heldMs}ms` : '') + (lagMs ? ` lag ${lagMs}ms` : '')
+        + (skippedMs ? ` skipped ${skippedMs}ms` : '') + (droppedMs ? ` dropped ${droppedMs}ms` : ''));
+    },
     onGap(ms, queuedMs) {
       markSession(`gap ${ms}ms age=${sessionStartedAt ? (performance.now() - sessionStartedAt).toFixed(0) : '-'}ms queued=${queuedMs}ms`);
     },
@@ -445,6 +451,7 @@ function setupRecognition() {
   rec.onaudiostart = () => {
     markSession('onaudiostart');
     input?.release();
+    if (isDebugEnabled()) input?.probe(PROBE_WINDOWS);
   };
 
   /* Diagnostic-only lifecycle handlers: no behaviour, just the timeline. */
@@ -600,6 +607,13 @@ function setupRecognition() {
 function startRecognition() {
   recognition.start(input.track);
 }
+
+/* What the recogniser is fed, logged through each session (debug only), to
+   read against what it returned. It is how a session fed loud speech for
+   seconds yet returning nothing was told apart from one fed silence — the
+   cloud recogniser, not our audio (2026-10-03). Every 250ms over the start,
+   where the first result's delay is decided; every second after. */
+const PROBE_WINDOWS = { fineSec: 3, fineMs: 250, ms: 1000 };
 
 function autoRestart(options = { delay: 0 }) {
   if (!isActive) return;
