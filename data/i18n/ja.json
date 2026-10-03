@@ -109,6 +109,7 @@
   "lang.engine.link.steps.apiKey":             "コード内のこの箇所を自分の API キーに置き換える（未設定のままだと翻訳は必ず失敗します）：",
   "lang.engine.link.steps.run":                "以下のコードを server.py として保存し、次のコマンドを実行：",
   "lang.engine.link.steps.url":                "「カスタム URL」欄に次の URL を入力：",
+  "lang.engine.link.steps.permission":     "初めて「開始」を押すと、このデバイス上の他のアプリへのアクセスを許可するか、ブラウザから確認されます。「許可」を選んでください。自分の PC で動いているサーバーにつなぐために必要な許可です。ブロックしてしまった場合は、アドレスバー左側のサイト設定から戻せます。",
 
   "style.textColor":        "文字色",
   "style.strokeColor":      "縁取り色",
@@ -213,6 +214,7 @@
 
   "dialog.settings.title":  "設定",
   "settings.mic.title":     "マイク",
+  "settings.mic.button":    "マイク設定",
   "settings.mic.systemDefault": "システムの既定",
   "settings.mic.unnamed": "名前のないマイク",
   "settings.mic.needPermission": "一度開始すると一覧が表示されます",

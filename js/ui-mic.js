@@ -33,8 +33,10 @@ let _button = null;
 function renderButton() {
   if (!_button) return;
   const label = settings.micDeviceLabel || t('settings.mic.systemDefault');
-  _button.title = `${t('settings.mic.title')}: ${label}`;
-  _button.setAttribute('aria-label', _button.title);
+  /* The button's own text already says what it opens; the tooltip only adds
+     which device that is. The accessible name keeps both, visible text first. */
+  _button.title = label;
+  _button.setAttribute('aria-label', `${t('settings.mic.button')}: ${label}`);
   /* Missing outranks a test result: until the device is back, the test says
      nothing about what recognition is actually listening to. */
   _button.dataset.alert = status.missing ? 'warn' : (status.testTone === 'bad' ? 'bad' : '');
@@ -46,9 +48,9 @@ export function mountMicPanel(button, panel) {
   mountPicker(panel.querySelector('.mic-select'), panel);
   mountTest(panel.querySelector('.mic-test'), panel);
   subscribe('micDeviceLabel', renderButton);
-  /* The tooltip mixes a translated word with the device name, so it cannot be
-     a data-i18n attribute; built when it is about to be read instead, which
-     also follows a language switch without listening for one. */
+  /* The tooltip is the device name (translated only for "system default"), so
+     it cannot be a data-i18n attribute; built when it is about to be read
+     instead, which also follows a language switch without listening for one. */
   button.addEventListener('pointerenter', renderButton);
   button.addEventListener('focus', renderButton);
   renderButton();

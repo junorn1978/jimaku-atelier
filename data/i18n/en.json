@@ -109,6 +109,7 @@
   "lang.engine.link.steps.apiKey":             "Replace this in the code with your own API key — translation fails every time until you do:",
   "lang.engine.link.steps.run":                "Save the code below as server.py and run:",
   "lang.engine.link.steps.url":                "Enter in the Custom URL field:",
+  "lang.engine.link.steps.permission":     "The first time you press Start, the browser asks whether this site may access other apps on this device. Choose Allow — that is what lets the page reach the server on your own computer. If you blocked it by mistake, change it back in the site settings at the left of the address bar.",
 
   "style.textColor":        "Text color",
   "style.strokeColor":      "Outline color",
@@ -213,6 +214,7 @@
 
   "dialog.settings.title":  "Settings",
   "settings.mic.title":     "Microphone",
+  "settings.mic.button":    "Mic settings",
   "settings.mic.systemDefault": "System default",
   "settings.mic.unnamed": "Unnamed microphone",
   "settings.mic.needPermission": "The list appears after the first start",

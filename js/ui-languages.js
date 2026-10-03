@@ -414,17 +414,23 @@ function setupTranslatorEngine(container) {
     let downloaded = false;
     setMessage('lang.engine.translator.preparing');
 
+    /* The download carries on if another engine is picked meanwhile (it is
+       still worth having), but its progress and outcome must not reappear
+       beside that engine's own row. */
+    const stillPicked = () => settings.translationMode === 'translator';
+
     try {
       const result = await prepareTranslators(
         settings.sourceLangId,
         [settings.target1LangId, settings.target2LangId],
         (loaded) => {
           downloaded = true;
-          setMessage('lang.engine.translator.downloading', Math.floor(loaded * 100));
+          if (stillPicked()) setMessage('lang.engine.translator.downloading', Math.floor(loaded * 100));
         },
       );
-      if (result.ok) setMessage(downloaded ? 'lang.engine.translator.ready' : null);
-      else           setMessage(REASON_KEYS[result.reason] ?? REASON_KEYS.failed);
+      if (!stillPicked()) setMessage(null);
+      else if (result.ok) setMessage(downloaded ? 'lang.engine.translator.ready' : null);
+      else                setMessage(REASON_KEYS[result.reason] ?? REASON_KEYS.failed);
     } finally {
       warming = false;
     }
@@ -698,6 +704,13 @@ function buildSteps(el, { deps, needsKey = false }) {
   const keyStep = needsKey
     ? `<li>${t('lang.engine.link.steps.apiKey')}<code>YOUR_API_KEY</code></li>`
     : '';
+  /* The browser's "access other apps on this device" prompt (see
+     primeLocalAccess) comes out of nowhere unless it is announced here. A page
+     served from this machine is never asked, so it is not mentioned there. */
+  const servedLocally = /^(localhost|127\.|\[::1\])/.test(location.hostname);
+  const permissionStep = servedLocally
+    ? ''
+    : `<li>${t('lang.engine.link.steps.permission')}</li>`;
 
   el.innerHTML = `
     <p class="example-steps-title">${t('lang.engine.link.steps.title')}</p>
@@ -706,6 +719,7 @@ function buildSteps(el, { deps, needsKey = false }) {
       ${keyStep}
       <li>${t('lang.engine.link.steps.run')}<code>python server.py</code></li>
       <li>${t('lang.engine.link.steps.url')}<code>http://localhost:5000</code></li>
+      ${permissionStep}
     </ol>`;
 }
 

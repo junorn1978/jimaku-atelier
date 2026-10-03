@@ -61,6 +61,44 @@ function buildUrl(input) {
   return { url: finalUrl, apiKey };
 }
 
+/* ============ local network permission ============ */
+
+/* Chrome 142+ (Local Network Access) asks before a public page — the GitHub
+   Pages build — may reach this machine or the LAN; WebSockets too since 147.
+   Left to itself the prompt appears on the first translation, i.e. mid-stream
+   on the first sentence, and that request waits on it. So on Start one request
+   is sent ahead purely to bring the prompt up while the streamer is still at
+   the controls. Not a CORS matter: the server needs no new headers. */
+
+const isLoopback = (host) => host === 'localhost' || host === '[::1]' || /^127\./.test(host);
+const isPrivate  = (host) => /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host) || host.endsWith('.local');
+
+/* Permission names changed along the way: one 'local-network-access' at 142,
+   split in two at 145/146. An unknown name throws, so try them in turn. */
+async function isGranted(names) {
+  for (const name of names) {
+    try { return (await navigator.permissions.query({ name })).state === 'granted'; }
+    catch { /* not a name this browser knows */ }
+  }
+  return false;
+}
+
+export async function primeLocalAccess(serviceUrl) {
+  let target;
+  try { target = new URL(buildUrl(serviceUrl).url); } catch { return; }
+  const host = target.hostname;
+  /* Nothing is asked of a page that is itself served from this machine. */
+  if (isLoopback(location.hostname)) return;
+  const names = isLoopback(host) ? ['loopback-network', 'local-network-access']
+              : isPrivate(host)  ? ['local-network', 'local-network-access']
+              : null;
+  if (!names || await isGranted(names)) return;
+  if (isDebugEnabled()) console.debug('[link] priming local network permission for', target.origin);
+  /* no-cors: only the prompt is wanted, not the answer, and this keeps the
+     probe from failing on CORS before it gets that far. */
+  fetch(target, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+}
+
 function toCode(langId) {
   return getLang(langId)?.gtxCode ?? langId;
 }

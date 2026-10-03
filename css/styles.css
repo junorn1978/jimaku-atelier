@@ -1253,6 +1253,9 @@
   .mic-btn {
     position: relative;
     anchor-name: --mic-btn;
+    /* As tall as the start/stop track beside it, so the two read as one row. */
+    align-self: stretch;
+    padding-inline: 14px;
 
     /* Something needs attention: the picked device is unplugged (warn), or
        the last level test found a problem (bad). */
@@ -1260,8 +1263,8 @@
     &[data-alert="bad"]::after {
       content: "";
       position: absolute;
-      top: 5px;
-      right: 5px;
+      top: 1px;
+      right: 4px;
       width: 7px;
       height: 7px;
       border-radius: 50%;

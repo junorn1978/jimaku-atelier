@@ -70,14 +70,16 @@
           <!-- Microphone button and its panel (js/ui-mic.js). Beside start
                because it is what gets checked right before pressing it. Hidden
                while the panel is collapsed: switching the input mid-stream
-               should not be one stray click away. data-alert puts a dot on it. -->
-          <button type="button" class="icon-btn mic-btn" id="mic-btn" popovertarget="mic-panel"
-                  data-i18n-title="settings.mic.title" title="マイク">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+               should not be one stray click away. data-alert puts a dot on it.
+               Labelled "settings" rather than just "microphone": an icon alone
+               read as a mute toggle. The tooltip names the device in use. -->
+          <button type="button" class="btn mic-btn" id="mic-btn" popovertarget="mic-panel">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <rect x="9" y="2" width="6" height="12" rx="3"/>
               <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
               <path d="M12 18v4"/>
             </svg>
+            <span data-i18n="settings.mic.button">マイク設定</span>
           </button>
 
           <div class="mic-panel" id="mic-panel" popover>

@@ -109,6 +109,7 @@
   "lang.engine.link.steps.apiKey":             "把程式碼中的這一段換成你自己的 API Key（沒換的話翻譯一定失敗）：",
   "lang.engine.link.steps.run":                "把下面的程式碼存成 server.py 後執行：",
   "lang.engine.link.steps.url":                "在「自訂 URL」欄位填入：",
+  "lang.engine.link.steps.permission":     "第一次按「開始」時，瀏覽器會詢問是否允許這個網站存取這部電腦上的其他應用程式，請選「允許」。這是連到自己電腦上的伺服器所需要的權限；不小心按了封鎖的話，可以從網址列左側的網站設定改回來。",
 
   "style.textColor":        "文字色",
   "style.strokeColor":      "邊框色",
@@ -213,6 +214,7 @@
 
   "dialog.settings.title":  "設定",
   "settings.mic.title":     "麥克風",
+  "settings.mic.button":    "麥克風設定",
   "settings.mic.systemDefault": "系統預設",
   "settings.mic.unnamed": "未命名的麥克風",
   "settings.mic.needPermission": "開始過一次後會顯示清單",

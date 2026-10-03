@@ -19,7 +19,7 @@
 
 import { isDebugEnabled } from './logger.js';
 import { settings, subscribe } from './store.js';
-import { sendTranslationRequest, resetController, clearTargets } from './controller.js';
+import { sendTranslationRequest, resetController, clearTargets, prepareTranslation } from './controller.js';
 import { applyFilter } from './filter.js';
 import { publishSource } from './obs.js';
 import { decorateSource } from './source-decoration.js';
@@ -657,6 +657,7 @@ async function handleStart() {
   cancelIdleClear();
   clearSource();
   resetController();
+  prepareTranslation();
   document.querySelector('.subtitle-display')?.classList.add('is-recording');
 
   /* Opening the microphone doubles as the permission prompt (and is what lets

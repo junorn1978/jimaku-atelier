@@ -18,7 +18,7 @@ import { isDebugEnabled } from './logger.js';
 import { settings, subscribe } from './store.js';
 import { getLang } from './languages.js';
 import { translateGtx } from './translate-gtx.js';
-import { translateLink } from './translate-link.js';
+import { translateLink, primeLocalAccess } from './translate-link.js';
 import { translatePrompt } from './translate-prompt.js';
 import { translateTranslator } from './translate-translator.js';
 import { applyFilter } from './filter.js';
@@ -317,6 +317,14 @@ export async function translateManualText(text, targetLangId) {
 export function clearTargets() {
   sessionEpoch++;
   TARGET_KEYS.forEach(clearTarget);
+}
+
+/* On start, before any subtitle exists: bring up whatever the engine has to
+   ask the browser for, so it is not asked on the first sentence. */
+export function prepareTranslation() {
+  if (settings.translationMode === 'link' && settings.customTranslateUrl) {
+    primeLocalAccess(settings.customTranslateUrl);
+  }
 }
 
 /* On stop: drop pending work and clear display buffers. Called by speech.js. */
