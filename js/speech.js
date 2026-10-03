@@ -350,9 +350,14 @@ function setupRecognition() {
   const ROTATE_SHORT_AGE_MS = 10000;
   const ROTATE_CAP_MS     = 20000;   // no pause in sight: rotate anyway (with a drain)
   /* Talking, yet not a single result for this long: the session is dead (seen
-     on Edge as a 7s session that returned nothing). Not shorter — a healthy
-     cloud session took up to ~6s to return its first result over music. */
-  const STALL_MS          = 8000;
+     on Edge as a 7s session that returned nothing). Timed from onstart, so it
+     has to cover the cloud's whole startup: on a 1h50m cloud run (2026-10-03,
+     virtual cable) onstart → onsoundstart took 0.5–2s and onsoundstart → first
+     result was under 1.5s in 99% of sessions — about 4.5s at the slow end.
+     2000 was tried on that run and cut 25% of the sessions, nearly all of them
+     before they had answered. Was 8000 (a healthy cloud session once took ~6s
+     over music); 6000 keeps a margin over the 4.5s. */
+  const STALL_MS          = 6000;
   const DRAIN_SETTLE_MS   = 500;     // drain ends once interims stop changing this long…
   const DRAIN_MAX_MS      = 1000;    // …or after this, whichever is first
 
