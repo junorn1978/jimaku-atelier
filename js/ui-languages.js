@@ -224,10 +224,12 @@ export function mountLanguagesTab(container) {
            the taller of the two. -->
       <div class="panel-cols cols-2">
         <!-- Offline recognition pack: a property of the recognition language, so
-             it sits on the recognition side. Chrome-only; hidden elsewhere. -->
+             it sits on the recognition side. Chrome-only; hidden elsewhere.
+             Heading inline with the button, like the engine beside it: stacked,
+             the button fell below the panel's bottom edge. -->
         <section class="panel-col lang-sub" id="offline-pack-row" hidden>
-          <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
           <div class="col-head">
+            <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
             <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
 
             <!-- Removal instructions live in a popover rather than as standing
@@ -598,15 +600,17 @@ function setupPromptEngine(container) {
   }).catch(() => disable('lang.engine.prompt.unavailable', true));
 }
 
-/* Withheld on every browser for now. On Chrome 156 (2026-09-26) the packs'
-   availability stopped being predictable: the same build offered 'dictation'
-   packs in one profile and reported them 'unavailable' in a freshly created
-   one, and available() kept answering stale results within a page until it
-   was reloaded (suspected per-profile field trials; unconfirmed). A button
-   whose outcome changes from one profile to the next is worse than no
-   button, so the row stays hidden (the layout
-   already handles that — it is the Edge state). Flip back to true once the
-   behaviour settles; language-pack.js is untouched. */
+/* Withheld on every browser. First hidden 2026-09-26, when Chrome 156's packs
+   stopped being predictable: the same build offered 'dictation' packs in one
+   profile and reported them 'unavailable' in a freshly created one, and
+   available() kept answering stale results within a page until it was
+   reloaded (suspected per-profile field trials; unconfirmed).
+   Briefly re-enabled for testing on 2026-10-03, then hidden again: the
+   install() pack had split from the accessibility (Live Caption) model, with
+   visibly different output, and the new model was too heavy for the dev PC.
+   An installed model still wins over processLocally=false, as before.
+   Flip back to true once the models settle; the layout handles the hidden
+   row (it is the Edge state). */
 const OFFLINE_PACK_ENABLED = false;
 
 function setupOfflinePack(container) {

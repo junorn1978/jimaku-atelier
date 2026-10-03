@@ -34,18 +34,14 @@ const PRIMER_LANG = 'en-US';
 const INSTALL_POLL_INTERVAL_MS = 1500;
 const INSTALL_POLL_TIMEOUT_MS  = 60000;
 
-/* On-device model quality floors we accept, best first. quality is a
-   "meets-or-exceeds" floor in the spec, so we probe the best floor and fall
-   back to a lower one when no model satisfies it. Only 'command' packs are
-   shipped, so this resolves to 'command' today and will pick up 'dictation'
-   automatically once those packs ship — no code change. Browsers that predate
-   the member (and Edge) ignore the unknown `quality`, so it stays a no-op
-   there. The default 'command' floor in available()/install() = lowest bar.
-
-   'dictation' still answered 'unavailable' for every language probed on
-   Chrome 151 (2026-08-24); same on 150. Note 'standard' is not a legal value
-   and throws TypeError. */
-const QUALITY_PREFERENCE = ['dictation', 'command'];
+/* No `quality` in available()/install(): both use the default 'command'
+   model. Probing 'dictation' first, as this file used to, is withheld
+   (2026-10-03) until it ships for real (expected Chrome 157+): on 156 quality
+   is an exact match, not the spec's meets-or-exceeds — a 'dictation' pack
+   does not satisfy a 'command' request and vice versa — and whether
+   'dictation' is offered at all varied from one profile to the next.
+   speech.js asks available() without quality too, so the two stay on the same
+   model. */
 
 let _button   = null;
 let _status   = null;
@@ -54,34 +50,24 @@ let _help        = null;   /* button that opens the removal-instructions popover
 let _helpPopover = null;
 let _stateKey = 'lang.offline.btn';   /* i18n key of the current button label */
 let _infoKey  = '';                   /* i18n key of the persistent info note */
-let _installQuality = QUALITY_PREFERENCE[QUALITY_PREFERENCE.length - 1];
-                                      /* floor querySupport last resolved; install() reuses it */
 
 async function querySupport(langId) {
   const lang = getLang(langId);
   if (!lang || !SR || typeof SR.available !== 'function') {
-    return { supported: false, downloadable: false, downloading: false, quality: null };
+    return { supported: false, downloadable: false, downloading: false };
   }
-  /* Probe each quality floor best-first; the first that isn't 'unavailable' is
-     the one we'd act on. Today only 'command' answers, so this collapses to the
-     pre-quality behaviour. */
-  for (const quality of QUALITY_PREFERENCE) {
-    try {
-      const status = await SR.available({ langs: [lang.id], processLocally: true, quality });
-      if (isDebugEnabled()) console.debug('[language-pack] available:', { id: lang.id, quality, status });
-      if (status !== 'unavailable') {
-        return {
-          supported:    status === 'available',
-          downloadable: status === 'downloadable',
-          downloading:  status === 'downloading',
-          quality,
-        };
-      }
-    } catch (err) {
-      if (isDebugEnabled()) console.error('[language-pack] available() failed:', err);
-    }
+  try {
+    const status = await SR.available({ langs: [lang.id], processLocally: true });
+    if (isDebugEnabled()) console.debug('[language-pack] available:', { id: lang.id, status });
+    return {
+      supported:    status === 'available',
+      downloadable: status === 'downloadable',
+      downloading:  status === 'downloading',
+    };
+  } catch (err) {
+    if (isDebugEnabled()) console.error('[language-pack] available() failed:', err);
+    return { supported: false, downloadable: false, downloading: false };
   }
-  return { supported: false, downloadable: false, downloading: false, quality: null };
 }
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -195,9 +181,6 @@ async function refreshButton(langId) {
   }
 
   const s = await querySupport(langId);
-  /* Remember which floor to install — downloadPack() can't await available()
-     first without consuming the user gesture, so it reuses this. */
-  if (s.quality) _installQuality = s.quality;
   if (s.supported)         setState('lang.offline.btn.ready', true);
   else if (s.downloadable) setState('lang.offline.btn', false);
   else if (s.downloading)  setState('lang.offline.btn.downloading', true);
@@ -228,14 +211,10 @@ async function downloadPack(langId) {
     ? [PRIMER_LANG, lang.id]
     : [lang.id];
 
-  /* Reuse the floor querySupport resolved (best installable); install() must
-     stay the first awaited call, so we can't re-probe available() here. */
-  const quality = _installQuality;
-
   let ok = false;
   try {
-    if (isDebugEnabled()) console.debug('[language-pack] installing', { langs, quality });
-    ok = await SR.install({ langs, processLocally: true, quality });
+    if (isDebugEnabled()) console.debug('[language-pack] installing', { langs });
+    ok = await SR.install({ langs, processLocally: true });
     if (isDebugEnabled()) console.debug('[language-pack] install resolved:', ok);
   } catch (err) {
     if (isDebugEnabled()) console.error('[language-pack] install failed:', err);
