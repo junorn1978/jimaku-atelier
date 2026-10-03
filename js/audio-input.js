@@ -48,6 +48,47 @@ async function openStream(deviceId) {
    (Measured in the hamham extension, 2026-09-27.) Chrome takes the native rate. */
 const EDGE_SAMPLE_RATE = 16000;
 
+/* The pause detector's denoiser (see audio-worklet.js). Fetched once and
+   handed to each worklet as bytes; without it the detector reads the raw
+   level. localStorage 'rtl-pause-denoise' = 'false' turns it off, for
+   comparing the two on the same input. */
+const RNNOISE_URL = new URL('./vendor/rnnoise.wasm', import.meta.url);
+const DENOISE_KEY = 'rtl-pause-denoise';
+let rnnoiseBytes = null;
+
+function loadRnnoise() {
+  try { if (localStorage.getItem(DENOISE_KEY) === 'false') return Promise.resolve(null); }
+  catch { /* storage blocked: keep the default */ }
+  rnnoiseBytes ??= fetch(RNNOISE_URL)
+    .then(r => (r.ok ? r.arrayBuffer() : null))
+    .catch(() => null)
+    .then((bytes) => { if (!bytes) rnnoiseBytes = null; return bytes; });   // a failure is retried next time
+  return rnnoiseBytes;
+}
+
+/* The microphone through the worklet into a track of its own. On failure the
+   context is closed; the caller stops the microphone. */
+async function buildGraph(stream, { reportLevel = false } = {}) {
+  const ctx = new AudioContext(isEdge ? { sampleRate: EDGE_SAMPLE_RATE } : undefined);
+  let rnnoise;
+  try {
+    if (ctx.state === 'suspended') await ctx.resume();
+    [rnnoise] = await Promise.all([loadRnnoise(), ctx.audioWorklet.addModule(WORKLET_URL)]);
+  } catch (err) {
+    ctx.close();
+    throw err;
+  }
+
+  const node = new AudioWorkletNode(ctx, 'speech-input', {
+    outputChannelCount: [1],
+    processorOptions: { gateDb: PAUSE_GATE_DB, dropDb: PAUSE_DROP_DB, rnnoise, reportLevel },
+  });
+  const dest = ctx.createMediaStreamDestination();
+  dest.channelCount = 1;
+  ctx.createMediaStreamSource(stream).connect(node).connect(dest);
+  return { ctx, node, dest };
+}
+
 /**
  * Opens the device and builds the graph.
  * @param {object} opts
@@ -56,39 +97,35 @@ const EDGE_SAMPLE_RATE = 16000;
  * @param {Function} [opts.onShortPause] …went quiet briefly (150ms, a breath)
  * @param {Function} [opts.onSpeech]  …is speech (repeats while it is)
  * @param {Function} [opts.onGap]     a quiet stretch just ended, (ms, queuedMs) — diagnostics
+ * @param {Function} [opts.onLag]     how far behind the recogniser is, (sec, rate) — diagnostics;
+ *   every second while audio is queued, and once with 0 when caught up
+ * @param {Function} [opts.onDenoise] whether the pause detector is denoising, (on, error) — diagnostics
  * @param {Function} [opts.onEnded]   the device went away
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
  *   fellBack: boolean, hold: Function, release: Function, close: Function }>}
  */
-export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onEnded } = {}) {
+export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onDenoise, onEnded } = {}) {
   /* A device that is gone (unplugged, renamed) falls back rather than refusing
      to start; the settings dialog shows it as not connected. */
   const { stream, fellBack } = await openStream(deviceId);
 
   const source = stream.getAudioTracks()[0];
-  const ctx = new AudioContext(isEdge ? { sampleRate: EDGE_SAMPLE_RATE } : undefined);
+  let graph;
   try {
-    if (ctx.state === 'suspended') await ctx.resume();
-    await ctx.audioWorklet.addModule(WORKLET_URL);
+    graph = await buildGraph(stream);
   } catch (err) {
     source.stop();
-    ctx.close();
     throw err;
   }
-
-  const node = new AudioWorkletNode(ctx, 'speech-input', {
-    outputChannelCount: [1],
-    processorOptions: { gateDb: PAUSE_GATE_DB, dropDb: PAUSE_DROP_DB },
-  });
-  const dest = ctx.createMediaStreamDestination();
-  dest.channelCount = 1;
-  ctx.createMediaStreamSource(stream).connect(node).connect(dest);
+  const { ctx, node, dest } = graph;
 
   node.port.onmessage = ({ data }) => {
+    if (data.type === 'denoise') onDenoise?.(data.on, data.error);
     if (data.type === 'pause')  onPause?.();
     if (data.type === 'shortPause') onShortPause?.();
     if (data.type === 'speech') onSpeech?.();
     if (data.type === 'gap')    onGap?.(data.ms, data.queuedMs);
+    if (data.type === 'lag')    onLag?.(data.sec, data.rate);
   };
 
   let closed = false;
@@ -113,31 +150,43 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
 }
 
 /**
- * A plain level meter on the picked device, for the level test in settings.
- * Same capture settings as recognition; no worklet, nothing sent anywhere.
- * @returns {Promise<{ read: () => number, label: string, fellBack: boolean, close: Function }>}
- *   read() is the current RMS in dBFS, over the last ~40ms.
+ * A level meter on the picked device, for the level test in settings. The same
+ * graph as recognition, so it reads the level the pause detector goes by —
+ * denoised when that is on. Its track goes nowhere.
+ * @returns {Promise<{ read: () => number, readRaw: () => number, denoised: () => boolean,
+ *   label: string, fellBack: boolean, close: Function }>}
+ *   read() is the detector's level in dBFS, readRaw() the microphone's, both
+ *   smoothed over ~50ms.
  */
 export async function openLevelMeter(deviceId = '') {
   const { stream, fellBack } = await openStream(deviceId);
   const source = stream.getAudioTracks()[0];
-  const ctx = new AudioContext();
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 2048;
-  ctx.createMediaStreamSource(stream).connect(analyser);
-  const buf = new Float32Array(analyser.fftSize);
+  let graph;
+  try {
+    graph = await buildGraph(stream, { reportLevel: true });
+  } catch (err) {
+    source.stop();
+    throw err;
+  }
+  const { ctx, node, dest } = graph;
+
+  const toDb = (meanSquare) => 10 * Math.log10(meanSquare + 1e-12);
+  let raw = 0, judged = 0, denoised = false;
+  node.port.onmessage = ({ data }) => {
+    if (data.type === 'level')   ({ raw, judged } = data);
+    if (data.type === 'denoise') denoised = data.on;
+  };
 
   return {
     label: source.label,
     fellBack,
-    read() {
-      analyser.getFloatTimeDomainData(buf);
-      let sum = 0;
-      for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-      return 10 * Math.log10(sum / buf.length + 1e-12);
-    },
+    read:     () => toDb(judged),
+    readRaw:  () => toDb(raw),
+    denoised: () => denoised,
     close() {
+      node.port.onmessage = null;
       source.stop();
+      dest.stream.getTracks().forEach(t => t.stop());
       ctx.close();
     },
   };

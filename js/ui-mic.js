@@ -19,6 +19,7 @@
 import { settings, subscribe } from './store.js';
 import { t } from './i18n.js';
 import { openLevelMeter, PAUSE_GATE_DB, PAUSE_DROP_DB } from './audio-input.js';
+import { isDebugEnabled } from './logger.js';
 
 /* The browser's aliases for "whatever Windows says" — the first option already
    means that, so listing them again would only offer the same thing twice. */
@@ -123,8 +124,13 @@ function mountPicker(select, panel) {
    the 20s cap. That is invisible from the output — subtitles just come late —
    so this is where a streamer finds out, and learns what to change. */
 
-const PHASE_MS  = 3000;
-const SETTLE_MS = 600;     // ignored at the start of each phase: reacting to the prompt
+/* Each phase is measured for `ms` after its first `settle` ms, which are
+   ignored: reacting to the prompt. Stopping takes longer than starting — the
+   sentence in progress gets finished — and a voice that trails into the
+   background measurement passes it off as background, so the quiet phase
+   waits well past the switch. */
+const VOICE_PHASE = { ms: 5000, settle: 600 };
+const QUIET_PHASE = { ms: 3000, settle: 2500 };
 const SAMPLE_MS = 50;
 const GOOD_DB   = PAUSE_DROP_DB + 3;   // margin for the background getting louder later
 const SILENT_DB = -60;
@@ -227,26 +233,37 @@ function mountTest(root, panel) {
     button.disabled = true;
     show('running');
 
-    const measure = async (labelKey) => {
+    const measure = async (labelKey, { ms, settle }) => {
       step.textContent = t(labelKey);
       const values = [];
+      const raw = [];
       const start = performance.now();
-      while (!cancelled && performance.now() - start < PHASE_MS) {
+      while (!cancelled && performance.now() - start < settle + ms) {
         const db = meter.read();
         live.style.width = barWidth(db);
-        if (performance.now() - start >= SETTLE_MS) values.push(db);
+        if (performance.now() - start >= settle) {
+          values.push(db);
+          raw.push(meter.readRaw());
+        }
         await new Promise(r => setTimeout(r, SAMPLE_MS));
       }
-      return values;
+      return { values, raw };
     };
 
     try {
       /* Speech: the level while talking, not the loudest peak — roughly where
          the detector's speech tracking settles. Background: near its loudest,
          since a pause needs all of it under the line, not most of it. */
-      const voice = await measure('settings.mic.test.speak');
-      const quiet = await measure('settings.mic.test.quiet');
-      if (!cancelled) showResult(percentile(voice, 0.75), percentile(quiet, 0.9));
+      const voice = await measure('settings.mic.test.speak', VOICE_PHASE);
+      const quiet = await measure('settings.mic.test.quiet', QUIET_PHASE);
+      if (cancelled) return;
+      /* The verdict goes by what the detector reads; the raw microphone
+         alongside shows what the denoiser bought. */
+      if (isDebugEnabled()) {
+        const fmt = (v, q) => `voice ${percentile(v, 0.75).toFixed(1)} / background ${percentile(q, 0.9).toFixed(1)} dB`;
+        console.info(`[mic-test] denoised=${meter.denoised()} judged: ${fmt(voice.values, quiet.values)} · raw: ${fmt(voice.raw, quiet.raw)}`);
+      }
+      showResult(percentile(voice.values, 0.75), percentile(quiet.values, 0.9));
     } finally {
       meter.close();
       running = null;

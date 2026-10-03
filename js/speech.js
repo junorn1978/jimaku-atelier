@@ -361,6 +361,8 @@ function setupRecognition() {
   let lastInterimAt    = 0;
   let finalDuringDrain = false;
   let rotating         = false;
+  let lastLagSec       = 0;
+  const LAG_LOG_SEC    = 0.2;
   let drainTimer       = null;
 
   const cancelDrain = () => {
@@ -420,8 +422,18 @@ function setupRecognition() {
       markSession('rotate (input switched)');
       cutSession();
     },
+    onDenoise(on, error) {
+      markSession(on ? 'pause detector: denoised' : `pause detector: raw (denoiser failed: ${error})`);
+    },
     onGap(ms, queuedMs) {
       markSession(`gap ${ms}ms age=${sessionStartedAt ? (performance.now() - sessionStartedAt).toFixed(0) : '-'}ms queued=${queuedMs}ms`);
+    },
+    /* Only while there is something to see. Talking without a pause keeps the
+       queue at the worklet's 0.15s target until the next quiet stretch, which
+       would otherwise log every second; one line still marks the drop below. */
+    onLag(sec, rate) {
+      if (sec >= LAG_LOG_SEC || lastLagSec >= LAG_LOG_SEC) markSession(`lag ${sec.toFixed(2)}s${rate > 1 ? ` (catching up at ${rate}×)` : ''}`);
+      lastLagSec = sec;
     },
   };
 
