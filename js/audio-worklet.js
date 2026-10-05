@@ -42,6 +42,13 @@ const GAP_REPORT_SEC = 0.1;    // quiet stretches from this long are reported (d
 /* Catch-up: a queued block is skipped only when it sits inside a quiet
    stretch at least this long, so gaps between syllables survive. */
 const SKIP_QUIET_SEC = 0.1;
+/* …and only when the blocks for this long after it are quiet too. Blocks are
+   tagged with the input's smoothed level as they arrive, and the smoothing
+   lags a word's onset: the start of a word after silence — a soft consonant,
+   the t of た — is still tagged quiet. Looking one block ahead was not enough:
+   a session opened right after a drain skipped 296ms while catching up and
+   heard たすかる as アーカル (live stream, 2026-10-05). */
+const SKIP_GUARD_SEC = 0.1;
 const QUEUE_SEC      = 10;     // past this the oldest audio is lost
 
 /* More than TARGET_LAG_SEC queued: play at SPEEDUP until back within it.
@@ -213,6 +220,7 @@ class InputProcessor extends AudioWorkletProcessor {
        samples; each written block also records how long the input had been
        quiet, which is what catch-up skips by. */
     this.blocksCap = Math.ceil(QUEUE_SEC / blockSec);
+    this.guardBlocks = Math.ceil(SKIP_GUARD_SEC / blockSec);
     this.capacity  = this.blocksCap * BLOCK;
     this.samples   = new Float32Array(this.capacity);
     this.quietAt   = new Float32Array(this.blocksCap);
@@ -335,6 +343,12 @@ class InputProcessor extends AudioWorkletProcessor {
     return this.quietAt[Math.floor(pos / BLOCK) % this.blocksCap] >= SKIP_QUIET_SEC;
   }
 
+  /* pos and SKIP_GUARD_SEC after it are all quiet: safe to skip pos. */
+  isSkippable(pos) {
+    for (let k = 0; k <= this.guardBlocks; k++) if (!this.isQuietAt(pos + k * BLOCK)) return false;
+    return true;
+  }
+
   /* One block of synthesised output; silence while there is not yet enough
      queued for a frame (just after queueing starts). */
   render(out) {
@@ -359,7 +373,7 @@ class InputProcessor extends AudioWorkletProcessor {
 
     /* Behind: quiet stretches are skipped whole. */
     if (behind) {
-      while (this.w - this.rd >= need + BLOCK && this.isQuietAt(this.rd) && this.isQuietAt(this.rd + BLOCK)) {
+      while (this.w - this.rd >= need + (this.guardBlocks + 1) * BLOCK && this.isSkippable(this.rd)) {
         this.rd += BLOCK;
         this.skipped += BLOCK;
         this.prevPos = -1;

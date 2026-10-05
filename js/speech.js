@@ -340,6 +340,8 @@ function setupRecognition() {
 
      Parameters are the ones those tests ran with, except the drain settle,
      widened after a live stream showed interims 500ms apart. */
+  /* SHORT_SEC in audio-worklet.js: onShortPause arrives this long into the quiet. */
+  const SHORT_PAUSE_MS    = 150;
   const ROTATE_MIN_AGE_MS = 3000;    // at a pause, rotate once the session is this old
   /* Some speakers barely pause: on one live stream, 9 sessions in 5 minutes
      ran to the cap, with no 350ms pause but plenty of 100–250ms breaths
@@ -365,6 +367,11 @@ function setupRecognition() {
   let lastResultAt     = 0;
   let lastInterimAt    = 0;
   let finalDuringDrain = false;
+  let drainStartedAt   = 0;
+  /* Diagnostic only: when what the recogniser hears last went quiet, kept
+     until speech resumes. Read when a final arrives, to see how much silence
+     the engine waits for before closing a sentence on its own. */
+  let quietSince       = 0;
   let rotating         = false;
   let lastLagSec       = 0;
   const LAG_LOG_SEC    = 0.2;
@@ -397,11 +404,16 @@ function setupRecognition() {
       return;
     }
     finalDuringDrain = false;
+    drainStartedAt   = now;
     drainTimer = setInterval(() => {
       const t = performance.now();
-      if (finalDuringDrain
-          || t - Math.max(lastInterimAt, now) >= DRAIN_SETTLE_MS
-          || t - now >= DRAIN_MAX_MS) cutSession();
+      const why = finalDuringDrain                                    ? 'final'
+                : t - Math.max(lastInterimAt, now) >= DRAIN_SETTLE_MS ? 'settled'
+                : t - now >= DRAIN_MAX_MS                             ? 'max'
+                : '';
+      if (!why) return;
+      markSession(`drain end (${why}) after ${(t - now).toFixed(0)}ms`);
+      cutSession();
     }, 20);
   };
 
@@ -410,6 +422,7 @@ function setupRecognition() {
       if (sessionStartedAt && performance.now() - sessionStartedAt >= ROTATE_MIN_AGE_MS) rotate('pause');
     },
     onShortPause() {
+      quietSince ||= performance.now() - SHORT_PAUSE_MS;
       if (sessionStartedAt && performance.now() - sessionStartedAt >= ROTATE_SHORT_AGE_MS) rotate('short');
     },
     onSpeech() {
@@ -437,6 +450,7 @@ function setupRecognition() {
         + (skippedMs ? ` skipped ${skippedMs}ms` : '') + (droppedMs ? ` dropped ${droppedMs}ms` : ''));
     },
     onGap(ms, queuedMs) {
+      quietSince = 0;
       markSession(`gap ${ms}ms age=${sessionStartedAt ? (performance.now() - sessionStartedAt).toFixed(0) : '-'}ms queued=${queuedMs}ms`);
     },
     /* Only while there is something to see. Talking without a pause keeps the
@@ -531,6 +545,15 @@ function setupRecognition() {
     }
     if (interimTranscript !== previousInterim) lastInterimAt = lastResultAt;
     if (hasFinal) finalDuringDrain = true;
+
+    /* How long the engine had been hearing silence when it closed a sentence:
+       fed silence during a drain, or a real pause. Mid-speech means it closed
+       one while the speaker was still talking. */
+    if (hasFinal) {
+      if (drainTimer)      markSession(`final ${(lastResultAt - drainStartedAt).toFixed(0)}ms into drain`);
+      else if (quietSince) markSession(`final ${(lastResultAt - quietSince).toFixed(0)}ms after quiet began`);
+      else                 markSession('final mid-speech');
+    }
 
     /* Armed off the interim this event actually carried — reading it before the
        parse loop above meant the previous round's leftover value decided it,

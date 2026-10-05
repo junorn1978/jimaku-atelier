@@ -93,7 +93,7 @@
        tallest tab: the OBS tab's instructions scroll instead (.tab-panel is
        overflow-y: auto). It was 324px while the engine column kept a footer
        row for the signature; moving that into the engine row freed 46px. */
-    --control-panel-h: 280px;
+    --control-panel-h: 285px;
     --panel-measure:   1200px;    /* widest the card grows to before it centres
                                      itself in the window */
     --radius-sm:       6px;
