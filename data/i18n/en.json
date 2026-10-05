@@ -249,7 +249,7 @@
   "settings.clearIdle.sec15":"15 seconds",
   "settings.clearIdle.sec30":"30 seconds",
   "settings.browserAI.title": "Browser AI translation",
-  "settings.browserAI.desc": "Not recommended: translates with Chrome’s Prompt API (Gemini Nano). It costs about 0.8s per line and its output is unreliable outside its supported languages (en / ja / es / de / fr). The model stays in memory while selected. Turning this on adds it to the engine picker.",
+  "settings.browserAI.desc": "Not recommended: translates with Chrome’s Prompt API (Gemini Nano). It is slow to display, and its translation quality is moderate while its resource use is heavy. The model stays in memory while selected. Turning this on adds it to the engine picker.",
   "settings.debug.title":   "Debug log",
   "settings.debug.desc":    "Show detailed logs in the browser console.",
   "settings.reset.title":   "Reset settings",

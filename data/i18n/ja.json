@@ -249,7 +249,7 @@
   "settings.clearIdle.sec15":"15 秒",
   "settings.clearIdle.sec30":"30 秒",
   "settings.browserAI.title": "ブラウザ AI 翻訳",
-  "settings.browserAI.desc": "非推奨：Chrome の Prompt API（Gemini Nano）で翻訳します。1行あたり約 0.8 秒かかり、対応言語（en / ja / es / de / fr）以外は訳文が乱れます。モデルは選択中、メモリに常駐します。有効にすると翻訳エンジンの選択肢に現れます。",
+  "settings.browserAI.desc": "非推奨：Chrome の Prompt API（Gemini Nano）で翻訳します。表示が遅く、翻訳品質は中程度ですが、リソースを大量に消費します。モデルは選択中、メモリに常駐します。有効にすると翻訳エンジンの選択肢に現れます。",
   "settings.debug.title":   "デバッグログ",
   "settings.debug.desc":    "ブラウザのコンソールに詳細なログを出力します。",
   "settings.reset.title":   "設定をリセット",
