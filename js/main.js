@@ -20,6 +20,7 @@ import { mountSettingsDialog } from './ui-settings-dialog.js';
 import { initSpeech } from './speech.js';
 import { initFilter } from './filter.js';
 import { initObs } from './obs.js';
+import { initSubtitleWindow } from './subtitle-window.js';
 import { initLayoutToggles } from './ui-layout.js';
 import { initSettingsTabs } from './ui-tabs.js';
 import { initTour } from './tour.js';
@@ -54,6 +55,10 @@ async function init() {
 
   /* Project subtitle settings onto CSS variables. */
   initOutputBinding();
+
+  /* Mirror the output pane to the subtitle window, if one is or gets opened.
+     After initOutputBinding, so the first state it sends is already styled. */
+  initSubtitleWindow();
 
   /* Manage OBS WS connection lifecycle. */
   initObs();

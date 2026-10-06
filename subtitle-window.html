@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Not translated, and never changed at runtime: OBS's Window Capture finds
+       its window again by title, so this string is what the user picks in OBS
+       and has to stay the same across launches and interface languages. -->
+  <title>字幕アトリエ — 字幕ウィンドウ</title>
+  <link rel="icon" type="image/png" href="images/icon.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- The subtitle faces only (see --font-subtitle in css/subtitle-display.css);
+       this window has no UI text. -->
+  <link href="https://fonts.googleapis.com/css2?family=Huninn&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+
+  <!-- The same two stylesheets the app window draws its subtitles with, so
+       this window is the app's preview and nothing else. -->
+  <link rel="stylesheet" href="css/subtitle-core.css">
+  <link rel="stylesheet" href="css/subtitle-display.css">
+
+  <style>
+    /* The whole window is the key colour: OBS captures it and a chroma key
+       removes --sub-bg, so nothing but the subtitle lines may be drawn here —
+       no status text, no placeholder, no border. The fallback covers the
+       moment before the first message; js/subtitle-window-page.js seeds the
+       saved colour before that. */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--sub-bg, #00FF00);
+      overflow: hidden;
+    }
+    .subtitle-display { height: 100%; }
+  </style>
+</head>
+<body>
+  <!-- Same markup as the output pane in index.html, minus data-placeholder:
+       on this window an empty line must stay empty, since it goes on stream. -->
+  <div class="subtitle-display" data-sub-overflow="normal" data-sub-show-source="true"
+       data-target1-lang="none" data-target2-lang="none">
+    <div class="subtitle-line source"   id="display-source"></div>
+    <div class="subtitle-line target-1" id="display-target-1"></div>
+    <div class="subtitle-line target-2" id="display-target-2"></div>
+  </div>
+
+  <script type="module" src="js/subtitle-window-page.js"></script>
+</body>
+</html>

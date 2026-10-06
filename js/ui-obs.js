@@ -9,6 +9,7 @@ import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { triggerAutoSetup, getOverlayUrl, onConnectionState } from './obs.js';
 import { wireSecretInputs } from './ui-secret-input.js';
+import { openSubtitleWindow, closeSubtitleWindow, onSubtitleWindowState } from './subtitle-window.js';
 
 /* Grip dots: mark the drag chips as draggable at a glance, so they don't
    read as push buttons. */
@@ -33,6 +34,7 @@ export function mountObsTab(container) {
     <div class="obs-mode-head">
       <div class="seg-switch" role="group" data-i18n-aria-label="obs.mode" aria-label="連携方式">
         <label><input type="radio" name="obsMode" value="websocket" data-bind="obsMode"><span data-i18n="obs.mode.ws">WebSocket</span></label>
+        <label><input type="radio" name="obsMode" value="window" data-bind="obsMode"><span data-i18n="obs.mode.window">字幕ウィンドウ</span></label>
         <label><input type="radio" name="obsMode" value="capture" data-bind="obsMode"><span data-i18n="obs.mode.capture">ウィンドウキャプチャ</span></label>
       </div>
       <p class="obs-mode-desc" id="obs-mode-desc"></p>
@@ -125,6 +127,48 @@ export function mountObsTab(container) {
       </section>
     </div>
 
+    <!-- Window capture again, but of a second window that holds only the
+         subtitles (subtitle-window.html), so this one never has to wear the
+         key colour. The background picker is the same setting as below. -->
+    <div class="panel-cols" id="obs-mode-window" hidden>
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.capture.bg">背景色</h3>
+        <span class="color-pick">
+          <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
+          <button type="button" class="btn color-trigger-text" data-color-trigger>
+            <output class="color-value"></output>
+          </button>
+        </span>
+        <p class="form-hint" data-i18n="obs.capture.bg.hint">
+          クロマキーで抜く色です。
+        </p>
+      </section>
+
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.help.title">使い方</h3>
+        <ol class="help-steps">
+          <li data-i18n="obs.window.step1">字幕ウィンドウを開きます。</li>
+          <li data-i18n="obs.window.step2">OBS に［ウィンドウキャプチャ］を追加します。</li>
+          <li data-i18n="obs.window.step3">［クロマキー］フィルタを追加します。</li>
+        </ol>
+        <button type="button" class="btn primary" id="obs-window-toggle"
+                data-i18n="obs.window.open">字幕ウィンドウを開く</button>
+        <p class="form-hint" data-i18n="obs.window.hint">
+          位置と大きさは引き継がれます。
+        </p>
+      </section>
+
+      <section class="panel-col">
+        <h3 class="section-title" data-i18n="obs.capture.notes">注意</h3>
+        <ul class="help-notes">
+          <li data-i18n="obs.capture.note1">字幕に背景色と同じ色を使わないでください。</li>
+          <li data-i18n="obs.window.note2">字幕ウィンドウを最小化しないでください。</li>
+          <li data-i18n="obs.window.note3">このウィンドウを閉じると字幕も消えます。</li>
+          <li data-i18n="obs.capture.note3">縁が残る場合はクロマキーの類似性を上げてください。</li>
+        </ul>
+      </section>
+    </div>
+
     <div class="panel-cols" id="obs-mode-capture" hidden>
       <section class="panel-col">
         <h3 class="section-title" data-i18n="obs.capture.bg">背景色</h3>
@@ -191,22 +235,34 @@ export function mountObsTab(container) {
   wireConnStatus(section);
   wireModeSwitch(section);
 
+  /* After applyTo: the button carries a data-i18n default, and applyTo would
+     otherwise put "open" back on it while the window is open. render() owns
+     its label from here on, so the attribute comes off too. */
   applyTo(section);
+  section.querySelector('#obs-window-toggle')?.removeAttribute('data-i18n');
+  wireSubtitleWindow(section);
 }
 
 /* Swap the tab body between the two integration routes, and describe the
    trade-off of whichever one is showing. */
 function wireModeSwitch(container) {
-  const ws      = container.querySelector('#obs-mode-websocket');
-  const capture = container.querySelector('#obs-mode-capture');
-  const desc    = container.querySelector('#obs-mode-desc');
-  if (!ws || !capture || !desc) return;
+  const bodies = {
+    websocket: container.querySelector('#obs-mode-websocket'),
+    window:    container.querySelector('#obs-mode-window'),
+    capture:   container.querySelector('#obs-mode-capture'),
+  };
+  const descKeys = {
+    websocket: 'obs.mode.ws.desc',
+    window:    'obs.mode.window.desc',
+    capture:   'obs.mode.capture.desc',
+  };
+  const desc = container.querySelector('#obs-mode-desc');
+  if (Object.values(bodies).some(el => !el) || !desc) return;
 
   const render = () => {
-    const mode = settings.obsMode === 'capture' ? 'capture' : 'websocket';
-    ws.hidden      = mode !== 'websocket';
-    capture.hidden = mode !== 'capture';
-    desc.textContent = t(mode === 'capture' ? 'obs.mode.capture.desc' : 'obs.mode.ws.desc');
+    const mode = bodies[settings.obsMode] ? settings.obsMode : 'websocket';
+    for (const [key, el] of Object.entries(bodies)) el.hidden = key !== mode;
+    desc.textContent = t(descKeys[mode]);
   };
 
   render();
@@ -219,6 +275,29 @@ function wireModeSwitch(container) {
   container.querySelector('#obs-capture-enter')?.addEventListener('click', () => {
     settings.panelCollapsed = true;
   });
+}
+
+/* One button that opens or closes the subtitle window, labelled for whichever
+   it will do — the label is the state, so there is no separate readout. The
+   state comes from the window itself (js/subtitle-window.js), so a window
+   closed from its own title bar, or left open across a reload of this page,
+   reads correctly. */
+function wireSubtitleWindow(container) {
+  const btn = container.querySelector('#obs-window-toggle');
+  if (!btn) return;
+
+  let open = false;
+  const render = () => {
+    btn.textContent = t(open ? 'obs.window.close' : 'obs.window.open');
+    btn.classList.toggle('primary', !open);
+  };
+
+  btn.addEventListener('click', () => {
+    if (open) closeSubtitleWindow();
+    else      openSubtitleWindow();
+  });
+  onSubtitleWindowState((state) => { open = state; render(); });
+  subscribe('uiLang', render);
 }
 
 /* Live connection status shown beside the WS toggle, so the user can tell

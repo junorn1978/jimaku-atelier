@@ -1,0 +1,165 @@
+/**
+ * subtitle-display.css
+ *
+ * How the subtitle lines look: .subtitle-display, its three .subtitle-line
+ * children, and the modes driven by data attributes on .subtitle-display.
+ * Loaded by both documents that draw this markup:
+ *
+ *   - index.html, the app window, as the preview the user styles against —
+ *     and, in window-capture mode (obs.mode.capture), as the output itself;
+ *   - subtitle-window.html, the subtitle window (obs.mode.window), which
+ *     mirrors the app window's lines and is what OBS captures and keys.
+ *
+ * One stylesheet rather than two copies because the subtitle window is meant
+ * to be indistinguishable from the preview: same markup, same rules, same
+ * values. css/subtitle-core.css still holds the numbers overlay.html shares.
+ *
+ * The layers merge into styles.css's when both are loaded; the order statement
+ * below only takes effect in subtitle-window.html, which loads this alone.
+ */
+
+@layer tokens, layout, utilities;
+
+@layer tokens {
+  :root {
+    /* The subtitle is a separate problem from the UI: it is large, it is for
+       viewers, and one line can hold three languages at once, so it cannot
+       follow the UI language the way the panel does. Kept on the rounded faces
+       (today's look) until that is decided on its own terms. */
+    --font-subtitle: "Huninn", "M PLUS Rounded 1c", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", "Microsoft JhengHei", sans-serif;
+  }
+
+  /* Japanese UI: same reasoning as --font-ui in styles.css — the CJK glyph
+     forms differ between Taiwan and Japan and only an explicit override
+     picks the Japanese ones. */
+  :root:lang(ja) {
+    --font-subtitle: "M PLUS Rounded 1c", "Huninn", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", sans-serif;
+  }
+}
+
+@layer layout {
+  .subtitle-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: var(--space-5);
+    gap: var(--space-2);
+    min-height: 0;
+
+    .subtitle-line {
+      text-align: var(--sub-align);
+      font-family: var(--font-subtitle);
+      width: 100%;
+      line-height: var(--sub-line-height);  /* css/subtitle-core.css */
+      word-break: break-word;
+      /* webkit text stroke produces sharper, OBS-friendly outlines */
+      paint-order: stroke fill;
+
+      /* Greyscale antialiasing instead of Chrome's LCD subpixel default.
+         Subpixel AA writes red- and blue-tinted pixels wherever two colours
+         meet inside a glyph — with paint-order: stroke fill that is the whole
+         boundary between the fill and its outline — so on stream the text
+         carries an orange/cyan speckle along every stroke. Measured on this
+         window's own type (24px, 4px stroke): 1114 pixels with R != B and a
+         worst case of rgb(215,159,0) against rgb(0,159,215).
+         This does NOT cause key residue: at the outline's outer edge the
+         blend is black-to-green, where the subpixel weighting still leaves
+         R and B at 0, so those pixels stay on the key colour's axis either
+         way. It is a text-quality fix, not a keying one — the keying problem
+         was .control-card's drop shadow.
+         will-change, and not -webkit-font-smoothing: antialiased, because
+         that property is a no-op in Chrome on Windows — the same measurement
+         returns byte-identical fringing with and without it. What actually
+         turns LCD text off is compositing the line onto a layer whose
+         background is not opaque, which will-change forces. (backdrop-filter,
+         transform: translateZ(0) and opacity < 1 do it too; isolation and a
+         plain overflow: hidden do not.) overlay.html gets greyscale AA for
+         free from its transparent background; this window paints an opaque
+         one, so it has to ask. */
+      will-change: transform;
+
+      /* Never absorb the pane's shortfall. A line that clips itself — the
+         source in 1-line mode, the targets in shrink mode — sets `overflow`
+         away from visible, and that switches off the automatic minimum size
+         that stops a flex item shrinking below its content. The lines that
+         don't clip keep that protection, so on a short window the whole
+         shortfall landed on the clipping line alone: its box dropped under
+         one line height and the glyph tops were sliced off (and
+         keepTailVisible, seeing scrollHeight exceed clientHeight, scrolled to
+         the bottom, guaranteeing the top was the end that went).
+         Full-height text ending at the panel's edge is the wanted failure
+         mode; a squeezed line cut through the middle of the characters is
+         not, and on stream it is the unusable one. Mirrors overlay.html,
+         where .text-line has carried flex-shrink: 0 all along. */
+      flex-shrink: 0;
+
+      /* Placeholder shown when element has no live text. Inherits the
+         same color/stroke as real text, so style is judged against what
+         will actually go out. -webkit-text-stroke is not inherited by
+         ::before, so each line re-applies it below. */
+      &:empty::before {
+        content: attr(data-placeholder);
+      }
+    }
+
+    .source {
+      color: var(--sub-source-color);
+      font-size: var(--sub-source-size);
+      -webkit-text-stroke: var(--sub-source-stroke-w) var(--sub-source-stroke);
+
+      &:empty::before {
+        -webkit-text-stroke: var(--sub-source-stroke-w) var(--sub-source-stroke);
+      }
+    }
+    .target-1 {
+      color: var(--sub-target1-color);
+      font-size: var(--sub-target1-size);
+      -webkit-text-stroke: var(--sub-target1-stroke-w) var(--sub-target1-stroke);
+
+      &:empty::before {
+        -webkit-text-stroke: var(--sub-target1-stroke-w) var(--sub-target1-stroke);
+      }
+    }
+    .target-2 {
+      color: var(--sub-target2-color);
+      font-size: var(--sub-target2-size);
+      -webkit-text-stroke: var(--sub-target2-stroke-w) var(--sub-target2-stroke);
+
+      &:empty::before {
+        -webkit-text-stroke: var(--sub-target2-stroke-w) var(--sub-target2-stroke);
+      }
+    }
+  }
+}
+
+@layer utilities {
+  /* source line hidden when user opts out (Style tab → "show source" toggle). */
+  [data-sub-show-source="false"] .source { display: none; }
+
+  /* Target slot set to "don't translate" — hide the line entirely so the
+     empty space (and its placeholder) doesn't show. */
+  [data-target1-lang="none"] .target-1 { display: none; }
+  [data-target2-lang="none"] .target-2 { display: none; }
+
+  /* During recording the placeholder hint is suppressed — once the user has
+     hit Start, an empty line should read as "no subtitle right now", not as
+     stale placeholder text. */
+  .subtitle-display.is-recording .subtitle-line:empty::before { content: none; }
+
+  /* subtitle overflow strategies, driven by [data-sub-overflow] on .subtitle-display.
+     Mirrors overlay.html so the two output paths agree; the clip heights
+     themselves come from css/subtitle-core.css, which both sides load. */
+  [data-sub-overflow="shrink"] .target-1,
+  [data-sub-overflow="shrink"] .target-2 {
+    height: var(--sub-clip-2line);
+    overflow: hidden;  /* JS cinema-scrolls through anything beyond 2 lines */
+  }
+
+  /* source (STT) limited to one visible line: clip to a single line height and
+     let JS scroll to the bottom so the latest line stays in view. */
+  [data-sub-source-single="true"] .source {
+    height: var(--sub-clip-1line);
+    overflow: hidden;
+  }
+}

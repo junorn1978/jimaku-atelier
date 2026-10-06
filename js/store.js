@@ -93,7 +93,7 @@ const _defaults = Object.freeze({
   /* Which way subtitles reach the streaming software. The two routes need
      almost nothing in common, so the OBS tab shows one or the other rather
      than offering controls that don't apply to the chosen route. */
-  obsMode:            'websocket', // 'websocket' | 'capture'
+  obsMode:            'websocket', // 'websocket' | 'window' | 'capture'
 
   // --- Translation engine ---
   translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'link'
