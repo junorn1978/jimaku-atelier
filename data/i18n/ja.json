@@ -60,6 +60,7 @@
   "lang.engine.translator.preparing":   "翻訳モデルを準備しています…",
   "lang.engine.translator.downloading": "翻訳モデルをダウンロードしています",
   "lang.engine.translator.ready":       "翻訳モデルの準備が完了しました。",
+  "lang.engine.translator.note":        "翻訳精度が低く、長い文の後半が省略されることがあります。必要な場合以外はおすすめしません。",
   "lang.engine.translator.unavailable": "この言語の組み合わせはブラウザ翻訳に対応していません。別の言語かエンジンを選んでください。",
   "lang.engine.translator.blocked":     "翻訳モデルのダウンロードには操作が必要です。もう一度［ブラウザ翻訳］を選び直してください。",
   "lang.engine.translator.failed":      "翻訳モデルを準備できませんでした。しばらくしてからもう一度お試しください。",

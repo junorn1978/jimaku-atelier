@@ -399,7 +399,7 @@ function setupTranslatorEngine(container) {
     if (!messageKey) { status.hidden = true; status.textContent = ''; return; }
     const suffix = percent == null ? '' : ` ${percent}%`;
     status.hidden = false;
-    status.textContent = t(messageKey) + suffix;
+    status.textContent = [].concat(messageKey).map(k => t(k)).join(' ') + suffix;
   };
 
   const setMessage = (key, pct = null) => { messageKey = key; percent = pct; render(); };
@@ -451,7 +451,11 @@ function setupTranslatorEngine(container) {
         },
       );
       if (!stillPicked()) setMessage(null);
-      else if (result.ok) setMessage(downloaded ? 'lang.engine.translator.ready' : null);
+      /* Once ready, the line keeps a standing caveat instead of going blank:
+         on unpunctuated Japanese the model drops the tail of long lines. */
+      else if (result.ok) setMessage(downloaded
+        ? ['lang.engine.translator.ready', 'lang.engine.translator.note']
+        : 'lang.engine.translator.note');
       else                setMessage(REASON_KEYS[result.reason] ?? REASON_KEYS.failed);
     } finally {
       warming = false;

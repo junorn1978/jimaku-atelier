@@ -60,6 +60,7 @@
   "lang.engine.translator.preparing":   "正在準備翻譯模型…",
   "lang.engine.translator.downloading": "正在下載翻譯模型",
   "lang.engine.translator.ready":       "翻譯模型已就緒。",
+  "lang.engine.translator.note":        "翻譯品質較低，長句的後半段可能會被省略。非必要不建議使用。",
   "lang.engine.translator.unavailable": "這組語言配對不支援瀏覽器翻譯，請改選其他語言或引擎。",
   "lang.engine.translator.blocked":     "下載翻譯模型需要操作觸發，請再次點選［瀏覽器翻譯］。",
   "lang.engine.translator.failed":      "無法準備翻譯模型，請稍後再試。",
