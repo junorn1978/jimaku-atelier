@@ -200,29 +200,30 @@
 /* ============ layout ============ */
 @layer layout {
 
-  /* The card's single toolbar row. Three groups: transport on the left, the
-     tab picker centred, global actions on the right. The 1fr/auto/1fr track
-     keeps the tab picker on the card's centre line regardless of how wide the
-     flanking groups get, so it never drifts as labels change language. */
+  /* The card's single toolbar row. Two groups: what is used while streaming
+     on the left (mic, start/stop, subtitle window), what is used while setting
+     up on the right (the tab picker, then global actions). The tab picker used
+     to sit centred on a 1fr/auto/1fr track, which capped each side at half of
+     what it left — too little once the left group grew a third button. Now
+     each group takes what it needs and the slack falls between them. */
   .control-toolbar {
     display: grid;
-    /* minmax(0, auto) rather than auto: the centre cell also holds the
-       collapsed-state readout, whose language names can run long. Without a
-       zero minimum it would push the flanking groups — and .toolbar-actions,
-       being icon buttons, has nowhere to give. */
-    grid-template-columns: 1fr minmax(0, auto) 1fr;
+    /* minmax(0, 1fr) in the middle: the collapsed-state readout lives there,
+       and its language names can run long. With a zero minimum it ellipsizes
+       instead of pushing the groups — and .toolbar-actions, being mostly icon
+       buttons, has nowhere to give. */
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-3);
 
-    /* The tab picker and the readout share the centre cell; exactly one is
-       displayed at a time, so the track sizes to whichever is showing. */
-    .settings-tabs,
-    .toolbar-status { grid-column: 2; grid-row: 1; }
+    .toolbar-start   { grid-column: 1; }
+    .toolbar-status  { grid-column: 2; justify-self: center; max-width: 100%; }
+    .toolbar-actions { grid-column: 3; }
 
-    /* Hidden until .panel-collapsed swaps it in. The transparent border and
-       6px padding reproduce the tab track's box (1px border + 3px + the
-       button's own 3px), so swapping one for the other cannot change the
+    /* Hidden until .panel-collapsed shows it (and hides the tabs). The
+       transparent border and 6px padding reproduce the tab track's box (1px
+       border + 3px + the button's own 3px), so the swap cannot change the
        toolbar's height and jolt the output. */
     .toolbar-status {
       display: none;
@@ -275,8 +276,10 @@
       align-items: center;
       gap: var(--space-2);
 
-      /* thin divider between the UI-language switch and the icon buttons */
-      > .seg-switch {
+      /* thin divider between the tab picker and the global actions; it goes
+         with the tabs when .panel-collapsed hides them */
+      > .settings-tabs {
+        position: relative;
         margin-right: var(--space-2);
 
         &::after {
@@ -551,6 +554,62 @@
     }
 
     svg { width: 18px; height: 18px; }
+  }
+
+  /* --- interface language (toolbar; js/main.js) ---
+     An icon button that also shows the current language, opening a small menu
+     upward — the toolbar sits at the bottom of the window. */
+  .lang-btn {
+    anchor-name: --lang-btn;
+    width: auto;
+    padding-inline: 6px;
+    display: inline-flex;
+    gap: 4px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+
+    svg { width: 16px; height: 16px; }
+
+    &:has(+ .lang-menu:popover-open) {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+  }
+
+  .lang-menu {
+    position-anchor: --lang-btn;
+    position-area: top span-left;
+    inset: auto;
+    margin: 0 0 calc(var(--space-2) + var(--space-3));
+    padding: var(--space-1);
+    display: none;
+    min-width: 150px;
+    background: var(--color-surface-1);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+    &:popover-open { display: grid; }
+
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      font-size: var(--text-md);
+      text-align: left;
+
+      &:hover { background: var(--fill-1); }
+
+      /* checkmark on the active language */
+      &[aria-checked="true"]::after {
+        content: "✓";
+        color: var(--color-accent-hover);
+      }
+    }
   }
 
   /* --- background-click lock (toolbar) ---
@@ -1256,19 +1315,7 @@
     }
   }
 
-  /* The left cell is only half of what the centred tab picker leaves, and at
-     the narrowest windows start/stop + mic + this label do not fit in it — they
-     wrapped into two-line pills. Below this width the label goes and the icon
-     stays; js/ui-obs.js keeps the name in aria-label and the tooltip. Measured
-     with the English labels, the longest of the three. */
-  .control-toolbar { container: toolbar / inline-size; }
   .mic-btn { white-space: nowrap; }
-  @container toolbar (width < 1160px) {
-    .subwin-btn {
-      padding-inline: 10px;
-      span { display: none; }
-    }
-  }
 
   /* --- level test (inside the mic panel) ---
      One block with three states: idle shows the button and a hint, running

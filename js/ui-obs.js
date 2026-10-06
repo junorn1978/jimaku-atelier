@@ -311,7 +311,6 @@ export function mountSubtitleWindowButton(btn) {
   let open = false;
   const render = () => {
     btn.setAttribute('aria-pressed', String(open));
-    btn.setAttribute('aria-label', t('toolbar.subwin'));
     btn.title = t(open ? 'obs.window.close' : 'obs.window.open');
   };
 

@@ -85,8 +85,10 @@ async function init() {
 /* -------- interface language switcher -------- */
 
 function wireLangSwitcher() {
-  document.querySelectorAll('.seg-switch button[data-lang]').forEach(btn => {
+  const menu = document.getElementById('lang-menu');
+  menu?.querySelectorAll('button[data-lang]').forEach(btn => {
     btn.addEventListener('click', async () => {
+      menu.hidePopover();
       const lang = btn.dataset.lang;
       if (!lang || lang === getLanguage()) return;
       await setLanguage(lang);
@@ -96,10 +98,17 @@ function wireLangSwitcher() {
   });
 }
 
+/* The toolbar button shows the active language's short form; the menu marks
+   it as the checked item. */
 function syncLangSwitcher() {
   const active = getLanguage();
-  document.querySelectorAll('.seg-switch button[data-lang]').forEach(btn => {
-    btn.classList.toggle('is-active', btn.dataset.lang === active);
+  document.querySelectorAll('#lang-menu button[data-lang]').forEach(btn => {
+    const on = btn.dataset.lang === active;
+    btn.setAttribute('aria-checked', String(on));
+    if (on) {
+      const current = document.querySelector('#lang-btn .lang-btn-current');
+      if (current) current.textContent = btn.dataset.short;
+    }
   });
 }
 

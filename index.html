@@ -47,29 +47,15 @@
          centred surface removes both bands, and with them the mismatch between
          the strips' edges and the content's. -->
     <aside class="control-card" data-i18n-aria-label="aria.settingsPane" aria-label="設定パネル">
-      <!-- One row: start/stop, the tab picker, global actions. All three are
-           segmented pills, so they read as the same kind of control. The
-           toolbar survives .panel-collapsed (only the tab body is hidden), so
-           start/stop stays reachable while the output fills the window — which
-           is also why the card is the one region a background click ignores. -->
+      <!-- One row, two groups: what is used while streaming on the left, what
+           is used while setting up on the right. The toolbar survives
+           .panel-collapsed (only the tab body is hidden), so start/stop stays
+           reachable while the output fills the window — which is also why the
+           card is the one region a background click ignores. -->
       <div class="control-toolbar">
-        <!-- Start/stop and the microphone that feeds them, as one group. -->
+        <!-- In signal order, left to right: the microphone that feeds
+             recognition, start/stop, the subtitle window it comes out of. -->
         <div class="toolbar-start">
-          <div class="speech-switch">
-            <button type="button" class="btn primary" id="btn-start" disabled>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-                <circle cx="12" cy="12" r="6"/>
-              </svg>
-              <span data-i18n="action.start">開始</span>
-            </button>
-            <button type="button" class="btn" id="btn-stop" disabled>
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
-                <rect x="6" y="6" width="12" height="12" rx="1"/>
-              </svg>
-              <span data-i18n="action.stop">停止</span>
-            </button>
-          </div>
-
           <!-- Microphone button and its panel (js/ui-mic.js). Beside start
                because it is what gets checked right before pressing it. Hidden
                while the panel is collapsed: switching the input mid-stream
@@ -132,6 +118,21 @@
             </div>
           </div>
 
+          <div class="speech-switch">
+            <button type="button" class="btn primary" id="btn-start" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="12" r="6"/>
+              </svg>
+              <span data-i18n="action.start">開始</span>
+            </button>
+            <button type="button" class="btn" id="btn-stop" disabled>
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
+                <rect x="6" y="6" width="12" height="12" rx="1"/>
+              </svg>
+              <span data-i18n="action.stop">停止</span>
+            </button>
+          </div>
+
           <!-- Opens or closes the subtitle window (js/subtitle-window.js) from
                any OBS route and any tab, so putting it on stream is not three
                clicks deep. Unlike the mic button it stays while the panel is
@@ -148,37 +149,52 @@
           </button>
         </div>
 
-        <!-- Settings are split across three tabs. Each tab panel is filled by
-             its own module (js/ui-languages.js, js/ui-filter.js,
-             js/ui-obs.js — mounted from js/main.js); switching is handled by
-             js/ui-tabs.js and the active tab persists in the settings store. -->
-        <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
-             aria-label="設定項目" aria-orientation="horizontal">
-          <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
-                  aria-selected="true" data-tab="languages" class="tab-btn is-active"
-                  data-i18n="tab.languages">言語</button>
-          <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
-                  aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
-                  data-i18n="tab.filter">単語置換</button>
-          <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
-                  aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
-                  data-i18n="tab.obs">OBS</button>
-        </div>
-
-        <!-- Takes the tab picker's cell while the panel is collapsed. The tabs
-             drive a body that isn't displayed then, and the language routing
-             disappears with it — this is the only place left to check what is
-             being recognised and where it is going. Read-only by design:
+        <!-- Shown in the gap between the two groups while the panel is
+             collapsed. The tabs drive a body that isn't displayed then, and
+             the language routing disappears with it — this is the only place
+             left to check what is being recognised and where it is going. Read-only by design:
              collapsed means the output is being captured, so the position
              that used to be a control must not invite a mid-stream click. -->
         <p class="toolbar-status" id="toolbar-status"></p>
 
         <div class="toolbar-actions">
-          <div class="seg-switch" role="group" data-i18n-aria-label="aria.interfaceLanguage"
-               aria-label="表示言語">
-            <button type="button" data-lang="ja"    class="is-active">JP</button>
-            <button type="button" data-lang="zh-TW">中</button>
-            <button type="button" data-lang="en">EN</button>
+          <!-- Settings are split across three tabs. Each tab panel is filled by
+               its own module (js/ui-languages.js, js/ui-filter.js,
+               js/ui-obs.js — mounted from js/main.js); switching is handled by
+               js/ui-tabs.js and the active tab persists in the settings store. -->
+          <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
+               aria-label="設定項目" aria-orientation="horizontal">
+            <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
+                    aria-selected="true" data-tab="languages" class="tab-btn is-active"
+                    data-i18n="tab.languages">言語</button>
+            <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
+                    aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
+                    data-i18n="tab.filter">単語置換</button>
+            <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
+                    aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
+                    data-i18n="tab.obs">OBS</button>
+          </div>
+
+          <!-- Interface language (js/main.js). A menu rather than three
+               segments: it is detected from the browser and rarely touched, so
+               it gets a globe and the current language, not a third of the
+               row. The globe is the one way in that needs no reading, for
+               someone who has landed in a language they cannot read. Menu
+               items are each language's own name for the same reason. -->
+          <button type="button" class="icon-btn lang-btn" id="lang-btn" popovertarget="lang-menu"
+                  data-i18n-title="aria.interfaceLanguage" title="表示言語">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span class="lang-btn-current">JP</span>
+          </button>
+          <div class="lang-menu" id="lang-menu" popover role="menu"
+               data-i18n-aria-label="aria.interfaceLanguage" aria-label="表示言語">
+            <button type="button" role="menuitemradio" data-lang="ja" data-short="JP" lang="ja">日本語</button>
+            <button type="button" role="menuitemradio" data-lang="zh-TW" data-short="中" lang="zh-TW">繁體中文</button>
+            <button type="button" role="menuitemradio" data-lang="en" data-short="EN" lang="en">English</button>
           </div>
 
           <button type="button" class="icon-btn" id="toggle-manual" aria-pressed="false"
