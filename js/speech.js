@@ -208,7 +208,7 @@ function onClearIdleChanged() {
 /* ============ filter hook ============ */
 
 function filterSource(text, lang) {
-  return applyFilter(normalizeRecognised(text, lang));
+  return applyFilter(normalizeRecognised(text, lang, usingLocal));
 }
 
 /* ============ Web Speech adapter ============ */

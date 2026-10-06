@@ -12,9 +12,10 @@
  * embedded Latin phrases keep their own spacing: "Apex Legends の 話" collapses
  * to "Apex Legendsの話", not "ApexLegendsの話".
  *
- * The cloud engine does not add these spaces, so for a cloud session this is a
- * no-op — it is keyed off the language, not off processLocally, which means it
- * also survives a silent fallback between the two paths mid-session.
+ * On-device sessions only. The cloud engine puts spaces at the speaker's pauses
+ * ("えーと まああくまでも 民事…"), and those are real phrase boundaries: joining
+ * them leaves the translation engines one unbroken run, which the Translator
+ * API truncates on long lines.
  */
 
 /* Character classes that are written without spaces around them:
@@ -44,14 +45,15 @@ export function joinJapaneseSpaces(text) {
 }
 
 /**
- * Language-gated wrapper for the recognition pipeline: applies the join for
- * Japanese and passes every other language through untouched.
+ * Gated wrapper for the recognition pipeline: applies the join to Japanese
+ * from the on-device model and passes everything else through untouched.
  *
  * @param {string} text recognised text
  * @param {string} [lang] BCP 47 tag of the recognition language (e.g. 'ja-JP')
+ * @param {boolean} [onDevice] whether the session runs the on-device model
  * @returns {string}
  */
-export function normalizeRecognised(text, lang) {
-  if (!lang || !lang.toLowerCase().startsWith('ja')) return text ?? '';
+export function normalizeRecognised(text, lang, onDevice) {
+  if (!onDevice || !lang || !lang.toLowerCase().startsWith('ja')) return text ?? '';
   return joinJapaneseSpaces(text);
 }
