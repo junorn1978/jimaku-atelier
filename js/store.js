@@ -72,6 +72,9 @@ const _defaults = Object.freeze({
      state itself, so the OBS tab's "enter capture mode" button still works. */
   panelCollapsed:     false,      // bottom settings/control panel
   panelLocked:        false,      // ignore background clicks while true
+  /* Height of the expanded panel in px, dragged by its top grip (ui-layout.js).
+     null is the CSS default (--control-panel-h), which is also the minimum. */
+  panelHeight:        null,
   activeTab:          'languages', // active settings tab: 'languages' | 'style' | 'filter' | 'obs'
 
   // --- Microphone (see ui-mic.js) ---

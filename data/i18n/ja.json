@@ -7,6 +7,7 @@
   "aria.interfaceLanguage": "表示言語",
   "header.action.settings": "設定",
   "header.action.toggleLock":      "背景クリックでの開閉をロック",
+  "layout.panelResize":           "パネルの高さを調整（ダブルクリックで元に戻す）",
   "header.action.toggleManual":    "テキスト翻訳の表示／非表示",
   "output.source":          "音声認識の結果がここに表示されます",
   "output.target1":         "翻訳 1",

@@ -7,6 +7,7 @@
   "aria.interfaceLanguage": "Interface language",
   "header.action.settings": "Settings",
   "header.action.toggleLock":      "Lock the background click",
+  "layout.panelResize":           "Resize the panel (double-click to reset)",
   "header.action.toggleManual":    "Text translation",
   "output.source":          "Recognized speech will appear here",
   "output.target1":         "Translation 1",

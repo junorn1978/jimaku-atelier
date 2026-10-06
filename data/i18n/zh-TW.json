@@ -7,6 +7,7 @@
   "aria.interfaceLanguage": "介面語言",
   "header.action.settings": "設定",
   "header.action.toggleLock":      "鎖定背景點擊開關",
+  "layout.panelResize":           "調整面板高度（雙擊還原）",
   "header.action.toggleManual":    "文字翻譯",
   "output.source":          "語音辨識結果將顯示於此",
   "output.target1":         "翻譯 1",

@@ -355,6 +355,7 @@
        two bands, which read as an I-beam on wide displays.
        .panel-collapsed hides only the tab body, so the toolbar (and start/stop
        with it) stays reachable while the output fills the window. */
+    position: relative;   /* anchors the height grip (.panel-resize) */
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     width: min(100% - var(--card-inset) * 2, var(--panel-measure));
@@ -531,6 +532,45 @@
       svg { animation: rec-pulse 1.4s ease-in-out infinite; }
     }
   }
+
+  /* --- panel height grip (top edge of the control card; js/ui-layout.js) ---
+     A short bar centred on the edge, the usual sign for "this pulls". The hit
+     area is the toolbar's top padding, so it covers no control. */
+  .panel-resize {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    translate: -50% 0;
+    z-index: 1;
+    width: 64px;
+    height: var(--space-2);
+    display: grid;
+    place-items: center;
+    cursor: ns-resize;
+    touch-action: none;
+
+    &::before {
+      content: "";
+      width: 36px;
+      height: 4px;
+      border-radius: var(--radius-full);
+      background: var(--color-border-strong);
+      transition: background 0.15s;
+    }
+
+    &:hover::before,
+    &:focus-visible::before { background: var(--color-text-dim); }
+    &:focus-visible { outline: none; }
+  }
+
+  /* While dragging, the pointer can wander over text and other cursors; keep
+     the resize cursor and stop the drag from selecting anything. */
+  .is-resizing-panel,
+  .is-resizing-panel * {
+    cursor: ns-resize !important;
+    user-select: none;
+  }
+  .is-resizing-panel .panel-resize::before { background: var(--color-accent); }
 
   /* --- icon-only button (32×32) --- */
   .icon-btn {
@@ -2479,6 +2519,7 @@
      disappearing with the settings. */
   .panel-collapsed .settings-body { display: none; }
   .panel-collapsed .control-card  { height: auto; }
+  .panel-collapsed .panel-resize  { display: none; }
 
   /* The tab picker would drive a body that is no longer displayed, so it hands
      its cell to the read-only language readout. */

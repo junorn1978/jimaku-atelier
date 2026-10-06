@@ -14,6 +14,9 @@
  *    a background this large is easy to hit by accident; the lock is what makes
  *    click-anywhere safe to leave on. It only blocks the click — code that
  *    writes panelCollapsed (the OBS tab's capture button) still goes through.
+ *  - The grip on the card's top edge sets the expanded panel's height, from
+ *    the CSS default (the minimum) up to MAX_PANEL_SHARE of the window. The
+ *    height persists; double-click returns to the default.
  *  - "toggle-manual" opens/closes the manual text-translation slide-up overlay.
  *    It's a secondary tool, so its open state is ephemeral (always starts
  *    closed on load) and is not persisted.
@@ -51,9 +54,16 @@ const DISMISSIBLE = (() => {
   }
 })();
 
+/* Largest share of the window height the panel may take; the rest is left
+   to the subtitle preview. */
+const MAX_PANEL_SHARE = 0.9;
+/* Arrow-key step for the grip, in px. */
+const RESIZE_STEP = 16;
+
 export function initLayoutToggles() {
   initPanelCollapse();
   initPanelLock();
+  initPanelResize();
   initToolbarStatus();
   initManualPanel();
 }
@@ -135,6 +145,76 @@ function initPanelLock() {
   subscribe('panelLocked', apply);
 
   btn?.addEventListener('click', () => { settings.panelLocked = !settings.panelLocked; });
+}
+
+/* The panel's height is one token, --control-panel-h, which the manual
+   overlay reads as well, so overriding it on <html> resizes both. The stored
+   value is what the user asked for; what is shown is that clamped to the
+   current window, so a window made shorter for a while does not lose it. */
+function initPanelResize() {
+  const grip = document.getElementById('panel-resize');
+  const root = document.documentElement;
+  /* Read before any override: the stylesheet's value is the default and the
+     floor. */
+  const minH = parseFloat(getComputedStyle(root).getPropertyValue('--control-panel-h')) || 285;
+  const maxH = () => Math.max(minH, Math.floor(window.innerHeight * MAX_PANEL_SHARE));
+  const clamp = (h) => Math.round(Math.min(maxH(), Math.max(minH, h)));
+
+  let shown = minH;
+  const show = (h) => {
+    shown = clamp(h ?? minH);
+    if (shown === minH) root.style.removeProperty('--control-panel-h');
+    else                root.style.setProperty('--control-panel-h', `${shown}px`);
+    grip?.setAttribute('aria-valuemin', String(minH));
+    grip?.setAttribute('aria-valuemax', String(maxH()));
+    grip?.setAttribute('aria-valuenow', String(shown));
+  };
+  const commit = (h) => {
+    const next = clamp(h);
+    settings.panelHeight = next === minH ? null : next;
+  };
+
+  show(settings.panelHeight);
+  subscribe('panelHeight', show);
+  window.addEventListener('resize', () => show(settings.panelHeight));
+  if (!grip) return;
+
+  /* Live while dragging, saved on release: the store writes its whole object
+     on every change, which is not something to do sixty times a second. The
+     card grows upward, so moving the pointer up adds height. */
+  let drag = null;
+  grip.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    grip.setPointerCapture(e.pointerId);
+    drag = { y: e.clientY, h: shown };
+    document.body.classList.add('is-resizing-panel');
+  });
+  grip.addEventListener('pointermove', (e) => {
+    if (drag) show(drag.h + (drag.y - e.clientY));
+  });
+  const end = () => {
+    if (!drag) return;
+    drag = null;
+    document.body.classList.remove('is-resizing-panel');
+    commit(shown);
+  };
+  grip.addEventListener('pointerup', end);
+  grip.addEventListener('pointercancel', end);
+  grip.addEventListener('lostpointercapture', end);
+
+  grip.addEventListener('dblclick', () => { settings.panelHeight = null; });
+
+  grip.addEventListener('keydown', (e) => {
+    const next = e.key === 'ArrowUp'   ? shown + RESIZE_STEP
+               : e.key === 'ArrowDown' ? shown - RESIZE_STEP
+               : e.key === 'Home'      ? minH
+               : e.key === 'End'       ? maxH()
+               : null;
+    if (next == null) return;
+    e.preventDefault();
+    commit(next);
+  });
 }
 
 /* Collapsed mode hides the tab body, and the language routing goes with it.

@@ -47,6 +47,14 @@
          centred surface removes both bands, and with them the mismatch between
          the strips' edges and the content's. -->
     <aside class="control-card" data-i18n-aria-label="aria.settingsPane" aria-label="設定パネル">
+      <!-- Grip for the panel's height (js/ui-layout.js): drag it up for more
+           room, double-click to return to the default. A separator in ARIA
+           terms, so it is focusable and the arrow keys move it too. Inside the
+           card, so a press on it is never a background click. -->
+      <div class="panel-resize" id="panel-resize" role="separator" tabindex="0"
+           aria-orientation="horizontal"
+           data-i18n-aria-label="layout.panelResize" aria-label="パネルの高さ"
+           data-i18n-title="layout.panelResize" title="パネルの高さ"></div>
       <!-- One row, two groups: what is used while streaming on the left, what
            is used while setting up on the right. The toolbar survives
            .panel-collapsed (only the tab body is hidden), so start/stop stays
