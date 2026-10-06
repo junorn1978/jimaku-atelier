@@ -12,6 +12,7 @@
 
 import { isDebugEnabled } from './logger.js';
 import { settings, subscribe } from './store.js';
+import { t } from './i18n.js';
 import { decorateSource } from './source-decoration.js';
 
 const DEFAULT_WS_URL    = 'ws://127.0.0.1:4455';
@@ -324,9 +325,19 @@ const AUTO_SOURCES = [
 
 const OVERLAY_CSS = 'body { background-color: rgba(0,0,0,0); margin: 0 auto; overflow: hidden; }';
 
+/* The scene the sources go into when settings.obsNestSources is on. OBS
+   groups cannot be created over obs-websocket (there is no CreateGroup, and the
+   protocol docs steer away from groups altogether), so the "folder" is a scene
+   of its own, added to the live scene as a single scene source. One scene
+   source can sit in any number of scenes, so arranging the subtitles once
+   arranges them everywhere. */
+const NEST_SCENE = 'RTL-Subtitles';
+
+const INPUT_SETTINGS = (url) => ({ url, width: 1280, height: 200, css: OVERLAY_CSS });
+
 export function triggerAutoSetup() {
   if (!settings.obsEnabled) {
-    alert('Enable OBS WebSocket first.');
+    alert(t('obs.autoSetup.needWs'));
     return;
   }
   if (!authenticated) {
@@ -337,37 +348,55 @@ export function triggerAutoSetup() {
   executeAutoSetup();
 }
 
+/* Put `sourceName` in `sceneName` unless it is already there. CreateSceneItem
+   does not refuse a source the scene already holds — it adds a second copy —
+   so presence has to be checked first. Returns the scene item id. */
+async function ensureSceneItem(sceneName, sourceName, enabled) {
+  try {
+    const { sceneItemId } = await sendSingleRequest('GetSceneItemId', { sceneName, sourceName });
+    return sceneItemId;
+  } catch {
+    const res = await sendSingleRequest('CreateSceneItem', {
+      sceneName, sourceName, ...(enabled != null && { sceneItemEnabled: enabled }),
+    });
+    return res.sceneItemId;
+  }
+}
+
 async function executeAutoSetup() {
   try {
     const sceneInfo = await sendSingleRequest('GetCurrentProgramScene');
-    const sceneName = sceneInfo.currentProgramSceneName || sceneInfo.sceneName;
-    if (!sceneName) throw new Error('Cannot read current scene name');
+    const liveScene = sceneInfo.currentProgramSceneName || sceneInfo.sceneName;
+    if (!liveScene) throw new Error('Cannot read current scene name');
+
+    const nest   = settings.obsNestSources && liveScene !== NEST_SCENE;
+    const target = settings.obsNestSources ? NEST_SCENE : liveScene;
+
+    if (settings.obsNestSources) {
+      try { await sendSingleRequest('CreateScene', { sceneName: NEST_SCENE }); }
+      catch { /* already exists */ }
+    }
 
     for (const src of AUTO_SOURCES) {
       const url = getOverlayUrl(src.mode);
       try {
         await sendSingleRequest('CreateInput', {
-          sceneName,
+          sceneName: target,
           inputName: src.name,
           inputKind: 'browser_source',
-          inputSettings: {
-            url, width: 1280, height: 200, reroute_audio: false, css: OVERLAY_CSS,
-          },
+          inputSettings: { ...INPUT_SETTINGS(url), reroute_audio: false },
           sceneItemEnabled: src.visible,
         });
         if (isDebugEnabled()) console.debug('[obs] created source:', src.name);
-      } catch (err) {
-        /* Source already exists globally — add to current scene and refresh settings. */
+      } catch {
+        /* The input already exists somewhere in OBS: refresh its settings, and
+           place it in the target scene only if it is not there yet. */
         if (isDebugEnabled()) console.debug('[obs] source exists, updating:', src.name);
-        try { await sendSingleRequest('CreateSceneItem', { sceneName, sourceName: src.name }); } catch { /* already in scene */ }
         try {
-          await sendSingleRequest('SetInputSettings', {
-            inputName: src.name,
-            inputSettings: { url, width: 1280, height: 200, css: OVERLAY_CSS },
-          });
-          const idRes = await sendSingleRequest('GetSceneItemId', { sceneName, sourceName: src.name });
+          await sendSingleRequest('SetInputSettings', { inputName: src.name, inputSettings: INPUT_SETTINGS(url) });
+          const sceneItemId = await ensureSceneItem(target, src.name);
           await sendSingleRequest('SetSceneItemEnabled', {
-            sceneName, sceneItemId: idRes.sceneItemId, sceneItemEnabled: src.visible,
+            sceneName: target, sceneItemId, sceneItemEnabled: src.visible,
           });
         } catch (e2) {
           if (isDebugEnabled()) console.warn('[obs] update existing source failed:', e2);
@@ -375,10 +404,12 @@ async function executeAutoSetup() {
       }
     }
 
-    alert('OBS Auto Setup complete.\n4 browser sources added to the current scene; only "All" is visible by default.');
+    if (nest) await ensureSceneItem(liveScene, NEST_SCENE, true);
+
+    alert(t(settings.obsNestSources ? 'obs.autoSetup.done.nested' : 'obs.autoSetup.done'));
   } catch (err) {
     if (isDebugEnabled()) console.error('[obs] auto setup failed:', err);
-    alert('OBS Auto Setup failed: ' + err.message);
+    alert(`${t('obs.autoSetup.failed')} ${err.message}`);
   }
 }
 

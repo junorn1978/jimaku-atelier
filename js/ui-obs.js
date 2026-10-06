@@ -47,6 +47,9 @@ export function mountObsTab(container) {
             <li data-i18n="obs.help.step3"></li>
             <li data-i18n="obs.help.step4"></li>
           </ol>
+          <ul class="help-notes">
+            <li data-i18n="obs.help.nestNote"></li>
+          </ul>
         </div>
         <div class="obs-help" data-mode="window" hidden>
           <ol class="help-steps">
@@ -89,7 +92,7 @@ export function mountObsTab(container) {
            A small bubble on the button rather than a modal: it is a yes/no
            about the thing just clicked. -->
       <div class="help-popover obs-confirm-popover" id="popover-obs-confirm" popover>
-        <p class="obs-confirm-text" data-i18n="obs.autoSetup.confirm"></p>
+        <p class="obs-confirm-text" id="obs-confirm-text"></p>
         <div class="obs-confirm-actions">
           <button type="button" class="btn" id="obs-confirm-cancel" data-i18n="obs.autoSetup.cancel">キャンセル</button>
           <button type="button" class="btn primary" id="obs-confirm-ok" data-i18n="obs.autoSetup.ok">追加する</button>
@@ -136,6 +139,13 @@ export function mountObsTab(container) {
           </div>
         </div>
       </div>
+      <label class="obs-nest">
+        <span class="toggle">
+          <input type="checkbox" data-bind="obsNestSources">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </span>
+        <span class="form-row-label" data-i18n="obs.nest">字幕ソースを専用シーン「RTL-Subtitles」にまとめる</span>
+      </label>
       <div class="obs-conn">
         <p class="obs-conn-status" id="obs-conn-status" role="status" aria-live="polite" data-phase="disabled">
           <span class="obs-conn-dot" aria-hidden="true"></span>
@@ -254,7 +264,12 @@ function wireAutoSetup(container) {
   sync();
   subscribe('obsEnabled', sync);
 
+  /* The wording follows the nest option, read at the moment of asking. */
+  const text = container.querySelector('#obs-confirm-text');
   btn.addEventListener('click', () => {
+    if (text) {
+      text.textContent = t(settings.obsNestSources ? 'obs.autoSetup.confirm.nested' : 'obs.autoSetup.confirm');
+    }
     try { confirm.showPopover(); } catch { /* already open */ }
   });
   container.querySelector('#obs-confirm-cancel')?.addEventListener('click', () => {

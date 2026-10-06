@@ -100,6 +100,10 @@ const _defaults = Object.freeze({
   /* The OBS tab's steps sit behind its "?", which pulses like the toolbar's
      tour button until it has been opened once. */
   obsHelpSeen:        false,
+  /* Auto Setup puts the four sources in a scene of their own (RTL-Subtitles)
+     and adds that scene to the live one, so the source list gains one row
+     instead of four. Off: the sources go straight into the live scene. */
+  obsNestSources:     true,
 
   // --- Translation engine ---
   translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'link'
