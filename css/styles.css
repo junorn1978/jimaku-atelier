@@ -1242,6 +1242,34 @@
 
   .panel-collapsed .mic-btn { display: none; }
 
+  /* --- subtitle window button (toolbar; js/ui-obs.js) ---
+     Matches the mic button's box. Lit while the window is open, in the same
+     accent the mic button wears while its panel is up. */
+  .subwin-btn {
+    align-self: stretch;
+    padding-inline: 14px;
+    white-space: nowrap;
+
+    &[aria-pressed="true"] {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+  }
+
+  /* The left cell is only half of what the centred tab picker leaves, and at
+     the narrowest windows start/stop + mic + this label do not fit in it — they
+     wrapped into two-line pills. Below this width the label goes and the icon
+     stays; js/ui-obs.js keeps the name in aria-label and the tooltip. Measured
+     with the English labels, the longest of the three. */
+  .control-toolbar { container: toolbar / inline-size; }
+  .mic-btn { white-space: nowrap; }
+  @container toolbar (width < 1160px) {
+    .subwin-btn {
+      padding-inline: 10px;
+      span { display: none; }
+    }
+  }
+
   /* --- level test (inside the mic panel) ---
      One block with three states: idle shows the button and a hint, running
      the prompt and a live bar, done the two measured bars and the advice. */

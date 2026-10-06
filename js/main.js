@@ -14,7 +14,7 @@ import { bindInputs } from './ui-bind.js';
 import { initColorPickers } from './color-picker.js';
 import { mountLanguagesTab } from './ui-languages.js';
 import { mountFilterTab } from './ui-filter.js';
-import { mountObsTab } from './ui-obs.js';
+import { mountObsTab, mountSubtitleWindowButton } from './ui-obs.js';
 import { mountManualTranslate } from './ui-manual-translate.js';
 import { mountSettingsDialog } from './ui-settings-dialog.js';
 import { initSpeech } from './speech.js';
@@ -44,6 +44,7 @@ async function init() {
   mountManualTranslate(document.getElementById('manual-translate-panel'));
   mountSettingsDialog(document.querySelector('#dialog-settings .dialog-body'));
   mountMicPanel(document.getElementById('mic-btn'), document.getElementById('mic-panel'));
+  mountSubtitleWindowButton(document.getElementById('subwin-btn'));
 
   /* New DOM was just injected — re-apply translations and hook up bindings. */
   applyTo(document);

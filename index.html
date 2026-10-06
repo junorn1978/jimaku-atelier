@@ -131,6 +131,21 @@
               </div>
             </div>
           </div>
+
+          <!-- Opens or closes the subtitle window (js/subtitle-window.js) from
+               any OBS route and any tab, so putting it on stream is not three
+               clicks deep. Unlike the mic button it stays while the panel is
+               collapsed: that is when it is wanted, to bring back a window
+               closed by mistake. aria-pressed is the open state (js/ui-obs.js). -->
+          <button type="button" class="btn subwin-btn" id="subwin-btn" aria-pressed="false">
+            <!-- app-window icon -->
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2" y="4" width="20" height="16" rx="2"/>
+              <path d="M2 8h20"/>
+              <path d="M7 15h10"/>
+            </svg>
+            <span data-i18n="toolbar.subwin">字幕ウィンドウ</span>
+          </button>
         </div>
 
         <!-- Settings are split across three tabs. Each tab panel is filled by

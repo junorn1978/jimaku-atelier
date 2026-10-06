@@ -300,6 +300,29 @@ function wireSubtitleWindow(container) {
   subscribe('uiLang', render);
 }
 
+/* The toolbar's subtitle window button (index.html, #subwin-btn). Same toggle
+   as the one in the OBS tab, but its label never changes — a toolbar button
+   that swapped "open"/"close" would change width and shift its neighbours —
+   so the state is carried by aria-pressed (lit while open) and the tooltip
+   says what a click will do. */
+export function mountSubtitleWindowButton(btn) {
+  if (!btn) return;
+
+  let open = false;
+  const render = () => {
+    btn.setAttribute('aria-pressed', String(open));
+    btn.setAttribute('aria-label', t('toolbar.subwin'));
+    btn.title = t(open ? 'obs.window.close' : 'obs.window.open');
+  };
+
+  btn.addEventListener('click', () => {
+    if (open) closeSubtitleWindow();
+    else      openSubtitleWindow();
+  });
+  onSubtitleWindowState((state) => { open = state; render(); });
+  subscribe('uiLang', render);
+}
+
 /* Live connection status shown beside the WS toggle, so the user can tell
    whether the link to OBS actually works without opening the console. */
 function wireConnStatus(container) {
