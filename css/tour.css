@@ -142,6 +142,9 @@
   }
 }
 
+/* The OBS tab's "?" is round, so its ring is too. */
+.obs-help-btn.is-hinting::after { border-radius: var(--radius-full); }
+
 @keyframes tour-hint {
   0%   { opacity: 0;    transform: scale(1); }
   12%  { opacity: 0.85; }

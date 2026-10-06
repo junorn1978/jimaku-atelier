@@ -97,6 +97,9 @@ const _defaults = Object.freeze({
      almost nothing in common, so the OBS tab shows one or the other rather
      than offering controls that don't apply to the chosen route. */
   obsMode:            'websocket', // 'websocket' | 'window' | 'capture'
+  /* The OBS tab's steps sit behind its "?", which pulses like the toolbar's
+     tour button until it has been opened once. */
+  obsHelpSeen:        false,
 
   // --- Translation engine ---
   translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'link'

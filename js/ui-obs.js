@@ -1,25 +1,19 @@
 /**
  * @file ui-obs.js
- * @description OBS UI: WebSocket enable toggle, URL/password inputs, drag links
- * (drag onto OBS to create a browser source), and a one-click Auto Setup button.
+ * @description OBS UI: route picker, and per route its few settings and its one
+ * action — WebSocket (enable toggle, URL/password, Auto Setup behind a confirm),
+ * the subtitle window (key colour, open/close) and window capture (background
+ * colour, enter capture mode). Step-by-step instructions live in a "?" popover.
  * Appended into its own tab panel (#tab-obs) as an `.obs-section`.
  */
 
 import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
-import { triggerAutoSetup, getOverlayUrl, onConnectionState } from './obs.js';
+import { triggerAutoSetup, onConnectionState } from './obs.js';
 import { wireSecretInputs } from './ui-secret-input.js';
 import { openSubtitleWindow, closeSubtitleWindow, onSubtitleWindowState } from './subtitle-window.js';
 
-/* Grip dots: mark the drag chips as draggable at a glance, so they don't
-   read as push buttons. */
-const GRIP_SVG = `
-  <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">
-    <circle cx="9" cy="5.5" r="1.7"/><circle cx="15" cy="5.5" r="1.7"/>
-    <circle cx="9" cy="12"  r="1.7"/><circle cx="15" cy="12"  r="1.7"/>
-    <circle cx="9" cy="18.5" r="1.7"/><circle cx="15" cy="18.5" r="1.7"/>
-  </svg>
-`;
+const MODES = ['websocket', 'window', 'capture'];
 
 export function mountObsTab(container) {
   if (!container) return;
@@ -27,22 +21,86 @@ export function mountObsTab(container) {
   const section = document.createElement('div');
   section.className = 'obs-section';
   section.innerHTML = `
-    <!-- The two routes share almost nothing: WebSocket needs a connection and
-         source creation, window capture needs neither. Showing both at once
-         would leave half the tab inapplicable whichever route you picked, so
-         the switch swaps the whole body rather than just the instructions. -->
+    <!-- One column, the same skeleton for every route: picker, one sentence on
+         what the route is, then its settings. The route's action sits at the
+         head's right end, in the same spot whichever route is showing. The
+         three routes share almost nothing, so the switch swaps the body and
+         the action rather than greying out what doesn't apply. -->
     <div class="obs-mode-head">
       <div class="seg-switch" role="group" data-i18n-aria-label="obs.mode" aria-label="連携方式">
         <label><input type="radio" name="obsMode" value="websocket" data-bind="obsMode"><span data-i18n="obs.mode.ws">WebSocket</span></label>
         <label><input type="radio" name="obsMode" value="window" data-bind="obsMode"><span data-i18n="obs.mode.window">字幕ウィンドウ</span></label>
         <label><input type="radio" name="obsMode" value="capture" data-bind="obsMode"><span data-i18n="obs.mode.capture">ウィンドウキャプチャ</span></label>
       </div>
-      <p class="obs-mode-desc" id="obs-mode-desc"></p>
+
+      <!-- The steps are only needed while setting a route up, so they wait in
+           a popover instead of taking standing room in a height-starved panel.
+           One popover; it shows the block for the route that is selected. -->
+      <button type="button" class="icon-btn obs-help-btn" popovertarget="popover-obs-help"
+              data-i18n-title="obs.help.title" title="使い方"
+              data-i18n-aria-label="obs.help.title" aria-label="使い方">?</button>
+      <div class="help-popover obs-help-popover" id="popover-obs-help" popover>
+        <div class="obs-help" data-mode="websocket">
+          <ol class="help-steps">
+            <li data-i18n="obs.help.step1"></li>
+            <li data-i18n="obs.help.step2"></li>
+            <li data-i18n="obs.help.step3"></li>
+            <li data-i18n="obs.help.step4"></li>
+          </ol>
+        </div>
+        <div class="obs-help" data-mode="window" hidden>
+          <ol class="help-steps">
+            <li data-i18n="obs.window.step1"></li>
+            <li data-i18n="obs.window.step2"></li>
+            <li data-i18n="obs.window.step3"></li>
+          </ol>
+          <ul class="help-notes">
+            <li data-i18n="obs.window.hint"></li>
+            <li data-i18n="obs.window.note2"></li>
+            <li data-i18n="obs.window.note3"></li>
+            <li data-i18n="obs.capture.note3"></li>
+          </ul>
+        </div>
+        <div class="obs-help" data-mode="capture" hidden>
+          <ol class="help-steps">
+            <li data-i18n="obs.capture.step1"></li>
+            <li data-i18n="obs.capture.step2"></li>
+            <li data-i18n="obs.capture.step3"></li>
+          </ol>
+          <ul class="help-notes">
+            <li data-i18n="obs.capture.enter.hint"></li>
+            <li data-i18n="obs.capture.note2"></li>
+            <li data-i18n="obs.capture.note3"></li>
+            <li data-i18n="obs.capture.note4"></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="obs-action">
+        <button type="button" class="btn primary" id="obs-auto-setup" data-mode="websocket"
+                data-i18n="obs.autoSetup">OBS に自動追加</button>
+        <button type="button" class="btn primary" id="obs-window-toggle" data-mode="window" hidden
+                data-i18n="obs.window.open">字幕ウィンドウを開く</button>
+        <button type="button" class="btn primary" id="obs-capture-enter" data-mode="capture" hidden
+                data-i18n="obs.capture.enter">キャプチャモードにする</button>
+      </div>
+
+      <!-- Auto Setup writes into the user's live OBS scene, so it asks first.
+           A small bubble on the button rather than a modal: it is a yes/no
+           about the thing just clicked. -->
+      <div class="help-popover obs-confirm-popover" id="popover-obs-confirm" popover>
+        <p class="obs-confirm-text" data-i18n="obs.autoSetup.confirm"></p>
+        <div class="obs-confirm-actions">
+          <button type="button" class="btn" id="obs-confirm-cancel" data-i18n="obs.autoSetup.cancel">キャンセル</button>
+          <button type="button" class="btn primary" id="obs-confirm-ok" data-i18n="obs.autoSetup.ok">追加する</button>
+        </div>
+      </div>
     </div>
 
-    <div class="panel-cols" id="obs-mode-websocket">
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.connection">接続設定</h3>
+    <p class="obs-mode-desc" id="obs-mode-desc"></p>
+
+    <div class="obs-body" id="obs-mode-websocket">
+      <div class="obs-ws-row">
         <div class="form-row">
           <span class="form-row-label" data-i18n="obs.enabled">WS 接続</span>
           <label class="toggle">
@@ -50,23 +108,13 @@ export function mountObsTab(container) {
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
           </label>
         </div>
-        <div class="obs-conn">
-          <p class="obs-conn-status" id="obs-conn-status" role="status" aria-live="polite" data-phase="disabled">
-            <span class="obs-conn-dot" aria-hidden="true"></span>
-            <span class="obs-conn-text"></span>
-          </p>
-          <p class="obs-conn-hint" id="obs-conn-hint"></p>
-        </div>
-
-        <div class="obs-conn-fields">
-        <div class="form-row form-row-stack">
+        <label class="obs-field obs-field-url">
           <span class="form-row-label" data-i18n="obs.url">URL</span>
           <input type="text" class="text-input" data-bind="obsUrl"
                  placeholder="ws://127.0.0.1:4455"
                  autocomplete="off" spellcheck="false" autocorrect="off">
-        </div>
-
-        <div class="form-row form-row-stack">
+        </label>
+        <div class="obs-field obs-field-password">
           <span class="form-row-label" data-i18n="obs.password">Password</span>
           <div class="secret-input-wrap" data-secret-visible="false"
                  data-secret-show="obs.password.show" data-secret-hide="obs.password.hide">
@@ -87,153 +135,55 @@ export function mountObsTab(container) {
             </button>
           </div>
         </div>
-        </div>
-      </section>
-
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.sources">ソース作成</h3>
-        <div class="obs-drag-grid">
-          <a class="btn obs-drag-link" id="obs-drag-all"
-             draggable="true" data-i18n-title="obs.drag.all.tip">
-            ${GRIP_SVG}<span data-i18n="obs.drag.all">全表示</span></a>
-          <a class="btn obs-drag-link" id="obs-drag-source"
-             draggable="true" data-i18n-title="obs.drag.source.tip">
-            ${GRIP_SVG}<span data-i18n="obs.drag.source">音声</span></a>
-          <a class="btn obs-drag-link" id="obs-drag-target1"
-             draggable="true" data-i18n-title="obs.drag.target1.tip">
-            ${GRIP_SVG}<span data-i18n="obs.drag.target1">翻訳 1</span></a>
-          <a class="btn obs-drag-link" id="obs-drag-target2"
-             draggable="true" data-i18n-title="obs.drag.target2.tip">
-            ${GRIP_SVG}<span data-i18n="obs.drag.target2">翻訳 2</span></a>
-        </div>
-        <button type="button" class="btn primary" id="obs-auto-setup"
-                data-i18n="obs.autoSetup">OBS 自動構築</button>
-        <p class="form-hint" data-i18n="obs.autoSetup.hint">
-          現在のシーンに4つの字幕ソースを自動で追加します。
+      </div>
+      <div class="obs-conn">
+        <p class="obs-conn-status" id="obs-conn-status" role="status" aria-live="polite" data-phase="disabled">
+          <span class="obs-conn-dot" aria-hidden="true"></span>
+          <span class="obs-conn-text"></span>
         </p>
-      </section>
-
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.help.title">使い方</h3>
-        <ol class="help-steps">
-          <li data-i18n="obs.help.step1">OBS で WebSocket Server を有効にします。</li>
-          <li data-i18n="obs.help.step2">URL とパスワードを確認し、WS 接続をオンにします。</li>
-          <li data-i18n="obs.help.step3">OBS 自動構築を押すか、上のリンクを OBS のソース一覧へドラッグします。</li>
-          <li data-i18n="obs.help.step4">音声認識を開始すると、字幕が OBS に同期されます。</li>
-        </ol>
-        <p class="form-hint" data-i18n="obs.help.note">
-          ソース作成は自動構築とドラッグのどちらか一方で十分です。
-        </p>
-      </section>
+        <p class="obs-conn-hint" id="obs-conn-hint"></p>
+      </div>
     </div>
 
-    <!-- Window capture again, but of a second window that holds only the
-         subtitles (subtitle-window.html), so this one never has to wear the
-         key colour. That window's background is fixed green, not the
-         background setting, so there is nothing to pick here — only the
-         colour to give OBS. -->
-    <div class="panel-cols" id="obs-mode-window" hidden>
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.window.key">キー色</h3>
+    <!-- The subtitle window's background is fixed green, not the background
+         setting, so there is nothing to pick here — only the colour to give
+         OBS. -->
+    <div class="obs-body" id="obs-mode-window" hidden>
+      <div class="obs-setting-row">
+        <span class="form-row-label" data-i18n="obs.window.key">キー色</span>
         <p class="key-color">
           <span class="key-color-swatch" aria-hidden="true"></span>
           <code>#00FF00</code>
         </p>
-        <p class="form-hint" data-i18n="obs.window.key.hint">
-          字幕ウィンドウの背景は緑で固定です。
-        </p>
-      </section>
-
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.help.title">使い方</h3>
-        <ol class="help-steps">
-          <li data-i18n="obs.window.step1">字幕ウィンドウを開きます。</li>
-          <li data-i18n="obs.window.step2">OBS に［ウィンドウキャプチャ］を追加します。</li>
-          <li data-i18n="obs.window.step3">［クロマキー］フィルタを追加します。</li>
-        </ol>
-        <button type="button" class="btn primary" id="obs-window-toggle"
-                data-i18n="obs.window.open">字幕ウィンドウを開く</button>
-        <p class="form-hint" data-i18n="obs.window.hint">
-          位置と大きさは引き継がれます。
-        </p>
-      </section>
-
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.capture.notes">注意</h3>
-        <ul class="help-notes">
-          <li data-i18n="obs.window.note1">字幕の色に緑を使わないでください。</li>
-          <li data-i18n="obs.window.note2">字幕ウィンドウを最小化しないでください。</li>
-          <li data-i18n="obs.window.note3">このウィンドウを閉じると字幕も消えます。</li>
-          <li data-i18n="obs.capture.note3">縁が残る場合はクロマキーの類似性を上げてください。</li>
-        </ul>
-      </section>
+        <p class="obs-inline-hint" data-i18n="obs.window.note1">字幕の色に緑を使わないでください。</p>
+      </div>
     </div>
 
-    <div class="panel-cols" id="obs-mode-capture" hidden>
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.capture.bg">背景色</h3>
-        <!-- Bound to the same setting as the languages tab. Two entry points
-             for one value is fine here: this is the colour the chroma key will
-             remove, so it belongs in the capture workflow as much as it does in
-             the subtitle appearance settings. A button rather than a filled
-             swatch — a swatch painted in the key colour is itself keyed out of
-             a window capture. -->
+    <div class="obs-body" id="obs-mode-capture" hidden>
+      <div class="obs-setting-row">
+        <span class="form-row-label" data-i18n="obs.capture.bg">背景色</span>
+        <!-- Bound to the same setting as the languages tab: this is the colour
+             the chroma key will remove, so it belongs in the capture workflow
+             too. A button rather than a filled swatch — a swatch painted in the
+             key colour is itself keyed out of a window capture. -->
         <span class="color-pick">
           <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
           <button type="button" class="btn color-trigger-text" data-color-trigger>
             <output class="color-value"></output>
           </button>
         </span>
-        <p class="form-hint" data-i18n="obs.capture.bg.hint">
-          クロマキーで抜く色です。
-        </p>
-      </section>
-
-      <!-- The OBS-side work comes first on purpose: the last step collapses
-           this panel, which takes these instructions with it. -->
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.help.title">使い方</h3>
-        <ol class="help-steps">
-          <li data-i18n="obs.capture.step1">OBS に［ウィンドウキャプチャ］を追加します。</li>
-          <li data-i18n="obs.capture.step2">［クロマキー］フィルタを追加します。</li>
-          <li data-i18n="obs.capture.step3">下のボタンでキャプチャモードにします。</li>
-        </ol>
-        <button type="button" class="btn primary" id="obs-capture-enter"
-                data-i18n="obs.capture.enter">キャプチャモードにする</button>
-        <p class="form-hint" data-i18n="obs.capture.enter.hint">
-          コントロールパネルを畳みます。
-        </p>
-      </section>
-
-      <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.capture.notes">注意</h3>
-        <ul class="help-notes">
-          <li data-i18n="obs.capture.note1">字幕に背景色と同じ色を使わないでください。</li>
-          <li data-i18n="obs.capture.note2">ウィンドウを最小化しないでください。</li>
-          <li data-i18n="obs.capture.note3">縁が残る場合はクロマキーの類似性を上げてください。</li>
-          <li data-i18n="obs.capture.note4">ブラウザのズームは字幕の文字サイズとは別です。</li>
-        </ul>
-      </section>
+        <p class="obs-inline-hint" data-i18n="obs.capture.note1">字幕に背景色と同じ色を使わないでください。</p>
+      </div>
     </div>
   `;
 
   container.appendChild(section);
 
-  /* Drag link hrefs depend on current URL/password; refresh when they change. */
-  const refreshDragLinks = () => {
-    section.querySelector('#obs-drag-all')    .href = getOverlayUrl('all');
-    section.querySelector('#obs-drag-source') .href = getOverlayUrl('source');
-    section.querySelector('#obs-drag-target1').href = getOverlayUrl('target1');
-    section.querySelector('#obs-drag-target2').href = getOverlayUrl('target2');
-  };
-  refreshDragLinks();
-  subscribe('obsUrl',      refreshDragLinks);
-  subscribe('obsPassword', refreshDragLinks);
-
-  section.querySelector('#obs-auto-setup').addEventListener('click', triggerAutoSetup);
   wireSecretInputs(section);
   wireConnStatus(section);
   wireModeSwitch(section);
+  wireAutoSetup(section);
+  wireHelpHint(section);
 
   /* After applyTo: the button carries a data-i18n default, and applyTo would
      otherwise put "open" back on it while the window is open. render() owns
@@ -243,25 +193,24 @@ export function mountObsTab(container) {
   wireSubtitleWindow(section);
 }
 
-/* Swap the tab body between the two integration routes, and describe the
-   trade-off of whichever one is showing. */
+/* Swap the body, the action and the help block to the selected route, and
+   say in one sentence what that route is. */
 function wireModeSwitch(container) {
-  const bodies = {
-    websocket: container.querySelector('#obs-mode-websocket'),
-    window:    container.querySelector('#obs-mode-window'),
-    capture:   container.querySelector('#obs-mode-capture'),
-  };
   const descKeys = {
     websocket: 'obs.mode.ws.desc',
     window:    'obs.mode.window.desc',
     capture:   'obs.mode.capture.desc',
   };
   const desc = container.querySelector('#obs-mode-desc');
-  if (Object.values(bodies).some(el => !el) || !desc) return;
+  const swapped = container.querySelectorAll('.obs-body, .obs-action [data-mode], .obs-help');
+  if (!desc) return;
 
   const render = () => {
-    const mode = bodies[settings.obsMode] ? settings.obsMode : 'websocket';
-    for (const [key, el] of Object.entries(bodies)) el.hidden = key !== mode;
+    const mode = MODES.includes(settings.obsMode) ? settings.obsMode : 'websocket';
+    for (const el of swapped) {
+      const own = el.dataset.mode ?? el.id.replace('obs-mode-', '');
+      el.hidden = own !== mode;
+    }
     desc.textContent = t(descKeys[mode]);
   };
 
@@ -270,10 +219,50 @@ function wireModeSwitch(container) {
   subscribe('uiLang', render);
 
   /* The last step of the capture route. Deliberately the same state the
-     toolbar's panel button toggles — this is the button you reach for while
-     reading the steps, not a second mechanism. */
+     toolbar's panel button toggles — not a second mechanism. */
   container.querySelector('#obs-capture-enter')?.addEventListener('click', () => {
     settings.panelCollapsed = true;
+  });
+}
+
+/* The steps are hidden behind "?", so the button wears the same pulsing ring
+   as the toolbar's tour button (.is-hinting, css/tour.css) until it is opened
+   once. */
+function wireHelpHint(container) {
+  const btn = container.querySelector('.obs-help-btn');
+  const pop = container.querySelector('#popover-obs-help');
+  if (!btn || !pop) return;
+
+  btn.classList.toggle('is-hinting', !settings.obsHelpSeen);
+  pop.addEventListener('toggle', (e) => {
+    if (e.newState !== 'open') return;
+    settings.obsHelpSeen = true;
+    btn.classList.remove('is-hinting');
+  });
+}
+
+/* Auto Setup adds sources to whatever scene is live in OBS, so a click only
+   opens a confirm bubble; the bubble's own button does the work. The button
+   is disabled while the WebSocket toggle is off — there is nothing it could
+   reach. */
+function wireAutoSetup(container) {
+  const btn     = container.querySelector('#obs-auto-setup');
+  const confirm = container.querySelector('#popover-obs-confirm');
+  if (!btn || !confirm) return;
+
+  const sync = () => { btn.disabled = !settings.obsEnabled; };
+  sync();
+  subscribe('obsEnabled', sync);
+
+  btn.addEventListener('click', () => {
+    try { confirm.showPopover(); } catch { /* already open */ }
+  });
+  container.querySelector('#obs-confirm-cancel')?.addEventListener('click', () => {
+    confirm.hidePopover();
+  });
+  container.querySelector('#obs-confirm-ok')?.addEventListener('click', () => {
+    confirm.hidePopover();
+    triggerAutoSetup();
   });
 }
 

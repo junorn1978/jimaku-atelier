@@ -94,8 +94,8 @@ const STEPS = [
   },
   {
     /* Points at the tab instead of opening it and paraphrasing what is inside.
-       The OBS tab already carries the mode descriptions and a numbered
-       procedure (obs.help.step1..4), so the useful thing to say here is where
+       The OBS tab already carries the mode descriptions and, behind its "?"
+       button, a numbered procedure per route, so the useful thing to say here is where
        that lives — and being sent somewhere is easier to act on than being
        shown somewhere. inLanguages() also guarantees the tab is not already
        the open one, without which "click here" has nothing to ask for. */
@@ -103,6 +103,15 @@ const STEPS = [
     target: () => document.getElementById('tab-btn-obs'),
     place: 'top',
     before: inLanguages,
+  },
+  {
+    /* The grip is a short bar with no label, so it is easy to miss; point at
+       it while the panel is still open, before the collapse step folds it
+       away. */
+    key: 'resize',
+    target: () => document.getElementById('panel-resize'),
+    place: 'top',
+    before: () => { settings.panelCollapsed = false; },
   },
   {
     /* The one step worth performing rather than describing: the gesture has no

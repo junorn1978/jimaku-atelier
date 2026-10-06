@@ -98,8 +98,18 @@ export function mountLanguagesTab(container) {
       <div class="lang-top">
       <div class="lang-matrix">
         <div class="lang-matrix-head">
-          <span></span>
-          <span></span>
+          <!-- The show-source toggle sits in the header's empty corner: its
+               label above the recognition label, the switch above the
+               recognition select. Beside the select it widened the whole
+               language column by its own width on every row. The two halves
+               are in different grid cells, so they are tied with for/id. -->
+          <span><label for="lang-show-source" class="lang-show-source-label" data-i18n="style.showSource">原文を表示</label></span>
+          <span>
+            <label class="toggle toggle-compact">
+              <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </span>
           <span data-i18n="style.textColor">文字色</span>
           <span data-i18n="style.strokeColor">縁取り色</span>
           <span data-i18n="style.fontSize">サイズ</span>
@@ -110,10 +120,6 @@ export function mountLanguagesTab(container) {
           <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
           <div class="lang-control">
             <select class="select select-compact" data-bind="sourceLangId">${sourceOptions}</select>
-            <label class="toggle" data-i18n-title="style.showSource" title="原文を表示">
-              <input type="checkbox" data-bind="subShowSource">
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
           </div>
           ${styleCells('source')}
         </div>

@@ -59,11 +59,16 @@
     --color-border-strong: rgba(255, 255, 255, 0.16);
     --color-text:          rgba(255, 255, 255, 0.88);
     --color-text-dim:      rgba(255, 255, 255, 0.55);
-    --color-text-faint:    rgba(255, 255, 255, 0.30);
+    --color-text-faint:    rgba(255, 255, 255, 0.48);   /* ≈4.8:1 on surface-1, 4.5:1 on surface-2 */
     --color-accent:        #0a84ff;
     --color-accent-hover:  #2f94ff;
+    --color-accent-fill:       #0071e3;   /* white text on accent: 4.7:1 (#0a84ff is only 3.65:1) */
+    --color-accent-fill-hover: #0068d1;   /* hover darkens, so white text gets more contrast, not less */
     --color-accent-soft:   color-mix(in oklab, var(--color-accent) 20%, transparent);
     --color-danger:        #ff453a;
+    --color-danger-fill:       #d70015;   /* white text on red: 5.4:1 (#ff453a is only 3.4:1) */
+    --color-danger-fill-hover: #c4281c;   /* hover darkens, like --color-accent-fill-hover */
+    --color-danger-text:       color-mix(in oklab, var(--color-danger) 85%, white);
     --color-success:       #32d74b;
     --color-warning:       #ffd60a;
 
@@ -71,6 +76,7 @@
     --fill-1: rgba(255, 255, 255, 0.09);   /* resting controls */
     --fill-2: rgba(255, 255, 255, 0.14);   /* hovered controls */
     --fill-3: rgba(255, 255, 255, 0.22);   /* raised / selected chips */
+    --fill-inset: rgba(0, 0, 0, 0.22);     /* inset tracks, darker than their chrome */
 
     /* --- motion (custom curves — built-in CSS easings are too weak) --- */
     --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);    /* UI enter / press release */
@@ -81,6 +87,8 @@
     --shadow-1:       0 1px 2.5px rgba(0, 0, 0, 0.3);
     --shadow-2:       0 4px 16px rgba(0, 0, 0, 0.28), 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-overlay: 0 24px 64px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
+    --shadow-popover: 0 12px 32px rgba(0, 0, 0, 0.45);
+    --color-scrim:    rgba(0, 0, 0, 0.5);   /* dialog backdrop */
     --focus-ring:     0 0 0 3px color-mix(in oklab, var(--color-accent) 40%, transparent);
 
     /* --- layout sizing --- */
@@ -391,7 +399,7 @@
       align-items: center;
       gap: 2px;
       padding: 3px;
-      background: rgba(0, 0, 0, 0.22);
+      background: var(--fill-inset);
       border: 1px solid var(--color-border);
       border-radius: var(--radius-full);
 
@@ -488,20 +496,20 @@
     &:disabled { opacity: 0.45; cursor: not-allowed; }
 
     &.primary {
-      background: var(--color-accent);
+      background: var(--color-accent-fill);
       color: white;
 
       &:hover:not(:disabled) {
-        background: var(--color-accent-hover);
+        background: var(--color-accent-fill-hover);
       }
     }
 
     &.danger {
-      background: var(--color-danger);
+      background: var(--color-danger-fill);
       color: white;
 
       &:hover:not(:disabled) {
-        background: color-mix(in oklab, var(--color-danger) 85%, white);
+        background: var(--color-danger-fill-hover);
       }
     }
   }
@@ -552,7 +560,7 @@
     left: 50%;
     translate: -50% 0;
     z-index: 1;
-    width: 64px;
+    width: 112px;
     height: var(--space-2);
     display: grid;
     place-items: center;
@@ -561,7 +569,7 @@
 
     &::before {
       content: "";
-      width: 36px;
+      width: 72px;
       height: 4px;
       border-radius: var(--radius-full);
       background: var(--color-border-strong);
@@ -643,7 +651,7 @@
     color: var(--color-text);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-lg);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-popover);
 
     &:popover-open { display: grid; }
 
@@ -696,7 +704,7 @@
     padding: 2px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    background: rgba(0, 0, 0, 0.22);   /* inset track, darker than its chrome */
+    background: var(--fill-inset);
 
     /* button-based variant (i18n switcher) */
     button {
@@ -810,7 +818,7 @@
     }
 
     &::backdrop {
-      background: rgba(0, 0, 0, 0.5);
+      background: var(--color-scrim);
       backdrop-filter: blur(8px);
       opacity: 0;
       transition:
@@ -904,7 +912,7 @@
     line-height: 1.2;
 
     &[data-type="error"] {
-      color: color-mix(in oklab, var(--color-danger) 85%, white);
+      color: var(--color-danger-text);
     }
   }
 
@@ -1212,7 +1220,7 @@
     /* A failure has to read as one — it stays until dismissed, so without this
        it is the same bubble as "ready", just with different words in it. */
     &.is-error {
-      color: color-mix(in oklab, var(--color-danger) 85%, white);
+      color: var(--color-danger-text);
       border-color: color-mix(in oklab, var(--color-danger) 45%, var(--color-border-strong));
     }
   }
@@ -1327,7 +1335,7 @@
     color: var(--color-text);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-lg);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-popover);
 
     &:popover-open { display: grid; }
 
@@ -1423,7 +1431,7 @@
     .mic-test-verdict {
       &[data-tone="ok"]   { color: var(--color-success); }
       &[data-tone="warn"] { color: var(--color-warning); }
-      &[data-tone="bad"]  { color: color-mix(in oklab, var(--color-danger) 85%, white); }
+      &[data-tone="bad"]  { color: var(--color-danger-text); }
     }
   }
 
@@ -1464,11 +1472,11 @@
 
   /* One row per subtitle line: label, language, then its four appearance
      controls. Rows are display:contents so every cell joins this grid and the
-     columns line up down the table. The two sliders are the only flexible
-     tracks — everything else is sized by its control. */
-  /* Matrix on the left, whole-display settings in the space it leaves. The
-     matrix shrinks its two slider tracks before anything overflows, so the
-     right-hand block keeps its width as the window narrows. */
+     columns line up down the table. The two slider tracks are fixed lengths;
+     everything else is sized by its control. */
+  /* Matrix on the left, whole-display settings in the space it leaves. When
+     the window narrows, the matrix scrolls inside itself, so the right-hand
+     block keeps its width. */
   .lang-top {
     display: flex;
     /* Children stretch (the default) so the divider on .lang-extras runs the
@@ -1532,13 +1540,16 @@
 
   .lang-matrix {
     display: grid;
-    /* Slider tracks are capped tighter than they used to be (190/150) to leave
-       room for .lang-extras beside the matrix. The <output> beside each slider
-       shows the exact value, so the track only needs to be comfortable to drag,
-       not precise. */
+    /* Both slider tracks share one fixed length so they line up and don't
+       stretch and shrink as the window is resized. The <output> beside each
+       slider shows the exact value, so the track only needs to be comfortable
+       to drag, not precise. A narrow window scrolls the matrix (overflow-x
+       below) rather than shortening the tracks. The column holds the whole
+       .slider-group, so its width is the 100px track plus the group's gap and
+       28px readout. */
     grid-template-columns:
       max-content max-content max-content max-content
-      minmax(90px, 140px) minmax(70px, 110px);
+      calc(100px + var(--space-2) + 28px) calc(100px + var(--space-2) + 28px);
     column-gap: var(--space-4);
     row-gap: var(--space-2);
     align-items: center;
@@ -1561,8 +1572,14 @@
     color: var(--color-text-dim);
   }
 
-  /* Inline extras that share a row's control cell (e.g. the recognition select
-     plus the show-source toggle). */
+  .lang-show-source-label {
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* A row's control cell. It holds only the select now that the show-source
+     toggle moved to the header row; kept as a flex wrapper for any future
+     inline extra. */
   .lang-control {
     display: flex;
     align-items: center;
@@ -1945,6 +1962,16 @@
     }
   }
 
+  /* Short variant for the language matrix's header row, where a full-height
+     toggle would make the header row taller than its text labels. */
+  .toggle.toggle-compact {
+    .toggle-track { width: 28px; height: 16px; }
+    .toggle-thumb { width: 12px; height: 12px; }
+    input[type="checkbox"]:checked + .toggle-track .toggle-thumb {
+      transform: translateX(12px);
+    }
+  }
+
   /* --- word-replacement tab: two side-by-side rule lists. The section fills
      its tab panel and only the lists themselves scroll, so the toggles and
      add buttons always stay in reach. --- */
@@ -1957,25 +1984,27 @@
       grid-template-rows: minmax(0, 1fr);
     }
 
-    /* toggle row / title-or-hint / list group (list + add buttons) */
-    .panel-col {
-      display: grid;
-      grid-template-rows: auto auto minmax(0, 1fr);
-      gap: var(--space-2);
-      min-height: 0;
-    }
+    /* Columns keep the base flex stack (the blacklist column holds five blocks,
+       so a fixed three-row grid handed the stretch row to the second toggle);
+       the list group alone takes the leftover height. */
+    .panel-col { min-height: 0; }
+    .filter-list-wrap { flex: 1 1 auto; }
+
+    /* each hint sits right under its toggle; the column gap already spaces it */
+    .form-hint { margin-top: 0; }
   }
 
-  /* List + its add buttons travel as one group: the buttons sit right under
-     the last row (not pinned to the panel floor across a void), and once the
-     list outgrows the panel it scrolls while the buttons stay reachable. */
+  /* List + its add buttons: the list takes all the height the column leaves,
+     so the buttons stay pinned to the panel floor — at the same height in both
+     columns, and not moving as the panel is resized or rows are added. Once
+     the list outgrows its space it scrolls. */
   .filter-list-wrap {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
     min-height: 0;
 
-    .filter-list { flex: 0 1 auto; }
+    .filter-list { flex: 1 1 0; }
   }
 
   /* empty state — a quiet hint instead of a void */
@@ -2059,12 +2088,66 @@
     -webkit-text-security: disc;
   }
 
-  /* --- OBS tab: URL + password side by side (labels stacked above),
-         so the connection column stays within the panel height --- */
-  .obs-conn-fields {
+  /* --- OBS tab: one column. Head (picker, ?, action), one sentence, then
+         the selected route's settings. --- */
+  .obs-section {
     display: grid;
-    grid-template-columns: 3fr 2fr;
     gap: var(--space-2);
+    align-content: start;
+
+    .form-row-label {
+      color: var(--color-text-dim);
+      font-size: var(--text-md);
+      white-space: nowrap;
+    }
+  }
+
+  .obs-body {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  /* WebSocket: toggle, URL and password on one line; wraps when narrow. The
+     URL takes the spare width, the password a fixed one. */
+  .obs-ws-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-4);
+    row-gap: var(--space-2);
+
+    .form-row {
+      grid-template-columns: max-content max-content;
+      padding: 0;
+    }
+  }
+
+  .obs-field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  .obs-field-url      { flex: 1 1 220px; max-width: 360px; }
+  .obs-field-url .text-input { flex: 1; min-width: 0; }
+  .obs-field-password { flex: 0 1 220px; }
+  .obs-field-password .secret-input-wrap { flex: 1; min-width: 0; }
+
+  /* Window / capture: label, the one value, and the caveat that matters most,
+     on a single line. */
+  .obs-setting-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+  }
+
+  .obs-inline-hint {
+    margin: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.4;
   }
 
   /* --- OBS tab: live connection status beside the WS toggle --- */
@@ -2108,41 +2191,13 @@
   .obs-conn-status[data-phase="retrying"]   .obs-conn-dot { background: var(--color-danger); }
 
   .obs-conn-status[data-phase="connected"] { color: var(--color-text); }
-  .obs-conn-status[data-phase="retrying"]  { color: color-mix(in oklab, var(--color-danger) 85%, white); }
+  .obs-conn-status[data-phase="retrying"]  { color: var(--color-danger-text); }
 
   .obs-conn-hint {
     margin: var(--space-1) 0 0;
     color: var(--color-text-dim);
     font-size: var(--text-xs);
     line-height: 1.4;
-  }
-
-  /* --- OBS tab: drag-link grid + hint text --- */
-  .obs-drag-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-1);
-  }
-
-  /* Drag chips share the dashed "not a push button" language with .filter-add:
-     grip dots + dashed border say "take me", solid buttons say "press me". */
-  .obs-drag-link {
-    cursor: grab;
-    text-decoration: none;
-    user-select: none;
-    background: transparent;
-    border: 1px dashed var(--color-border-strong);
-    color: var(--color-text-dim);
-
-    svg { color: var(--color-text-faint); }
-
-    &:hover:not(:disabled) {
-      background: transparent;
-      border-color: var(--color-accent);
-      color: var(--color-text);
-    }
-
-    &:active { cursor: grabbing; }
   }
 
   .form-hint {
@@ -2249,23 +2304,68 @@
     }
   }
 
-  /* Route picker for the OBS tab. One line: the switch plus a sentence on what
-     the selected route costs you, so the choice can be made without reading the
-     whole tab. Kept slim — the tab body below it is height-constrained. */
+  /* Route picker for the OBS tab: the switch, the help button beside it, and
+     the route's one action pinned to the far end so it never moves when the
+     route changes. Kept slim — the tab body below is height-constrained. */
   .obs-mode-head {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    margin-bottom: var(--space-2);
-    padding-bottom: var(--space-2);
-    border-bottom: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+    gap: var(--space-2);
 
     > .seg-switch { flex-shrink: 0; }
   }
 
+  .obs-help-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    anchor-name: --obs-help-anchor;
+  }
+
+  .obs-action {
+    margin-left: auto;
+    flex-shrink: 0;
+    anchor-name: --obs-action-anchor;
+  }
+
+  .obs-help-popover {
+    position-anchor: --obs-help-anchor;
+    position-area: bottom span-right;
+    position-try-fallbacks: flip-block;
+    margin: var(--space-2) 0;
+    max-width: min(420px, 80vw);
+
+    .help-notes {
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+  }
+
+  /* Confirm bubble under the Auto Setup button, right edges aligned. */
+  .obs-confirm-popover {
+    position-anchor: --obs-action-anchor;
+    position-area: bottom span-left;
+    position-try-fallbacks: flip-block;
+    margin: var(--space-2) 0;
+    max-width: min(300px, 80vw);
+  }
+
+  .obs-confirm-text { margin: 0 0 var(--space-3); }
+
+  .obs-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
   .obs-mode-desc {
-    margin: 0;
-    min-width: 0;
+    margin: 0 0 var(--space-1);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
     color: var(--color-text-dim);
     font-size: var(--text-sm);
     line-height: 1.4;
@@ -2281,7 +2381,7 @@
     .slider-value {
       color: var(--color-text-dim);
       font-size: var(--text-sm);
-      text-align: right;
+      text-align: center;
       font-variant-numeric: tabular-nums;
     }
   }
@@ -2293,7 +2393,7 @@
     -webkit-appearance: none;
     width: 100%;
     height: 4px;
-    background: rgba(0, 0, 0, 0.3);
+    background: var(--fill-inset);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
@@ -2462,7 +2562,7 @@
     font-size: var(--text-sm);
 
     &.is-copied {
-      background: var(--color-accent);
+      background: var(--color-accent-fill);
       border-color: transparent;
       color: white;
     }
