@@ -244,9 +244,9 @@
       align-items: center;
       gap: var(--space-2);
 
-      /* thin divider between the tab picker and the global actions; it goes
-         with the tabs when .panel-collapsed hides them */
-      > .settings-tabs {
+      /* thin divider between the setup track and the global actions; it goes
+         with the track when .panel-collapsed hides it */
+      > .settings-nav {
         position: relative;
         margin-right: var(--space-2);
 
@@ -390,10 +390,10 @@
 
     &.is-arming { transform: scale(0.995); }
 
-    /* The tab picker gets the same inset track as the .seg-switch controls
-       in the tab bodies, so every segmented control in the card is one
-       material. */
-    .settings-tabs {
+    /* The microphone button and the tab picker share the same inset track as
+       the .seg-switch controls in the tab bodies, so every segmented control
+       in the card is one material. */
+    .settings-nav {
       display: flex;
       align-items: center;
       gap: 2px;
@@ -402,10 +402,27 @@
       border: 1px solid var(--color-border);
       border-radius: var(--radius-full);
 
+      .settings-tabs {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+      }
+
+      /* Between the microphone and the tabs: it opens a panel, they switch
+         one, so they are kept visibly apart inside the one track. */
+      .settings-nav-sep {
+        width: 1px;
+        height: 1.1em;
+        margin-inline: 4px;
+        background: var(--color-border-strong);
+      }
+
       /* The active tab is a raised material chip, matching the segmented
          switches beside it. No animation on switching — tabs are flipped
-         dozens of times a day. */
-      .tab-btn {
+         dozens of times a day. The microphone button wears the same chip so
+         the track reads as one row of equals. */
+      .tab-btn,
+      .mic-btn {
         padding: 3px 12px;
         font-size: var(--text-md);
         color: var(--color-text-dim);
@@ -1268,9 +1285,10 @@
   .mic-btn {
     position: relative;
     anchor-name: --mic-btn;
-    /* As tall as the start/stop track beside it, so the two read as one row. */
-    align-self: stretch;
-    padding-inline: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    white-space: nowrap;
 
     /* Something needs attention: the picked device is unplugged (warn), or
        the last level test found a problem (bad). */
@@ -1278,8 +1296,8 @@
     &[data-alert="bad"]::after {
       content: "";
       position: absolute;
-      top: 1px;
-      right: 4px;
+      top: 0;
+      right: 2px;
       width: 7px;
       height: 7px;
       border-radius: 50%;
@@ -1346,7 +1364,6 @@
     border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
   }
 
-  .panel-collapsed .mic-btn { display: none; }
 
   /* --- subtitle window button (toolbar; js/ui-obs.js) ---
      Matches the mic button's box. Lit while the window is open, in the same
@@ -1361,8 +1378,6 @@
       color: var(--color-accent-hover);
     }
   }
-
-  .mic-btn { white-space: nowrap; }
 
   /* --- level test (inside the mic panel) ---
      One block with three states: idle shows the button and a hint, running
@@ -2523,7 +2538,7 @@
 
   /* The tab picker would drive a body that is no longer displayed, so it hands
      its cell to the read-only language readout. */
-  .panel-collapsed .settings-tabs  { display: none; }
+  .panel-collapsed .settings-nav   { display: none; }
   .panel-collapsed .toolbar-status { display: block; }
 
   /* Manual text-translation overlay: slide it up into view over the output.

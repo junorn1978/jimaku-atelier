@@ -106,21 +106,26 @@
         <!-- Shown in the gap between the two groups while the panel is
              collapsed. The tabs drive a body that isn't displayed then, and
              the language routing disappears with it — this is the only place
-             left to check what is being recognised and where it is going. Read-only by design:
-             collapsed means the output is being captured, so the position
-             that used to be a control must not invite a mid-stream click. -->
+             left to check what is being recognised and where it is going.
+             Read-only by design: collapsed means the output is being
+             captured, so it must not invite a mid-stream click. -->
         <p class="toolbar-status" id="toolbar-status"></p>
 
         <div class="toolbar-actions">
-            <!-- Microphone button and its panel (js/ui-mic.js). With the tabs
-                 rather than beside start: it is set up once per session, like
-                 what the tabs hold, and on the left it broke the row into
-                 "settings, then the live controls". Hidden
-                 while the panel is collapsed: switching the input mid-stream
-                 should not be one stray click away. data-alert puts a dot on it.
-                 Labelled "settings" rather than just "microphone": an icon alone
-                 read as a mute toggle. The tooltip names the device in use. -->
-            <button type="button" class="btn mic-btn" id="mic-btn" popovertarget="mic-panel">
+          <!-- The setup controls share one inset track: the microphone, then
+               the settings tabs. -->
+          <div class="settings-nav">
+            <!-- Microphone button and its panel (js/ui-mic.js). In the same
+                 track as the tabs: it is set up once per session, like what
+                 the tabs hold, and as a pill of its own it stood taller than
+                 the tabs beside it. Not a tab itself — it opens a popover —
+                 so it sits outside the tablist, behind a separator. Hidden
+                 with the tabs while the panel is collapsed: switching the
+                 input mid-stream should not be one stray click away.
+                 data-alert puts a dot on it. Labelled "settings" rather than
+                 just "microphone": an icon alone read as a mute toggle. The
+                 tooltip names the device in use. -->
+            <button type="button" class="mic-btn" id="mic-btn" popovertarget="mic-panel">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <rect x="9" y="2" width="6" height="12" rx="3"/>
                 <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
@@ -176,21 +181,24 @@
               </div>
             </div>
 
-          <!-- Settings are split across three tabs. Each tab panel is filled by
-               its own module (js/ui-languages.js, js/ui-filter.js,
-               js/ui-obs.js — mounted from js/main.js); switching is handled by
-               js/ui-tabs.js and the active tab persists in the settings store. -->
-          <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
-               aria-label="設定項目" aria-orientation="horizontal">
-            <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
-                    aria-selected="true" data-tab="languages" class="tab-btn is-active"
-                    data-i18n="tab.languages">言語</button>
-            <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
-                    aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
-                    data-i18n="tab.filter">単語置換</button>
-            <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
-                    aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
-                    data-i18n="tab.obs">OBS</button>
+            <span class="settings-nav-sep" aria-hidden="true"></span>
+
+            <!-- Settings are split across three tabs. Each tab panel is filled by
+                 its own module (js/ui-languages.js, js/ui-filter.js,
+                 js/ui-obs.js — mounted from js/main.js); switching is handled by
+                 js/ui-tabs.js and the active tab persists in the settings store. -->
+            <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
+                 aria-label="設定項目" aria-orientation="horizontal">
+              <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
+                      aria-selected="true" data-tab="languages" class="tab-btn is-active"
+                      data-i18n="tab.languages">言語</button>
+              <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
+                      aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
+                      data-i18n="tab.filter">単語置換</button>
+              <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
+                      aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
+                      data-i18n="tab.obs">OBS</button>
+            </div>
           </div>
 
           <button type="button" class="icon-btn" id="toggle-manual" aria-pressed="false"
