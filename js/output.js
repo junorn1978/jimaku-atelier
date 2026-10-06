@@ -60,13 +60,6 @@ function applySourceSingleLine(value) {
          ?.setAttribute('data-sub-source-single', value === true ? 'true' : 'false');
 }
 
-/* Which route the subtitles leave by. Only window capture keys this window,
-   so only then does the page paint --sub-bg behind everything (css/styles.css).
-   The other routes keep the operator on a dark background. */
-function applyObsMode(value) {
-  root.dataset.obsMode = value || 'websocket';
-}
-
 function applyTargetLang(slot, value) {
   document.querySelector('.subtitle-display')
          ?.setAttribute(`data-target${slot}-lang`, value || 'none');
@@ -85,7 +78,6 @@ export function initOutputBinding() {
   applySourceSingleLine(settings.subSourceSingleLine);
   applyTargetLang(1, settings.target1LangId);
   applyTargetLang(2, settings.target2LangId);
-  applyObsMode(settings.obsMode);
 
   /* Reactive updates. */
   for (const key of Object.keys(_cssVarMap)) {
@@ -96,7 +88,6 @@ export function initOutputBinding() {
   subscribe('subSourceSingleLine', applySourceSingleLine);
   subscribe('target1LangId', (val) => applyTargetLang(1, val));
   subscribe('target2LangId', (val) => applyTargetLang(2, val));
-  subscribe('obsMode', applyObsMode);
 
   /* Cinema scroll for the two translation lines (only acts in shrink mode). */
   /* Arrow, not a bare reference: .map() passes (element, index, array), so

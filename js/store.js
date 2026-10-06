@@ -113,7 +113,7 @@ const _defaults = Object.freeze({
 
   // --- Subtitle style ---
   subAlign:           'center',
-  subBg:              '#00FF00',
+  subBg:              '#000000', // the app window's background; the subtitle window is fixed #00FF00
   subOverflow:        'normal',  // 'normal' | 'shrink' (max 2 lines)
   subShowSource:      true,
   subSourceSingleLine: false,

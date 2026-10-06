@@ -3,7 +3,8 @@
    Organized with @layer to control cascade order.
 
    Design system (dark, Apple-inspired aesthetic):
-   - the page itself is the subtitle background (--sub-bg, user-configured);
+   - the page itself is the subtitle background (--sub-bg, user-configured,
+     black by default; the subtitle window keeps its own fixed key green);
      the control card floats on it with its own dark palette, which climbs
      --color-bg (deepest: code blocks, wells) → surface-1 (card, dialogs) →
      surface-2 (inputs, inset tracks) → surface-3 (hover / raised chips);
@@ -111,7 +112,7 @@
     --label-col:       130px;
 
     /* --- subtitle settings (driven from JS) --- */
-    --sub-bg:                #00FF00;
+    --sub-bg:                #000000;
     --sub-align:             center;
     --sub-overflow:          normal;        /* normal | shrink (max 2 lines) */
 
@@ -147,11 +148,16 @@
 
   body {
     font-family: var(--font-ui);
-    /* Dark unless this window is itself the output. In the other two routes
-       the subtitles leave through overlay.html or the subtitle window, so a
-       full-window key colour here would only be something to stare at while
-       operating — and at #00FF00 that is hard on the eyes. */
-    background: var(--color-bg);
+    /* The whole window is the user-configured subtitle background, black by
+       default, and the control card floats on it with its own dark palette.
+       In window-capture mode (obs.mode.capture) this window IS the output, so
+       the user sets a key colour here for OBS to remove; anything drawn on
+       --sub-bg is then judged by whether a keyer can remove it — see
+       css/subtitle-core.css. The subtitle window does not follow this: its
+       background is fixed key green (subtitle-window.html).
+       (--color-bg stays the dark base for wells inside the card — code blocks,
+       readonly fields.) */
+    background: var(--sub-bg);
     color: var(--color-text);
     min-width: 1000px;
     overflow: hidden;
@@ -160,19 +166,6 @@
        floats over the background below it. */
     display: grid;
     grid-template-rows: minmax(0, 1fr);
-  }
-
-  /* The window IS the output surface in window-capture mode
-     (obs.mode.capture): the whole background is the user-configured subtitle
-     colour for a chroma key to remove, and the control card floats on it. So
-     changing the background colour moves everything together except the
-     card, which keeps its own dark palette. (--color-bg stays the dark base
-     for wells inside the card — code blocks, readonly fields.)
-     Because this is what OBS keys, anything drawn on --sub-bg is judged by
-     whether a keyer can remove it — see css/subtitle-core.css.
-     data-obs-mode is set on <html> by js/output.js. */
-  :root[data-obs-mode="capture"] body {
-    background: var(--sub-bg);
   }
 
   /* slim scrollbars for the few internal scroll areas (Chrome-only app) */
@@ -2202,6 +2195,28 @@
     margin-top: 0;
     padding-top: 0;
     border-top: 0;
+  }
+
+  /* The subtitle window's fixed key colour (OBS tab, obs.mode.window): shown,
+     not picked, so it is a swatch and the hex to type into OBS. */
+  .key-color {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+
+    .key-color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: var(--radius-sm);
+      background: #00FF00;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+    }
+    code {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: var(--text-md);
+      user-select: all;
+    }
   }
 
   /* Caveats rather than a sequence: same typography as .help-steps so the two

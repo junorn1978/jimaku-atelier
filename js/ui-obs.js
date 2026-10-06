@@ -129,18 +129,18 @@ export function mountObsTab(container) {
 
     <!-- Window capture again, but of a second window that holds only the
          subtitles (subtitle-window.html), so this one never has to wear the
-         key colour. The background picker is the same setting as below. -->
+         key colour. That window's background is fixed green, not the
+         background setting, so there is nothing to pick here — only the
+         colour to give OBS. -->
     <div class="panel-cols" id="obs-mode-window" hidden>
       <section class="panel-col">
-        <h3 class="section-title" data-i18n="obs.capture.bg">背景色</h3>
-        <span class="color-pick">
-          <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
-          <button type="button" class="btn color-trigger-text" data-color-trigger>
-            <output class="color-value"></output>
-          </button>
-        </span>
-        <p class="form-hint" data-i18n="obs.capture.bg.hint">
-          クロマキーで抜く色です。
+        <h3 class="section-title" data-i18n="obs.window.key">キー色</h3>
+        <p class="key-color">
+          <span class="key-color-swatch" aria-hidden="true"></span>
+          <code>#00FF00</code>
+        </p>
+        <p class="form-hint" data-i18n="obs.window.key.hint">
+          字幕ウィンドウの背景は緑で固定です。
         </p>
       </section>
 
@@ -161,7 +161,7 @@ export function mountObsTab(container) {
       <section class="panel-col">
         <h3 class="section-title" data-i18n="obs.capture.notes">注意</h3>
         <ul class="help-notes">
-          <li data-i18n="obs.capture.note1">字幕に背景色と同じ色を使わないでください。</li>
+          <li data-i18n="obs.window.note1">字幕の色に緑を使わないでください。</li>
           <li data-i18n="obs.window.note2">字幕ウィンドウを最小化しないでください。</li>
           <li data-i18n="obs.window.note3">このウィンドウを閉じると字幕も消えます。</li>
           <li data-i18n="obs.capture.note3">縁が残る場合はクロマキーの類似性を上げてください。</li>

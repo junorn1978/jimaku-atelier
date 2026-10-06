@@ -4,11 +4,11 @@
  * state: it draws whatever the app window last sent and nothing else. The app
  * window does the recognition and translation; this window exists only so OBS
  * has something to capture that is the key colour all over, leaving the app
- * window free to be a normal dark UI.
+ * window free to wear whatever background the user likes.
  *
- * It does not read the settings store either, beyond seeding the background
- * colour before the first message. Every value it draws comes from the app
- * window's DOM, so it cannot fall out of step with the preview.
+ * It does not read the settings store. Every value it draws comes from the app
+ * window's DOM, so it cannot fall out of step with the preview — except the
+ * background, which is fixed key green in subtitle-window.html.
  */
 
 import { keepTailVisible, setupCinemaScroll } from './subtitle-render.js';
@@ -23,16 +23,6 @@ const lines = {
 };
 
 const channel = new BroadcastChannel(CHANNEL_NAME);
-
-/* ============ before the first message ============ */
-
-/* Read-only peek at the app's saved key colour, so a window opened (or
-   reloaded) while the app is not answering yet is already the right colour
-   rather than flashing the fallback. Never written back — see GEOMETRY_KEY. */
-try {
-  const saved = JSON.parse(localStorage.getItem('rtl-settings-v1') || '{}');
-  if (typeof saved.subBg === 'string') root.style.setProperty('--sub-bg', saved.subBg);
-} catch { /* fallback colour in the page's CSS */ }
 
 /* ============ drawing ============ */
 

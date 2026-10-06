@@ -22,14 +22,15 @@
 
   <style>
     /* The whole window is the key colour: OBS captures it and a chroma key
-       removes --sub-bg, so nothing but the subtitle lines may be drawn here —
-       no status text, no placeholder, no border. The fallback covers the
-       moment before the first message; js/subtitle-window-page.js seeds the
-       saved colour before that. */
+       removes it, so nothing but the subtitle lines may be drawn here — no
+       status text, no placeholder, no border. Fixed at pure green, which is
+       OBS's default chroma key colour, rather than following the app's
+       background setting (--sub-bg): that one is the app window's own
+       backdrop, and this window exists only to be keyed. */
     *, *::before, *::after { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; }
     body {
-      background: var(--sub-bg, #00FF00);
+      background: #00FF00;
       overflow: hidden;
     }
     .subtitle-display { height: 100%; }
