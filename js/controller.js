@@ -97,9 +97,9 @@ subscribe('target1LangId', (val) => { if (!val || val === 'none') clearTarget('t
 subscribe('target2LangId', (val) => { if (!val || val === 'none') clearTarget('target2'); });
 
 function isRecording() {
-  /* Use the stop button's disabled state as the single source of truth. While
-     speech.js is running it enables stop; on stop, it disables stop. */
-  return !document.getElementById('btn-stop')?.disabled;
+  /* The speech button's data-recording is the single source of truth:
+     speech.js sets it while recognition runs and clears it on stop. */
+  return document.getElementById('btn-speech')?.dataset.recording === 'true';
 }
 
 function bufferPush(data, minDisplayTime, sequenceId, targetLangIds) {
@@ -262,8 +262,9 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
     if (epoch !== sessionEpoch) return;
 
     /* Backend may signal an emergency stop (budget cap etc.). */
+    /* The button toggles, so click it only while it means "stop". */
     if (data.stop) {
-      document.getElementById('btn-stop')?.click();
+      if (isRecording()) document.getElementById('btn-speech')?.click();
       return;
     }
 

@@ -118,20 +118,28 @@
             </div>
           </div>
 
-          <div class="speech-switch">
-            <button type="button" class="btn primary" id="btn-start" disabled>
+          <!-- Start and stop are one button (js/speech.js): it offers start
+               while idle and stop while recognising. data-recording is the
+               single source of truth for "are we live" — js/controller.js,
+               js/ui-filter.js, js/ui-mic.js and css/tour.css all read it. Both
+               faces are always in the DOM, stacked in one grid cell, so the
+               button is as wide as the longer label and does not jump when it
+               flips; the hidden face is visibility:hidden, which also keeps it
+               out of the accessible name. -->
+          <button type="button" class="btn primary speech-btn" id="btn-speech" data-recording="false" disabled>
+            <span class="speech-face speech-face-start">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
                 <circle cx="12" cy="12" r="6"/>
               </svg>
               <span data-i18n="action.start">開始</span>
-            </button>
-            <button type="button" class="btn" id="btn-stop" disabled>
+            </span>
+            <span class="speech-face speech-face-stop">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true">
                 <rect x="6" y="6" width="12" height="12" rx="1"/>
               </svg>
               <span data-i18n="action.stop">停止</span>
-            </button>
-          </div>
+            </span>
+          </button>
 
           <!-- Opens or closes the subtitle window (js/subtitle-window.js) from
                any OBS route and any tab, so putting it on stream is not three
@@ -173,28 +181,6 @@
             <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
                     aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
                     data-i18n="tab.obs">OBS</button>
-          </div>
-
-          <!-- Interface language (js/main.js). A menu rather than three
-               segments: it is detected from the browser and rarely touched, so
-               it gets a globe and the current language, not a third of the
-               row. The globe is the one way in that needs no reading, for
-               someone who has landed in a language they cannot read. Menu
-               items are each language's own name for the same reason. -->
-          <button type="button" class="icon-btn lang-btn" id="lang-btn" popovertarget="lang-menu"
-                  data-i18n-title="aria.interfaceLanguage" title="表示言語">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M2 12h20"/>
-              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-            </svg>
-            <span class="lang-btn-current">JP</span>
-          </button>
-          <div class="lang-menu" id="lang-menu" popover role="menu"
-               data-i18n-aria-label="aria.interfaceLanguage" aria-label="表示言語">
-            <button type="button" role="menuitemradio" data-lang="ja" data-short="JP" lang="ja">日本語</button>
-            <button type="button" role="menuitemradio" data-lang="zh-TW" data-short="中" lang="zh-TW">繁體中文</button>
-            <button type="button" role="menuitemradio" data-lang="en" data-short="EN" lang="en">English</button>
           </div>
 
           <button type="button" class="icon-btn" id="toggle-manual" aria-pressed="false"

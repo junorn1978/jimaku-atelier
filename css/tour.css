@@ -150,10 +150,10 @@
 
 /* Two states where the toolbar is on camera, and a pulsing button would be
    captured with it: the panel collapsed for a window capture, and recognition
-   running. Both are readable straight from the DOM — #btn-stop is only enabled
-   while recognising — so neither needs js/speech.js to tell us. */
+   running. Both are readable straight from the DOM — #btn-speech carries
+   data-recording="true" while recognising — so neither needs js/speech.js to tell us. */
 body.panel-collapsed .icon-btn.is-hinting::after,
-body:has(#btn-stop:not(:disabled)) .icon-btn.is-hinting::after {
+body:has(#btn-speech[data-recording="true"]) .icon-btn.is-hinting::after {
   animation: none;
   opacity: 0;
 }
@@ -179,7 +179,7 @@ body:has(#btn-stop:not(:disabled)) .icon-btn.is-hinting::after {
   }
 
   body.panel-collapsed .icon-btn.is-hinting::after,
-  body:has(#btn-stop:not(:disabled)) .icon-btn.is-hinting::after {
+  body:has(#btn-speech[data-recording="true"]) .icon-btn.is-hinting::after {
     opacity: 0;
   }
 }

@@ -330,6 +330,28 @@ export function mountLanguagesTab(container) {
               <span data-i18n="app.title">字幕アトリエ</span>
               <span class="app-signature-version">${APP_VERSION}</span>
             </p>
+            <!-- Interface language (wired in js/main.js). Beside the
+                 signature because it is detected from the browser
+                 (js/store.js) and rarely touched again — and like the
+                 signature it should be gone once the panel is collapsed. The
+                 globe is the way in that needs no reading, for someone who
+                 has landed in a language they cannot read; the menu items are
+                 each language's own name for the same reason. -->
+            <button type="button" class="icon-btn lang-btn" id="lang-btn" popovertarget="lang-menu"
+                  data-i18n-title="aria.interfaceLanguage" title="表示言語">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M2 12h20"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span class="lang-btn-current">JP</span>
+            </button>
+            <div class="lang-menu" id="lang-menu" popover role="menu"
+                 data-i18n-aria-label="aria.interfaceLanguage" aria-label="表示言語">
+              <button type="button" role="menuitemradio" data-lang="ja" data-short="JP" lang="ja">日本語</button>
+              <button type="button" role="menuitemradio" data-lang="zh-TW" data-short="中" lang="zh-TW">繁體中文</button>
+              <button type="button" role="menuitemradio" data-lang="en" data-short="EN" lang="en">English</button>
+            </div>
           </div>
         </section>
       </div>

@@ -36,6 +36,8 @@ const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRec
 
 let recognition  = null;
 let isActive     = false;
+/* True while handleStart is awaiting the microphone, before isActive is set. */
+let isStarting   = false;
 let previousText = '';
 
 /* Which recogniser this run uses, decided per start: the on-device model or
@@ -663,19 +665,38 @@ function autoRestart(options = { delay: 0 }) {
 
 /* ============ buttons ============ */
 
+/* One button for both (index.html, #btn-speech). Stop is always offered while
+   live; start needs a source language, and is held off while a start is still
+   opening the microphone so a second click cannot start twice. */
 function updateButtons() {
-  const start = document.getElementById('btn-start');
-  const stop  = document.getElementById('btn-stop');
-  if (start) start.disabled = isActive || !settings.sourceLangId;
-  if (stop)  stop.disabled  = !isActive;
+  const btn = document.getElementById('btn-speech');
+  if (!btn) return;
+  btn.dataset.recording = String(isActive);
+  btn.disabled = !isActive && (isStarting || !settings.sourceLangId);
+}
+
+function handleToggle() {
+  if (isActive) handleStop();
+  else          handleStart();
 }
 
 /* ============ control flow ============ */
 
 async function handleStart() {
   const lang = settings.sourceLangId;
-  if (!lang || !recognition || isActive) return;
+  if (!lang || !recognition || isActive || isStarting) return;
 
+  isStarting = true;
+  updateButtons();
+  try {
+    await startSpeech(lang);
+  } finally {
+    isStarting = false;
+    updateButtons();
+  }
+}
+
+async function startSpeech(lang) {
   previousText = '';
   cancelIdleClear();
   clearSource();
@@ -788,8 +809,7 @@ export function initSpeech() {
   recognition = setupRecognition();
   if (!recognition) return;
 
-  document.getElementById('btn-start')?.addEventListener('click', handleStart);
-  document.getElementById('btn-stop') ?.addEventListener('click', handleStop);
+  document.getElementById('btn-speech')?.addEventListener('click', handleToggle);
 
   updateButtons();
   subscribe('sourceLangId', updateButtons);

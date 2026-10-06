@@ -82,7 +82,7 @@ const STEPS = [
   },
   {
     key: 'start',
-    target: () => $('.speech-switch'),
+    target: () => $('#btn-speech'),
     place: 'top',
     before: inLanguages,
   },

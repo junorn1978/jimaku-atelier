@@ -177,7 +177,7 @@ function mountTest(root, panel) {
 
   let running = null;   // { cancel } while a test is in progress
 
-  const isRecording = () => !document.getElementById('btn-stop')?.disabled;
+  const isRecording = () => document.getElementById('btn-speech')?.dataset.recording === 'true';
   const show = (state) => { root.dataset.state = state; };   // idle | running | done
 
   /* Background too loud for the pause detector: the one case where changing

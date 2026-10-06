@@ -237,38 +237,6 @@
       text-overflow: ellipsis;
     }
 
-    /* start/stop live in a grouped pill so they read as one control */
-    .speech-switch {
-      justify-self: start;
-      display: flex;
-      align-items: center;
-      gap: 2px;
-      flex-shrink: 0;
-      padding: 3px;
-      background: rgba(0, 0, 0, 0.22);   /* inset track, matches .seg-switch */
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-full);
-
-      .btn {
-        padding: 3px 14px;
-        border: 0;
-        border-radius: var(--radius-full);
-        background: transparent;
-
-        &:not(.primary):hover:not(:disabled) { background: var(--color-surface-3); }
-      }
-    }
-
-    /* Recording state, CSS-only: speech.js enables Stop exactly while
-       recognition is active, so the Start button flips into a pulsing
-       REC badge without any JS involvement. */
-    .speech-switch:has(#btn-stop:not(:disabled)) #btn-start {
-      opacity: 1;
-      background: color-mix(in oklab, var(--color-danger) 20%, transparent);
-      color: color-mix(in oklab, var(--color-danger) 70%, white);
-
-      svg { animation: rec-pulse 1.4s ease-in-out infinite; }
-    }
 
     .toolbar-actions {
       justify-self: end;
@@ -421,9 +389,9 @@
 
     &.is-arming { transform: scale(0.995); }
 
-    /* The tab picker gets the same inset track as .speech-switch and
-       .seg-switch beside it — three controls in one row should be one material
-       language, not three. */
+    /* The tab picker gets the same inset track as the .seg-switch controls
+       in the tab bodies, so every segmented control in the card is one
+       material. */
     .settings-tabs {
       display: flex;
       align-items: center;
@@ -527,6 +495,43 @@
     }
   }
 
+  /* --- start/stop (toolbar; js/speech.js) ---
+     One button (index.html, #btn-speech). Both faces sit in the same grid
+     cell so the button keeps the longer label's width; only the one for the
+     current state is visible. Here in components rather than with the rest of
+     the toolbar in layout, because it has to outrank .btn and .btn.primary. */
+  .speech-btn {
+    display: inline-grid;
+    align-self: stretch;
+    flex-shrink: 0;
+    padding-inline: 16px;
+    white-space: nowrap;
+
+    .speech-face {
+      grid-area: 1 / 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+    }
+    .speech-face-stop { visibility: hidden; }
+
+    /* Live: the stop face, on a pulsing red badge — the toolbar's one
+       at-a-glance sign that recognition is running. */
+    &[data-recording="true"] {
+      background: color-mix(in oklab, var(--color-danger) 20%, transparent);
+      color: color-mix(in oklab, var(--color-danger) 70%, white);
+
+      &:hover:not(:disabled) {
+        background: color-mix(in oklab, var(--color-danger) 30%, transparent);
+      }
+
+      .speech-face-start { visibility: hidden; }
+      .speech-face-stop  { visibility: visible; }
+      svg { animation: rec-pulse 1.4s ease-in-out infinite; }
+    }
+  }
+
   /* --- icon-only button (32×32) --- */
   .icon-btn {
     width: 32px;
@@ -556,9 +561,9 @@
     svg { width: 18px; height: 18px; }
   }
 
-  /* --- interface language (toolbar; js/main.js) ---
+  /* --- interface language (Languages tab, beside the signature; js/main.js) ---
      An icon button that also shows the current language, opening a small menu
-     upward — the toolbar sits at the bottom of the window. */
+     upward — the panel sits at the bottom of the window. */
   .lang-btn {
     anchor-name: --lang-btn;
     width: auto;
@@ -2536,7 +2541,7 @@
     .color-preset:hover,
     .color-preset:active { transition: none; transform: none; }
 
-    .speech-switch:has(#btn-stop:not(:disabled)) #btn-start svg,
+    .speech-btn[data-recording="true"] svg,
     .obs-conn-status[data-phase="connecting"] .obs-conn-dot {
       animation: none;
     }

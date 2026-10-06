@@ -150,7 +150,13 @@ export function mountFilterTab(container) {
   /* Going live re-hides the column. The failure this mask exists for is the
      panel being on camera, and the likeliest way there is revealing the words
      to edit one and forgetting to hide them again before hitting start. */
-  document.getElementById('btn-start')?.addEventListener('click', () => setMasked(true));
+  /* The button toggles; a click is a start when we are not live yet. Reading
+     the state at click time is safe in either listener order, because
+     speech.js only flips it after the microphone opens. (A click that stops
+     re-masks too if speech.js happens to run first, which is harmless.) */
+  document.getElementById('btn-speech')?.addEventListener('click', () => {
+    if (!isRecording()) setMasked(true);
+  });
 
   blAddBtn.addEventListener('click', () => {
     settings.blacklistRules = [...(settings.blacklistRules || []), ''];
@@ -166,10 +172,10 @@ export function mountFilterTab(container) {
   });
 }
 
-/* Same test controller.js uses: while speech.js is running it enables the stop
-   button, and disables it again on stop. */
+/* Same test controller.js uses: speech.js sets the speech button's
+   data-recording while recognition runs. */
 function isRecording() {
-  return !document.getElementById('btn-stop')?.disabled;
+  return document.getElementById('btn-speech')?.dataset.recording === 'true';
 }
 
 function renderBlacklist(listEl) {
