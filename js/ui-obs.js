@@ -15,6 +15,9 @@ import { openSubtitleWindow, closeSubtitleWindow, onSubtitleWindowState } from '
 
 const MODES = ['websocket', 'window', 'capture'];
 
+/* OBS's chroma key default, the same green the subtitle window is fixed to. */
+const CAPTURE_KEY = '#00FF00';
+
 export function mountObsTab(container) {
   if (!container) return;
 
@@ -69,6 +72,8 @@ export function mountObsTab(container) {
             <li data-i18n="obs.capture.step1"></li>
             <li data-i18n="obs.capture.step2"></li>
             <li data-i18n="obs.capture.step3"></li>
+            <li data-i18n="obs.capture.step4"></li>
+            <li data-i18n="obs.capture.step5"></li>
           </ol>
           <ul class="help-notes">
             <li data-i18n="obs.capture.enter.hint"></li>
@@ -228,9 +233,14 @@ function wireModeSwitch(container) {
   subscribe('obsMode', render);
   subscribe('uiLang', render);
 
-  /* The last step of the capture route. Deliberately the same state the
-     toolbar's panel button toggles — not a second mechanism. */
+  /* The capture route's action. It also sets the background to the key
+     colour OBS's chroma key defaults to, so the filter needs no colour picked;
+     a real setting change rather than a capture-only override, so the picker
+     beside it shows it and can still move it off green. The collapse is
+     deliberately the same state the background click toggles — not a second
+     mechanism. */
   container.querySelector('#obs-capture-enter')?.addEventListener('click', () => {
+    settings.subBg = CAPTURE_KEY;
     settings.panelCollapsed = true;
   });
 }
