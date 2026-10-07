@@ -84,6 +84,7 @@
     --fill-2: rgba(255, 255, 255, 0.14);   /* hovered controls */
     --fill-3: rgba(255, 255, 255, 0.22);   /* raised / selected chips */
     --fill-inset: rgba(0, 0, 0, 0.22);     /* inset tracks, darker than their chrome */
+    --fill-track: rgba(255, 255, 255, 0.18); /* slider rails: lighter than the card, as macOS draws them */
 
     /* --- motion (custom curves — built-in CSS easings are too weak) --- */
     --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);    /* UI enter / press release */
@@ -759,7 +760,6 @@
     text-transform: uppercase;
     letter-spacing: 0.8px;
     color: var(--color-text-dim);
-    margin-bottom: var(--space-2);
   }
 
   /* --- generic horizontal column layout (Style / OBS tabs) --- */
@@ -986,14 +986,16 @@
     }
   }
 
-  /* macOS-style slider: accent-filled progress on the left of a dark
-     inset track, white round knob with a soft shadow. */
+  /* macOS-style slider: a light rail with a white round knob and a soft
+     shadow. The rail is lifted above the card rather than sunk into it: a
+     4px strip of --fill-inset sits within a shade of the card itself and
+     disappears, and unlike .seg-switch it has no border to outline it. */
   input[type="range"] {
     appearance: none;
     -webkit-appearance: none;
     width: 100%;
     height: 4px;
-    background: var(--fill-inset);
+    background: var(--fill-track);
     border-radius: 2px;
     outline: none;
     cursor: pointer;
