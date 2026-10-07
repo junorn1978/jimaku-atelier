@@ -76,10 +76,6 @@
      to read. */
   .offline-pack-info { margin: 0; }
 
-  /* custom-URL input + "examples & help" trigger, inside the engine column */
-  /* URL field and its help trigger on one line. Stacked they cost two rows in
-     the shortest tab in the app, and the button is the field's companion — it
-     belongs beside it, not under it. */
   /* Beside the engine picker (see ui-languages.js). Takes what the row has
      left; the heading row wraps it underneath when that is too little. */
   .engine-inline {
@@ -90,27 +86,6 @@
     min-width: 0;
 
     &:not(:has(> :not([hidden]))) { display: none; }
-  }
-
-  .lang-url-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-    /* Capped, not full-width. A field's width is a claim about how much you are
-       expected to type, and this one was claiming the whole panel for values
-       like http://localhost:8083 — while masked, so the width was carrying no
-       information at all. 52ch clears a Cloud Run URL and a key:// form with
-       room to spare; anything longer scrolls inside the field, which is the
-       normal way a URL field behaves. Still shrinkable, so a narrow window
-       takes it from here rather than from the signature. */
-    flex: 0 1 52ch;
-
-    .text-input { min-width: 0; }
-
-    /* The URL sits in a masking wrapper, so the wrapper — not the input — is
-       what has to take up the row's spare width. */
-    .secret-input-wrap { flex: 1; }
   }
 
   /* Name and version, quiet enough to read as a mark on the work rather than a
@@ -130,12 +105,6 @@
     }
   }
 
-  .url-examples-toggle {
-    flex-shrink: 0;
-    anchor-name: --url-examples-anchor;
-  }
-
-  .url-popover     { position-anchor: --url-examples-anchor; }
   .offline-popover { position-anchor: --offline-help-anchor; }
 
   .offline-help-toggle { anchor-name: --offline-help-anchor; }
@@ -366,65 +335,9 @@
     border-left: 0;
   }
 
-  /* Recognition column: engine picker, then what that engine needs. Sized by
-     its content (the grid track above is auto), so the URL field gets a fixed
-     width rather than pushing the translation column aside as it is typed —
-     a narrow one: it is masked, and in English the row has no width to spare. */
+  /* Offline pack column. Nothing here needs a width cap any more — the long
+     removal instructions moved into a popover. */
   .lang-sub { min-width: 0; }
-
-  .stt-custom-row {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-
-    .secret-input-wrap { width: 160px; }
-  }
-
-  .stt-status {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    margin: 0;
-    color: var(--color-text-dim);
-    font-size: var(--text-sm);
-    white-space: nowrap;
-    max-width: 130px;
-  }
-
-  .stt-status-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .stt-status-dot {
-    flex: 0 0 auto;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-text-faint);
-  }
-
-  .stt-status[data-phase="connecting"] .stt-status-dot {
-    background: var(--color-warning);
-    animation: dot-pulse 1.2s ease-in-out infinite;
-  }
-  .stt-status[data-phase="connected"] .stt-status-dot,
-  .stt-status[data-phase="ready"] .stt-status-dot {
-    background: var(--color-success);
-  }
-  .stt-status[data-phase="retrying"] .stt-status-dot,
-  .stt-status[data-phase="failed"] .stt-status-dot { background: var(--color-danger); }
-  .stt-status[data-phase="retrying"],
-  .stt-status[data-phase="failed"] { color: var(--color-danger-text); }
-
-  .offline-pack {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-
-    &.is-engine-hidden { display: none; }
-  }
 
   /* engine picker + its detail region, filling the translation column */
   .lang-engine {
@@ -538,4 +451,131 @@
       padding-inline: var(--space-2);
     }
   }
+
+  /* Picker dimmed while the translation server overrides it: nothing in it is
+     selected, and the note beside it says why. Still clickable — picking an
+     engine is how the server is turned off from here. */
+  .lang-engine .seg-switch.is-overridden { opacity: 0.55; }
+
+  /* --- advanced: servers of the user's own --- */
+
+  /* At the row's far end, beside the signature, wherever the engine's own
+     status line leaves it — a button that moved when that line appeared would
+     be harder to find than one that never does. */
+  .advanced-btn {
+    flex-shrink: 0;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    anchor-name: --advanced-anchor;
+
+    /* Lit while a server is in use, so a setting tucked away in the popover
+       cannot be forgotten about. */
+    &[data-active="true"] {
+      background: color-mix(in oklab, var(--color-accent) 22%, transparent);
+      border-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+      color: var(--color-text);
+    }
+
+    & + .help-popover + .app-signature { margin-left: 0; }
+  }
+
+  /* Opens upward from the bottom row, over the preview: the panel has no room
+     below the button, and the popover is taller than the row. */
+  .advanced-popover {
+    position-anchor: --advanced-anchor;
+    position-area: top span-left;
+    position-try-fallbacks: flip-inline;
+    margin: var(--space-2) 0;
+    width: min(400px, 90vw);
+    max-width: none;
+  }
+
+  .advanced-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+
+    & + & {
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+
+    .format-help-examples { margin-top: 0; }
+  }
+
+  .advanced-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .advanced-title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 600;
+  }
+
+  .advanced-desc {
+    margin: 0;
+    color: var(--color-text-dim);
+  }
+
+  .advanced-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  .advanced-link {
+    flex-shrink: 0;
+    color: var(--color-accent-hover);
+    font-size: var(--text-sm);
+  }
+
+  /* Recognition server connection: in the popover, and as a bare dot on the
+     button. */
+  .stt-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-width: 0;
+    margin: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+
+  .stt-status-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stt-status-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-text-faint);
+
+    &[data-phase="connecting"], .stt-status[data-phase="connecting"] & {
+      background: var(--color-warning);
+      animation: dot-pulse 1.2s ease-in-out infinite;
+    }
+    &[data-phase="connected"], &[data-phase="ready"],
+    .stt-status[data-phase="connected"] &, .stt-status[data-phase="ready"] & {
+      background: var(--color-success);
+    }
+    &[data-phase="retrying"], &[data-phase="failed"],
+    .stt-status[data-phase="retrying"] &, .stt-status[data-phase="failed"] & {
+      background: var(--color-danger);
+    }
+  }
+
+  .stt-status[data-phase="retrying"],
+  .stt-status[data-phase="failed"] { color: var(--color-danger-text); }
 }

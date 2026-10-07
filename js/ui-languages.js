@@ -14,8 +14,8 @@
  * alignment and background. Deliberately unheaded: every row is labelled, and
  * the row a title would cost is needed for the fourth control.
  *
- * Bottom — two columns matching the matrix's sides: HOW to recognise (the
- * browser, or a custom STT server) on the recognition side, and HOW to translate on the other
+ * Bottom — two columns matching the matrix's sides: the Chrome-only offline
+ * recognition pack on the recognition side, and HOW to translate on the other
  * (one row: heading, picker, whatever the chosen engine needs, and the
  * signature at the far end). The columns are sized to their contents rather
  * than split evenly, and everything is inlined (.col-head) since this is the
@@ -245,67 +245,37 @@ export function mountLanguagesTab(container) {
            heading with the picker, which costs no height because the picker is
            the taller of the two. -->
       <div class="panel-cols cols-2">
-        <!-- How to recognise: the browser's recogniser, or a server the user
-             runs (docs/custom-stt.md). Picking the server swaps in its URL
-             and connection state; the browser side has nothing to set here
-             while the offline pack is switched off. -->
-        <section class="panel-col lang-sub lang-stt">
+        <!-- Offline recognition pack: a property of the recognition language, so
+             it sits on the recognition side. Chrome-only; hidden elsewhere.
+             Heading inline with the button, like the engine beside it: stacked,
+             the button fell below the panel's bottom edge. -->
+        <section class="panel-col lang-sub" id="offline-pack-row" hidden>
           <div class="col-head">
-            <h3 class="section-title" data-i18n="lang.stt">音声認識</h3>
-            <div class="seg-switch" role="group">
-              <label><input type="radio" name="sttEngine" value="webspeech" data-bind="sttEngine"><span data-i18n="lang.stt.browser">ブラウザ</span></label>
-              <label><input type="radio" name="sttEngine" value="custom" data-bind="sttEngine"><span data-i18n="lang.stt.custom">カスタム STT</span></label>
+            <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
+            <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
+
+            <!-- Removal instructions live in a popover rather than as standing
+                 text: they only matter once a pack is installed, and as a
+                 permanent paragraph they were the tallest thing in the tab.
+                 A popover (not a tooltip) stays open while the user follows the
+                 steps in the browser's own settings. -->
+            <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
+                    popovertarget="popover-offline-help"
+                    data-i18n="lang.offline.help" hidden>削除方法</button>
+
+            <div class="help-popover offline-popover" id="popover-offline-help" popover>
+              <p class="offline-pack-info" id="offline-pack-info"></p>
             </div>
 
-            <div class="stt-custom-row" id="stt-custom-row" hidden>
-              <!-- Masked like the translation URL: a server reached from
-                   outside usually carries its token in the query. -->
-              <div class="secret-input-wrap" data-secret-visible="false"
-                   data-secret-show="lang.engine.link.url.show"
-                   data-secret-hide="lang.engine.link.url.hide">
-                <input type="url" class="text-input secret-input" placeholder="ws://127.0.0.1:9000"
-                       data-bind="customSttUrl" autocomplete="off" spellcheck="false">
-                <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
-                  <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                    <path d="M1 1l22 22"/>
-                  </svg>
-                  <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                  </svg>
-                </button>
-              </div>
-              <p class="stt-status" id="stt-status" role="status" aria-live="polite" data-phase="idle">
-                <span class="stt-status-dot" aria-hidden="true"></span>
-                <span class="stt-status-text"></span>
-              </p>
-            </div>
-
-            <!-- Offline recognition pack: a property of the recognition
-                 language, so it sits on the recognition side. Chrome-only and
-                 currently switched off (OFFLINE_PACK_ENABLED); hidden then. -->
-            <div class="offline-pack" id="offline-pack-row" hidden>
-              <span class="form-row-label" data-i18n="lang.offline.label">オフライン音声認識パック</span>
-              <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
-
-              <!-- Removal instructions live in a popover rather than as
-                   standing text: they only matter once a pack is installed. -->
-              <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
-                      popovertarget="popover-offline-help"
-                      data-i18n="lang.offline.help" hidden>削除方法</button>
-
-              <div class="help-popover offline-popover" id="popover-offline-help" popover>
-                <p class="offline-pack-info" id="offline-pack-info"></p>
-              </div>
-
-              <!-- Download result, in the top layer: the panel's bottom edge
-                   leaves no room for it as a paragraph. -->
-              <div class="help-popover offline-status-popover" id="offline-pack-status"
-                   popover role="status" aria-live="polite"></div>
-            </div>
+            <!-- Download result. In the top layer rather than in the column:
+                 this section sits on the panel's bottom edge with no room left
+                 under it, and as a paragraph the message was clipped away by
+                 .tab-panel's overflow — it was never actually visible. Anchored
+                 to the download button so it appears where the user just
+                 clicked, costs the layout nothing, and fades rather than
+                 blinking in. -->
+            <div class="help-popover offline-status-popover" id="offline-pack-status"
+                 popover role="status" aria-live="polite"></div>
           </div>
         </section>
 
@@ -318,7 +288,6 @@ export function mountLanguagesTab(container) {
               <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
               <label id="engine-translator-label"><input type="radio" name="translationMode" value="translator" data-bind="translationMode"><span data-i18n="lang.engine.translator">ブラウザ翻訳</span></label>
               <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
-              <label><input type="radio" name="translationMode" value="link" data-bind="translationMode"><span data-i18n="lang.engine.link">カスタム URL</span></label>
             </div>
 
             <!-- Whatever the selected engine needs — a status line, the custom
@@ -328,47 +297,103 @@ export function mountLanguagesTab(container) {
             <div class="engine-inline">
               <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
               <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
-                <div class="lang-url-row" id="custom-url-row" hidden>
-                  <!-- Masked by default: this URL usually carries an API key in its
-                       path or query, and the panel is on screen while streaming.
-                       Not type="password" on purpose — see js/ui-secret-input.js. -->
-                  <div class="secret-input-wrap" data-secret-visible="false"
-                       data-secret-show="lang.engine.link.url.show"
-                       data-secret-hide="lang.engine.link.url.hide">
-                    <input type="url" class="text-input secret-input" placeholder="https://..."
-                           data-bind="customTranslateUrl" autocomplete="off" spellcheck="false">
-                    <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
-                      <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                        <path d="M1 1l22 22"/>
-                      </svg>
-                      <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
-                    </button>
-                  </div>
+              <!-- While the translation server is on, the picker beside has
+                   nothing selected; this says where the lines go instead.
+                   Picking an engine turns the server off. -->
+              <p class="manual-status" id="engine-link-note" data-i18n="lang.engine.link.active" hidden>上級者向けの翻訳サーバーで翻訳しています</p>
+            </div>
 
-                  <button type="button" class="btn url-examples-toggle" id="btn-url-examples"
-                          popovertarget="popover-url-examples">
-                    <span data-i18n="lang.engine.link.help.more">範例與說明</span>
-                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="m6 9 6 6 6-6"/>
+            <!-- Servers of the user's own, for recognition and translation.
+                 Kept out of the row because only someone who runs a server can
+                 use either, and their fields and notes crowded the tab for
+                 everyone else. The button carries the state the popover hides:
+                 lit while either is on, with the recognition server's
+                 connection as a dot — a stream going silent because that
+                 server is down has to be visible without opening anything. -->
+            <button type="button" class="btn advanced-btn" id="btn-advanced"
+                    popovertarget="popover-advanced" data-active="false">
+              <span class="stt-status-dot" aria-hidden="true" hidden></span>
+              <span data-i18n="lang.advanced">上級者向け</span>
+            </button>
+
+            <div class="help-popover advanced-popover" id="popover-advanced" popover>
+              <section class="advanced-section">
+                <div class="advanced-head">
+                  <h4 class="advanced-title" data-i18n="lang.advanced.stt">音声認識サーバー</h4>
+                  <label class="toggle">
+                    <input type="checkbox" id="adv-stt-toggle">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
+                </div>
+                <p class="advanced-desc" data-i18n="lang.advanced.stt.desc"></p>
+                <!-- Masked like the translation URL below: a server reached
+                     from outside usually carries its token in the query. -->
+                <div class="secret-input-wrap" data-secret-visible="false"
+                     data-secret-show="lang.engine.link.url.show"
+                     data-secret-hide="lang.engine.link.url.hide">
+                  <input type="url" class="text-input secret-input" placeholder="ws://127.0.0.1:9000"
+                         data-bind="customSttUrl" autocomplete="off" spellcheck="false">
+                  <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                      <path d="M1 1l22 22"/>
+                    </svg>
+                    <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
                     </svg>
                   </button>
-
-                  <div class="help-popover url-popover" id="popover-url-examples" popover>
-                    <div class="format-help-examples">
-                      <span data-i18n="lang.engine.link.help.examples">可直接使用的範例：</span>
-                      <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
-                      <button type="button" class="btn" data-example="openai">OpenAI</button>
-                      <button type="button" class="btn" data-example="gemini">Gemini</button>
-                      <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">格式說明</button>
-                    </div>
-                  </div>
                 </div>
+                <div class="advanced-foot">
+                  <p class="stt-status" id="stt-status" role="status" aria-live="polite" data-phase="idle">
+                    <span class="stt-status-dot" aria-hidden="true"></span>
+                    <span class="stt-status-text"></span>
+                  </p>
+                  <a class="advanced-link" href="https://github.com/junorn1978/jimaku-atelier/blob/main/docs/custom-stt.md"
+                     target="_blank" rel="noopener" data-i18n="lang.advanced.stt.spec">接続仕様とサンプル</a>
+                </div>
+              </section>
+
+              <section class="advanced-section">
+                <div class="advanced-head">
+                  <h4 class="advanced-title" data-i18n="lang.advanced.link">翻訳サーバー</h4>
+                  <label class="toggle">
+                    <input type="checkbox" id="adv-link-toggle">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </label>
+                </div>
+                <p class="advanced-desc" data-i18n="lang.advanced.link.desc"></p>
+                <!-- Masked by default: this URL usually carries an API key in its
+                     path or query, and the panel is on screen while streaming.
+                     Not type="password" on purpose — see js/ui-secret-input.js. -->
+                <div class="secret-input-wrap" data-secret-visible="false"
+                     data-secret-show="lang.engine.link.url.show"
+                     data-secret-hide="lang.engine.link.url.hide">
+                  <input type="url" class="text-input secret-input" placeholder="https://..."
+                         data-bind="customTranslateUrl" autocomplete="off" spellcheck="false">
+                  <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                      <path d="M1 1l22 22"/>
+                    </svg>
+                    <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="format-help-examples">
+                  <span data-i18n="lang.engine.link.help.examples">そのまま使えるサンプル：</span>
+                  <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
+                  <button type="button" class="btn" data-example="openai">OpenAI</button>
+                  <button type="button" class="btn" data-example="gemini">Gemini</button>
+                  <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">形式の説明</button>
+                </div>
+              </section>
             </div>
 
             <!-- Signature, at the far end of the engine row. Which version is
@@ -413,11 +438,6 @@ export function mountLanguagesTab(container) {
   /* Style the radios as a segmented switch by overlaying span as the visible
      button. The styling lives in CSS (.seg-switch label / input). */
 
-  const urlRow = container.querySelector('#custom-url-row');
-  const syncUrlVisibility = (mode) => { urlRow.hidden = mode !== 'link'; };
-  syncUrlVisibility(settings.translationMode);
-  subscribe('translationMode', syncUrlVisibility);
-
   /* "格式說明" opens the URL-format help dialog (static markup in index.html). */
   container.querySelector('#btn-url-format')?.addEventListener('click', (e) => {
     e.target.closest('[popover]')?.hidePopover();
@@ -426,41 +446,64 @@ export function mountLanguagesTab(container) {
 
   wireExampleButtons(container);
   wireSecretInputs(container);
-  setupSttEngine(container);
+  setupAdvanced(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);
   setupTranslatorEngine(container);
   setupPromptEngine(container);
 }
 
-/* The recognition picker shows what the chosen engine needs: the server's URL
-   and how the connection is doing for a custom STT server, the offline pack
-   (when it is on) for the browser. */
-function setupSttEngine(container) {
-  const row    = container.querySelector('#stt-custom-row');
-  const pack   = container.querySelector('#offline-pack-row');
-  const status = container.querySelector('#stt-status');
-  const text   = status?.querySelector('.stt-status-text');
-  if (!row || !status || !text) return;
+/* The advanced popover's two switches are views of existing settings rather
+   than settings of their own: the recognition server is sttEngine 'custom',
+   the translation server is translationMode 'link'. So a user who picked the
+   custom URL engine before it moved in here finds its switch already on, and
+   picking an engine in the row turns the translation server off. */
+function setupAdvanced(container) {
+  const btn        = container.querySelector('#btn-advanced');
+  const btnDot     = btn?.querySelector('.stt-status-dot');
+  const sttToggle  = container.querySelector('#adv-stt-toggle');
+  const linkToggle = container.querySelector('#adv-link-toggle');
+  const note       = container.querySelector('#engine-link-note');
+  const picker     = container.querySelector('.lang-engine .seg-switch');
+  const status     = container.querySelector('#stt-status');
+  const text       = status?.querySelector('.stt-status-text');
+  if (!btn || !btnDot || !sttToggle || !linkToggle || !note || !picker || !status || !text) return;
 
-  const sync = (engine) => {
-    row.hidden = engine !== 'custom';
-    if (pack) pack.classList.toggle('is-engine-hidden', engine === 'custom');
+  /* The engine to go back to when the translation server is switched off:
+     whatever was picked before it was switched on, else Google. */
+  let lastEngine = settings.translationMode !== 'link' ? settings.translationMode : 'gtx';
+  let sttState = { phase: 'idle', detail: '' };
+
+  const sync = () => {
+    const stt  = settings.sttEngine === 'custom';
+    const link = settings.translationMode === 'link';
+    sttToggle.checked  = stt;
+    linkToggle.checked = link;
+    btn.dataset.active = String(stt || link);
+    btnDot.hidden = !stt;
+    btnDot.dataset.phase = sttState.phase;
+    note.hidden = !link;
+    picker.classList.toggle('is-overridden', link);
   };
-  sync(settings.sttEngine);
-  subscribe('sttEngine', sync);
 
-  let current = { phase: 'idle', detail: '' };
-  const render = () => {
-    status.dataset.phase = current.phase;
-    const label = t(`lang.stt.status.${current.phase}`);
-    text.textContent = current.detail ? `${label}（${current.detail}）` : label;
-    /* Truncated to fit the row (a server's error can be any length), so the
-       whole of it is on hover. */
+  const renderStatus = () => {
+    status.dataset.phase = sttState.phase;
+    const label = t(`lang.stt.status.${sttState.phase}`);
+    text.textContent = sttState.detail ? `${label}（${sttState.detail}）` : label;
     status.title = text.textContent;
+    sync();
   };
-  onSttState((state) => { current = state; render(); });
-  subscribe('uiLang', render);
+
+  sttToggle.addEventListener('change', () => {
+    settings.sttEngine = sttToggle.checked ? 'custom' : 'webspeech';
+  });
+  linkToggle.addEventListener('change', () => {
+    settings.translationMode = linkToggle.checked ? 'link' : lastEngine;
+  });
+  subscribe('translationMode', (mode) => { if (mode !== 'link') lastEngine = mode; sync(); });
+  subscribe('sttEngine', sync);
+  onSttState((state) => { sttState = state; renderStatus(); });
+  subscribe('uiLang', renderStatus);
 }
 
 /* Recognition languages that can only ever run on the cloud recogniser get a

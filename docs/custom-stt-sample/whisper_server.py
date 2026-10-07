@@ -19,7 +19,8 @@ cuDNN 9 DLLs. The pip packages are enough — this script finds them itself:
 
     pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
 
-Then pick "Custom STT" in the app's languages tab and enter ws://127.0.0.1:9000
+Then, in the app's languages tab, open Advanced, turn on the recognition
+server and enter ws://127.0.0.1:9000
 """
 
 import argparse
