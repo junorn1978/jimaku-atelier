@@ -46,6 +46,9 @@
     padding: var(--space-5);
     gap: var(--space-2);
     min-height: 0;
+    /* Output, not text to copy: a stray drag would paint the selection
+       highlight onto what OBS captures. Covers the subtitle window too. */
+    user-select: none;
 
     .subtitle-line {
       text-align: var(--sub-align);
