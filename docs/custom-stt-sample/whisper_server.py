@@ -5,8 +5,13 @@ at MAX_SEC, for speakers who never pause). Each one is transcribed whole and
 returned as a final; there are no partials. Translation is left to the app.
 
     pip install websockets faster-whisper numpy
-    python whisper_server.py                          # small model on CPU
-    python whisper_server.py --model large-v3 --device cuda
+    python whisper_server.py                          # small model, GPU if usable
+    python whisper_server.py --model large-v3-turbo --device cuda --compute-type int8_float16
+
+For an NVIDIA GPU on Windows, CTranslate2 also needs the CUDA 12 cuBLAS and
+cuDNN 9 DLLs. The pip packages are enough — this script finds them itself:
+
+    pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
 
 Then pick "Custom STT" in the app's languages tab and enter ws://127.0.0.1:9000
 """
@@ -14,10 +19,26 @@ Then pick "Custom STT" in the app's languages tab and enter ws://127.0.0.1:9000
 import argparse
 import asyncio
 import json
+import os
+import sys
+from pathlib import Path
 
-import numpy as np
-from faster_whisper import WhisperModel
-from websockets.asyncio.server import serve
+
+def add_cuda_dlls():
+    """Puts the DLLs of pip's nvidia-* packages on the DLL search path (Windows)."""
+    if sys.platform != "win32":
+        return
+    for site in map(Path, sys.path):
+        for bin_dir in site.glob("nvidia/*/bin"):
+            os.add_dll_directory(str(bin_dir))
+            os.environ["PATH"] = f"{bin_dir}{os.pathsep}{os.environ['PATH']}"
+
+
+add_cuda_dlls()
+
+import numpy as np  # noqa: E402
+from faster_whisper import WhisperModel  # noqa: E402
+from websockets.asyncio.server import serve  # noqa: E402
 
 SAMPLE_RATE = 16000
 MAX_SEC = 10          # cut a sentence here if no pause comes
