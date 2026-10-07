@@ -81,6 +81,15 @@ const STEPS = [
     before: inLanguages,
   },
   {
+    /* Right after the engine, since that is where its servers take over from,
+       and mostly to say that it can be left alone: it is for people who run a
+       server of their own, and a lit button is how to tell one is in use. */
+    key: 'advanced',
+    target: () => $('#btn-advanced'),
+    place: 'top',
+    before: inLanguages,
+  },
+  {
     key: 'start',
     target: () => $('#btn-speech'),
     place: 'top',
