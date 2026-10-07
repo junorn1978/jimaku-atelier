@@ -30,7 +30,9 @@ function _apply(root = document) {
     const val = _dict[key];
     if (val == null) return;
     if (el.tagName === 'TITLE') document.title = val;
-    else el.textContent = val;
+    /* data-i18n-suffix: a fixed marker kept after the translated text (the
+       cloud-only 🌐 on recognition languages). */
+    else el.textContent = val + (el.dataset.i18nSuffix ?? '');
   });
 
   root.querySelectorAll('[data-i18n-title]').forEach(el => {

@@ -214,6 +214,13 @@ function safeParseTranslation(raw) {
 
 /* ---------------------------------------------------------------- translate */
 
+/** False for a language configured with promptName: null (see languages.js).
+ *  Empty / 'none' slots are not languages and count as supported. */
+export function isPromptLangSupported(langId) {
+  if (!langId || langId === 'none') return true;
+  return getLang(langId)?.promptName !== null;
+}
+
 async function translateOne(text, targetLangId, signal) {
   const sess = await ensureBase(signal);
   const targetName = getLang(targetLangId)?.promptName || targetLangId;
@@ -246,12 +253,16 @@ async function translateOne(text, targetLangId, signal) {
  * Translate one source line into each target. Matches the gtx/link contract.
  * @param {string} text
  * @param {string[]} targetLangIds  positions preserved; 'none'/'' yields ''
- * @param {string} _sourceLangId    unused (target name carries the intent)
+ * @param {string} sourceLangId     only checked for support (the target name
+ *                                  carries the intent)
  * @returns {Promise<{translations: string[]} | null>}  null → display nothing
  */
-export async function translatePrompt(text, targetLangIds, _sourceLangId) {
+export async function translatePrompt(text, targetLangIds, sourceLangId) {
   if (!text || !text.trim()) return null;
   if (!isPromptSupported()) return null;
+  /* Unsupported language on either end: show nothing rather than a near miss.
+     The engine row already tells the user why (ui-languages.js). */
+  if (!isPromptLangSupported(sourceLangId)) return null;
 
   /* Preempt the previous in-flight request — it is now stale — and remember it
      so we can wait for it to unwind before asking the model again. */
@@ -270,7 +281,7 @@ export async function translatePrompt(text, targetLangIds, _sourceLangId) {
 
     const translations = [];
     for (const tlId of targetLangIds) {
-      if (!tlId || tlId === 'none') { translations.push(''); continue; }
+      if (!tlId || tlId === 'none' || !isPromptLangSupported(tlId)) { translations.push(''); continue; }
       translations.push(await translateOne(text, tlId, controller.signal));
     }
     return { translations };

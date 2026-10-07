@@ -36,10 +36,11 @@ import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { isChrome } from './env.js';
 import { APP_VERSION } from './app-meta.js';
-import { setupLanguagePackButton } from './language-pack.js';
+import { setupLanguagePackButton, isCloudOnly } from './language-pack.js';
 import { wireSecretInputs } from './ui-secret-input.js';
 import { isPromptSupported, getPromptAvailability,
-         preparePromptSession, destroyPromptSession } from './translate-prompt.js';
+         preparePromptSession, destroyPromptSession,
+         isPromptLangSupported } from './translate-prompt.js';
 import { isTranslatorSupported, prepareTranslators } from './translate-translator.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
@@ -395,8 +396,27 @@ export function mountLanguagesTab(container) {
   wireExampleButtons(container);
   wireSecretInputs(container);
   setupOfflinePack(container);
+  markCloudOnlySources(container);
   setupTranslatorEngine(container);
   setupPromptEngine(container);
+}
+
+/* Recognition languages that can only ever run on the cloud recogniser get a
+   🌐 after their name in the source picker. A native <option> holds text
+   only, so the marker is an emoji rather than an SVG icon; it rides along as
+   data-i18n-suffix so a UI-language switch keeps it. Independent of the
+   (currently hidden) offline-pack row: it answers "will this ever run
+   locally", not "is a pack installed". */
+const CLOUD_ONLY_MARK = ' 🌐';
+
+async function markCloudOnlySources(container) {
+  const select = container.querySelector('select[data-bind="sourceLangId"]');
+  if (!select) return;
+  for (const opt of select.options) {
+    if (!opt.value || !(await isCloudOnly(opt.value))) continue;
+    opt.dataset.i18nSuffix = CLOUD_ONLY_MARK;
+    if (!opt.textContent.endsWith(CLOUD_ONLY_MARK)) opt.textContent += CLOUD_ONLY_MARK;
+  }
 }
 
 /* Built-in Translator API engine. Unlike the Prompt API we do download models
@@ -521,13 +541,27 @@ function setupPromptEngine(container) {
   let currentMessageKey = null;
   let value = '';
 
+  /* A language the engine cannot handle (promptName: null, e.g. Cantonese)
+     takes over the status line while this engine is picked; the warm-up state
+     underneath is kept and shows again once the selection is supported. */
+  const langUnsupported = () =>
+    settings.translationMode === 'prompt' &&
+    ![settings.sourceLangId, settings.target1LangId, settings.target2LangId].every(isPromptLangSupported);
+
+  const shownKey = () => (langUnsupported() ? 'lang.engine.prompt.langUnsupported' : currentMessageKey);
+
   const renderMessage = () => {
-    if (!currentMessageKey) return;
+    const key = shownKey();
+    /* A hidden engine must not leave its status line behind — the availability
+       check runs regardless of visibility, so it can produce a message for a
+       radio nobody can see. */
+    status.hidden = !key || label.hidden;
+    if (!key) { status.textContent = ''; label.removeAttribute('title'); return; }
     /* The countdown belongs inside the sentence, not tacked onto its end:
        Japanese wants "あと 5 秒" mid-string, English "Preparing in 5s". So the
        message owns a {s} placeholder and we substitute; on every other message
        (which carries no value) the replace is a no-op. */
-    const message = t(currentMessageKey).replace('{s}', value);
+    const message = t(key).replace('{s}', value);
     label.title = message;
     status.textContent = message;
   };
@@ -535,15 +569,11 @@ function setupPromptEngine(container) {
   const setMessage = (key, slot = '') => {
     currentMessageKey = key;
     value = slot;
-    /* A hidden engine must not leave its status line behind — the availability
-       check runs regardless of visibility, so it can produce a message for a
-       radio nobody can see. */
-    status.hidden = !key || label.hidden;
-    if (!key) { status.textContent = ''; label.removeAttribute('title'); return; }
     renderMessage();
   };
 
   subscribe('uiLang', renderMessage);
+  ['sourceLangId', 'target1LangId', 'target2LangId'].forEach(key => subscribe(key, renderMessage));
 
   /* `fallback` is only set once we KNOW the engine is unusable; during the
      async "checking" phase we just disable the radio without stranding a valid

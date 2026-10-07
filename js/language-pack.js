@@ -43,6 +43,53 @@ const INSTALL_POLL_TIMEOUT_MS  = 60000;
    speech.js asks available() without quality too, so the two stay on the same
    model. */
 
+/* TEMPORARILY WITHHELD — re-test before enabling; do not read this as
+   "unsupported". Chinese (Mandarin) on-device recognition is held back from
+   the pack button and runs on the cloud recogniser instead. zh-CN and zh-HK
+   were added on 2026-10-07 by analogy with zh-TW, without a separate install
+   test of their own.
+
+   Why it is held: no usable Chinese (SODA) model. Verified twice for zh-TW —
+   2026-06-18 on Chrome 149 and again 2026-08-24: install() resolves true, but
+   available() answers 'downloadable' forever for zh-TW / cmn-Hant-TW /
+   zh-Hant-TW and never flips to 'available' (plain 'zh' answers
+   'unavailable', 'dictation' quality is 'unavailable' throughout). en-US
+   behaves correctly in the same session, so the on-device machinery is fine —
+   the model simply isn't there. It is not a language-code mismatch; every
+   code behaves identically. Earlier on-device tests also showed poor Chinese
+   accuracy, and the on-device models are still changing heavily, so this may
+   well change too.
+
+   To re-test, remove the id from this set and watch the debug log: if the
+   pack installs but the next session still reports processLocally:false,
+   nothing has changed. When it does become 'available', note that rec.lang
+   may then need separating from the translation langId so a code like
+   cmn-Hant-TW never reaches getLang().
+
+   Cantonese (yue-Hant-HK) is not listed: available() itself answers
+   'unavailable' for it (2026-10-07), so it is cloud-only by the API's own
+   account. */
+const ON_DEVICE_WITHHELD = new Set(['zh-TW', 'zh-CN', 'zh-HK']);
+
+/**
+ * True when the language can only ever be recognised in the cloud: withheld
+ * above, or reported 'unavailable' on-device. A pack that is merely not yet
+ * downloaded is not cloud-only. False when the browser cannot answer (no
+ * available(), non-Chrome), so nothing is flagged on guesswork.
+ * @param {string} langId
+ */
+export async function isCloudOnly(langId) {
+  if (!isChrome || !SR || typeof SR.available !== 'function') return false;
+  if (ON_DEVICE_WITHHELD.has(langId)) return true;
+  const lang = getLang(langId);
+  if (!lang) return false;
+  try {
+    return await SR.available({ langs: [lang.id], processLocally: true }) === 'unavailable';
+  } catch {
+    return false;
+  }
+}
+
 let _button   = null;
 let _status   = null;
 let _info      = null;
@@ -161,21 +208,9 @@ async function refreshButton(langId) {
     return setState('lang.offline.btn.unsupported', true);
   }
 
-  /* Chrome ships no Chinese on-device (SODA) model, so the pack is withheld and
-     zh-TW runs on the cloud recogniser instead. Verified twice — 2026-06-18 on
-     Chrome 149 and again 2026-08-24: install() resolves true, but available()
-     answers 'downloadable' forever for zh-TW / cmn-Hant-TW / zh-Hant-TW and
-     never flips to 'available' (plain 'zh' answers 'unavailable', 'dictation'
-     quality is 'unavailable' throughout). en-US behaves correctly in the same
-     session, so the on-device machinery is fine — the model simply isn't there.
-     It is not a language-code mismatch; every code behaves identically.
-
-     To re-test, delete this block and watch the debug log: if the pack installs
-     but the next session still reports processLocally:false, nothing has
-     changed. When it does become 'available', note that rec.lang may then need
-     separating from the translation langId so a code like cmn-Hant-TW never
-     reaches getLang(). */
-  if (lang.id === 'zh-TW') {
+  /* Chinese is withheld for now (see ON_DEVICE_WITHHELD) — this is a
+     temporary hold, not a finding that Chinese can never run on-device. */
+  if (ON_DEVICE_WITHHELD.has(lang.id)) {
     setInfo('');
     return setState('lang.offline.btn.unavailable', true);
   }
@@ -223,7 +258,7 @@ async function downloadPack(langId) {
   /* available() is the only trustworthy signal. install() resolving true means
      the request was accepted, NOT that the model is usable: for a language
      Chrome has no model for it resolves true and available() still answers
-     'downloadable' forever (see the zh-TW note in refreshButton). Trusting `ok`
+     'downloadable' forever (see the note on ON_DEVICE_WITHHELD). Trusting `ok`
      here reported "installed" for a pack that recognition then refused to use
      with processLocally, so the button lied until the next reload. Always poll —
      a genuine install satisfies the first probe and returns immediately. */

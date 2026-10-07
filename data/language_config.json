@@ -28,6 +28,24 @@
       "displayTimeRules": [ { "maxLength": 20, "time": 1 }, { "maxLength": 40, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
     },
     {
+      "id":               "zh-HK",
+      "label":            "中国語(香港・書き言葉)",
+      "gtxCode":          "zh-TW",
+      "translatorCode":   "zh-Hant",
+      "promptName":       "Traditional Chinese (Hong Kong)",
+      "chunkSize":        33,
+      "displayTimeRules": [ { "maxLength": 20, "time": 1 }, { "maxLength": 40, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
+    },
+    {
+      "id":               "yue-Hant-HK",
+      "label":            "広東語(香港)",
+      "gtxCode":          "yue",
+      "translatorCode":   "yue",
+      "promptName":       null,
+      "chunkSize":        33,
+      "displayTimeRules": [ { "maxLength": 20, "time": 1 }, { "maxLength": 40, "time": 2 }, { "maxLength": 1e9, "time": 3 } ]
+    },
+    {
       "id":               "en-US",
       "label":            "英語",
       "gtxCode":          "en",

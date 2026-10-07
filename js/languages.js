@@ -30,8 +30,11 @@ export async function loadLanguages(url = './data/language_config.json') {
       gtxCode:          item.gtxCode          ?? item.id,
       /* English natural-language name for the Chrome Prompt API engine — small
          on-device models recognise "Traditional Chinese" far better than a code
-         like "zh-TW". Falls back to label so callers never get undefined. */
-      promptName:       item.promptName       ?? item.label,
+         like "zh-TW". Falls back to label so callers never get undefined.
+         An explicit null means the engine does not support this language
+         (Cantonese): it is kept as null so the engine can say so instead of
+         quietly translating into the nearest written language. */
+      promptName:       item.promptName === null ? null : (item.promptName ?? item.label),
       /* BCP 47 tag for the built-in Translator API. Mostly the same as
          gtxCode, but Chinese differs: the Translator API wants zh / zh-Hant
          where Google translate uses zh-CN / zh-TW. */

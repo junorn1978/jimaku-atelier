@@ -158,6 +158,17 @@ export async function prepareTranslators(sourceLangId, targetLangIds, onProgress
     if (isDebugEnabled()) console.warn('[translator] prepare failed:', err?.name, err?.message);
     if (err?.name === 'NotSupportedError') return { ok: false, reason: 'unavailable' };
     if (err?.name === 'NotAllowedError')   return { ok: false, reason: 'blocked' };
+    /* A language the API does not know at all (yue) answers availability()
+       with a real 'unavailable', unlike the 'downloadable' it reports for
+       unsupported pairs of known languages. Asked only after create() has
+       failed, so the gesture create() needed is not spent on it. Which error
+       create() throws for such a pair was not verified (Chrome 157), so this
+       keeps it from surfacing as a transient "try again later". */
+    try {
+      const states = await Promise.all(pairs.map(tgt =>
+        Translator.availability({ sourceLanguage: src, targetLanguage: tgt })));
+      if (states.includes('unavailable')) return { ok: false, reason: 'unavailable' };
+    } catch { /* fall through */ }
     return { ok: false, reason: 'failed' };
   }
 }
