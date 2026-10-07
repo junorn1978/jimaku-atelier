@@ -39,6 +39,10 @@
       background: color-mix(in oklab, var(--color-danger) 20%, transparent);
       color: color-mix(in oklab, var(--color-danger) 70%, white);
 
+      /* Lightened toward white it is pale pink on a pink badge in the light
+         theme; the theme's own danger text is dark enough to read there. */
+      :root[data-theme="light"] & { color: var(--color-danger-text); }
+
       &:hover:not(:disabled) {
         background: color-mix(in oklab, var(--color-danger) 30%, transparent);
       }

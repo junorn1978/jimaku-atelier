@@ -10,6 +10,7 @@ import { setLanguage, getLanguage, applyTo } from './i18n.js';
 import { loadLanguages } from './languages.js';
 import { isDebugEnabled } from './logger.js';
 import { initOutputBinding } from './output.js';
+import { initTheme } from './theme.js';
 import { bindInputs } from './ui-bind.js';
 import { initColorPickers } from './color-picker.js';
 import { mountLanguagesTab } from './ui-languages.js';
@@ -27,6 +28,11 @@ import { initTour } from './tour.js';
 import { mountMicPanel } from './ui-mic.js';
 
 async function init() {
+  /* First, before anything awaits: the page is cloaked while booting, but the
+     window background is not, and a light-theme user would otherwise see it
+     flash dark. */
+  initTheme();
+
   /* Language metadata is the only thing that has to be fetched before the UI
      can render; the gtx credentials are literals in translate-gtx.js. */
   await loadLanguages();

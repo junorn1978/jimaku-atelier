@@ -55,6 +55,8 @@ const _defaults = Object.freeze({
   // --- UI ---
   /* Not a literal — see _detectUiLang() above. */
   uiLang:             _detectUiLang(),
+  /* 'system' follows the OS / browser preference (js/theme.js). */
+  uiTheme:            'system',   // 'system' | 'dark' | 'light'
 
   // --- First-run guidance (js/tour.js) ---
   /* The "?" in the toolbar is the only way into the walkthrough, so something
@@ -120,7 +122,7 @@ const _defaults = Object.freeze({
 
   // --- Subtitle style ---
   subAlign:           'center',
-  subBg:              '#000000', // the app window's background; the subtitle window is fixed #00FF00
+  subBg:              '#0E1016', // the app window's background, following the theme while left at a theme default (js/theme.js); the subtitle window is fixed #00FF00
   subOverflow:        'normal',  // 'normal' | 'shrink' (max 2 lines)
   subShowSource:      true,
   subSourceSingleLine: false,

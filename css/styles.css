@@ -11,7 +11,9 @@
 
    Design system (dark, Apple-inspired aesthetic):
    - the page itself is the subtitle background (--sub-bg, user-configured,
-     black by default; the subtitle window keeps its own fixed key green);
+     a blue-tinted near-black by default — the same cool cast as the card's
+     greys, so the card reads as part of it rather than cut out of a void; the
+     subtitle window keeps its own fixed key green);
      the control card floats on it with its own dark palette, which climbs
      --color-bg (deepest: code blocks, wells) → surface-1 (card, dialogs) →
      surface-2 (inputs, inset tracks) → surface-3 (hover / raised chips);
@@ -85,6 +87,7 @@
     --fill-3: rgba(255, 255, 255, 0.22);   /* raised / selected chips */
     --fill-inset: rgba(0, 0, 0, 0.22);     /* inset tracks, darker than their chrome */
     --fill-track: rgba(255, 255, 255, 0.18); /* slider rails: lighter than the card, as macOS draws them */
+    --fill-toggle: var(--fill-3);          /* switch track while off */
 
     /* --- motion (custom curves — built-in CSS easings are too weak) --- */
     --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);    /* UI enter / press release */
@@ -128,7 +131,7 @@
     --label-col:       130px;
 
     /* --- subtitle settings (driven from JS) --- */
-    --sub-bg:                #000000;
+    --sub-bg:                #0E1016;
     --sub-align:             center;
     --sub-overflow:          normal;        /* normal | shrink (max 2 lines) */
 
@@ -148,6 +151,59 @@
     --sub-target2-size:      22px;
   }
 
+  /* Light theme (js/theme.js sets data-theme). Warm rather than a white sheet:
+     cream panels on a custard page, deep brown for text instead of black and
+     caramel in place of the blue accent. The page itself (--sub-bg) is a user
+     setting, not a token, so its light default lives in js/theme.js.
+     Only the palette changes here; every component reads these names, which
+     is the whole of what makes a second theme cheap. The few literal colours
+     that do not survive a light surface are overridden beside their rules
+     (search for data-theme="light").
+     Contrast, measured: text 12.1:1 on surface-1; dim 5.7:1; faint 5.1:1 on
+     surface-1 and 4.6:1 on surface-2; white on accent-fill 5.9:1. */
+  :root[data-theme="light"] {
+    color-scheme: light;
+
+    --color-bg:            #F0E4C8;
+    --color-surface-1:     #FBF3DF;
+    --color-surface-2:     #F4E8CC;
+    --color-surface-3:     #ECDDB9;
+    --color-border:        rgba(94, 62, 30, 0.14);
+    --color-border-strong: rgba(94, 62, 30, 0.26);
+    --color-text:          #3E2B1F;
+    --color-text-dim:      #6E5743;
+    --color-text-faint:    #7A6350;
+    --color-accent:        #8A5A2B;
+    --color-accent-hover:  #9C6A36;
+    --color-accent-fill:       #8A5A2B;
+    --color-accent-fill-hover: #774B22;
+    --color-danger:        #C9372C;
+    --color-danger-fill:       #B42318;
+    --color-danger-fill-hover: #9E1F15;
+    --color-danger-text:       #A8291F;
+    --color-success:       #3A8F3F;
+    --color-warning:       #C98A00;
+
+    /* Fills flip from white-on-dark to brown-on-cream. The raised chip is the
+       exception: it becomes an opaque cream that sits above the inset track,
+       the way a selected segment does in a light macOS control. */
+    --fill-1: rgba(94, 62, 30, 0.07);
+    --fill-2: rgba(94, 62, 30, 0.11);
+    --fill-3: #FFFCF3;
+    --fill-inset: rgba(94, 62, 30, 0.09);
+    --fill-track: rgba(94, 62, 30, 0.22);
+    /* Not --fill-3: a cream track on a cream card is no switch at all. */
+    --fill-toggle: rgba(94, 62, 30, 0.2);
+
+    /* Brown-tinted and lighter: black shadows at dark-theme strength read as
+       smudges on cream. */
+    --shadow-1:       0 1px 2px rgba(80, 50, 20, 0.16);
+    --shadow-2:       0 4px 14px rgba(80, 50, 20, 0.14), 0 1px 3px rgba(80, 50, 20, 0.12);
+    --shadow-overlay: 0 24px 56px rgba(80, 50, 20, 0.22), 0 4px 14px rgba(80, 50, 20, 0.14);
+    --shadow-popover: 0 12px 28px rgba(80, 50, 20, 0.2);
+    --color-scrim:    rgba(60, 40, 20, 0.32);
+  }
+
   /* 日文 UI 時把 CJK 那一段換成日文字形。同一個碼位在台日兩地的寫法不同
      （直、骨、喝…），這無法靠 fallback 順序處理，必須明確覆寫。
      TC 與 JP 同源，所以換的只是字形，字寬不變。
@@ -164,8 +220,8 @@
 
   body {
     font-family: var(--font-ui);
-    /* The whole window is the user-configured subtitle background, black by
-       default, and the control card floats on it with its own dark palette.
+    /* The whole window is the user-configured subtitle background, near-black
+       by default, and the control card floats on it with its own dark palette.
        In window-capture mode (obs.mode.capture) this window IS the output, so
        the user sets a key colour here for OBS to remove; anything drawn on
        --sub-bg is then judged by whether a keyer can remove it — see
@@ -850,6 +906,12 @@
     background-position: right 8px center;
     background-size: 14px;
     padding-right: 28px;
+
+    /* The chevrons are a data URI, which cannot read a custom property, so
+       the light theme swaps in a brown copy. */
+    :root[data-theme="light"] & {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%233E2B1F' stroke-opacity='0.6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M4.5 6.2 8 2.8l3.5 3.4M4.5 9.8 8 13.2l3.5-3.4'/></svg>");
+    }
   }
 
   /* native <option>s — give the popup a dark background where possible */
@@ -931,7 +993,7 @@
       display: inline-block;
       width: 38px;
       height: 22px;
-      background: var(--fill-3);
+      background: var(--fill-toggle);
       border-radius: var(--radius-full);
       transition: background 0.18s;
     }

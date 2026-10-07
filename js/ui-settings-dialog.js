@@ -14,6 +14,22 @@ export function mountSettingsDialog(container) {
   if (!container) return;
 
   container.innerHTML = `
+    <!-- How the app itself looks, so it leads. "System" follows the OS /
+         browser preference live (js/theme.js). -->
+    <section class="dialog-section">
+      <div class="dialog-setting-row">
+        <div>
+          <h3 data-i18n="settings.theme.title">テーマ</h3>
+          <p data-i18n="settings.theme.desc">説明</p>
+        </div>
+        <div class="seg-switch" role="group">
+          <label><input type="radio" name="uiTheme" value="system" data-bind="uiTheme"><span data-i18n="settings.theme.system">システム</span></label>
+          <label><input type="radio" name="uiTheme" value="dark" data-bind="uiTheme"><span data-i18n="settings.theme.dark">ダーク</span></label>
+          <label><input type="radio" name="uiTheme" value="light" data-bind="uiTheme"><span data-i18n="settings.theme.light">ライト</span></label>
+        </div>
+      </div>
+    </section>
+
     <!-- Timing rather than styling, so it belongs here and not in the style
          matrix: nothing about it is judged by looking at the output. -->
     <section class="dialog-section">
