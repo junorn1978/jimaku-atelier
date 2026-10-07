@@ -1,0 +1,276 @@
+/* =========================================
+   字幕アトリエ — dialogs
+
+   The native <dialog> shell and what goes inside each one: the manual
+   translation tool, app settings, and the custom-URL example dialog.
+
+   Split out of styles.css. Everything stays inside @layer components:
+   styles.css declares the layer order and must load first, and a rule
+   left outside a layer would outrank every layered rule in the app.
+   ========================================= */
+
+@layer components {
+  /* --- dialog (native <dialog>) --- */
+  .app-dialog {
+    border: 1px solid var(--color-border);
+    padding: 0;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-1);
+    color: var(--color-text);
+    min-width: 480px;
+    max-width: min(90vw, 720px);
+    max-height: 86vh;
+    box-shadow: var(--shadow-overlay);
+
+    /* Enter/exit animation. Modals keep transform-origin: center (they are
+       not anchored to a trigger). Scale starts at 0.97 — never from 0 —
+       and the exit (150ms) is snappier than the enter (200ms). display/
+       overlay transition with allow-discrete keeps the dialog in the
+       top layer until the exit finishes (Chrome-only app). */
+    opacity: 0;
+    transform: scale(0.97);
+    transition:
+      opacity   150ms var(--ease-out),
+      transform 150ms var(--ease-out),
+      display   150ms allow-discrete,
+      overlay   150ms allow-discrete;
+
+    &[open] {
+      opacity: 1;
+      transform: scale(1);
+      transition-duration: 200ms;
+
+      @starting-style {
+        opacity: 0;
+        transform: scale(0.97);
+      }
+    }
+
+    &::backdrop {
+      background: var(--color-scrim);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transition:
+        opacity 150ms var(--ease-out),
+        display 150ms allow-discrete,
+        overlay 150ms allow-discrete;
+    }
+
+    &[open]::backdrop {
+      opacity: 1;
+      transition-duration: 200ms;
+
+      @starting-style {
+        opacity: 0;
+      }
+    }
+
+    .dialog-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 48px;
+      padding: var(--space-2) var(--space-4);
+      border-bottom: 1px solid var(--color-border);
+
+      h2 { font-size: var(--text-lg); font-weight: 600; }
+    }
+
+    .dialog-body {
+      padding: var(--space-4);
+      overflow-y: auto;
+      max-height: calc(86vh - 48px);
+    }
+  }
+
+  /* --- manual text translation tool --- */
+  .manual-translate-texts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-3);
+    min-height: 0;
+  }
+
+  .manual-field {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: var(--space-1);
+    min-width: 0;
+    min-height: 0;
+
+    > span {
+      color: var(--color-text-dim);
+      font-size: var(--text-sm);
+    }
+  }
+
+  .manual-textarea {
+    resize: none;
+    min-height: 0;
+    height: 100%;
+    line-height: 1.45;
+  }
+
+  .manual-textarea[readonly] {
+    background: color-mix(in oklab, var(--color-bg) 70%, var(--color-surface-2));
+  }
+
+  .manual-translate-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .manual-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    min-width: 0;
+
+    .manual-target {
+      width: min(240px, 45%);
+      min-width: 160px;
+    }
+  }
+
+  .manual-status {
+    min-height: 1.2em;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.2;
+
+    &[data-type="error"] {
+      color: var(--color-danger-text);
+    }
+  }
+
+  /* --- app settings dialog --- */
+  .dialog-section {
+    &:not(:first-child) {
+      margin-top: var(--space-4);
+      padding-top: var(--space-4);
+      border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+    }
+
+    h3 {
+      font-size: var(--text-md);
+      font-weight: 600;
+      margin-bottom: var(--space-1);
+    }
+
+    p {
+      color: var(--color-text-dim);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+    }
+  }
+
+  .dialog-setting-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .about-list {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+
+    > div {
+      display: grid;
+      grid-template-columns: 96px 1fr;
+      gap: var(--space-3);
+      align-items: baseline;
+    }
+
+    dt {
+      color: var(--color-text-dim);
+      font-size: var(--text-sm);
+    }
+
+    dd {
+      margin: 0;
+      font-size: var(--text-md);
+      line-height: 1.35;
+    }
+
+    /* Version rides alongside the app name, quieter than it. */
+    .about-version {
+      color: var(--color-text-faint);
+      font-size: var(--text-sm);
+    }
+  }
+
+  /* --- code block in example dialog --- */
+  .example-steps {
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    margin-bottom: var(--space-3);
+
+    .example-steps-title {
+      font-weight: 600;
+      color: var(--color-text);
+      margin-bottom: var(--space-1);
+    }
+
+    ol {
+      list-style: decimal;
+      padding-left: var(--space-4);
+
+      li {
+        margin-top: var(--space-1);
+        line-height: 1.6;
+      }
+    }
+
+    code {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: 0.82em;
+      background: var(--color-bg);
+      color: var(--color-text);
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+      margin-left: 6px;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .code-block {
+    position: relative;
+
+    pre {
+      background: var(--color-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: var(--space-3);
+      padding-right: 96px; /* room for copy button */
+      max-height: 60vh;
+      overflow: auto;
+      margin: 0;
+    }
+
+    code {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: var(--text-sm);
+      line-height: 1.5;
+      color: var(--color-text);
+      white-space: pre;
+    }
+  }
+
+  .code-copy-btn {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    padding: 3px 10px;
+    font-size: var(--text-sm);
+
+    &.is-copied {
+      background: var(--color-accent-fill);
+      border-color: transparent;
+      color: white;
+    }
+  }
+}

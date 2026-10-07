@@ -21,6 +21,16 @@
        heights derived from it. Must load before styles.css, which consumes it. -->
   <link rel="stylesheet" href="css/subtitle-core.css">
   <link rel="stylesheet" href="css/styles.css">
+  <!-- Split out of styles.css by feature, one file per JS module where there
+       is one. All of them add to @layer components, whose order styles.css
+       declares, so styles.css must stay first; their order among themselves
+       follows where each block used to sit. -->
+  <link rel="stylesheet" href="css/toolbar.css">
+  <link rel="stylesheet" href="css/tab-languages.css">
+  <link rel="stylesheet" href="css/dialogs.css">
+  <link rel="stylesheet" href="css/color-picker.css">
+  <link rel="stylesheet" href="css/tab-filter.css">
+  <link rel="stylesheet" href="css/tab-obs.css">
   <!-- The subtitle lines themselves, shared with subtitle-window.html so the
        subtitle window draws exactly what this window previews. -->
   <link rel="stylesheet" href="css/subtitle-display.css">

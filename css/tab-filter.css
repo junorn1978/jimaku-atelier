@@ -1,0 +1,134 @@
+/* =========================================
+   字幕アトリエ — word-replacement tab
+
+   js/ui-filter.js: the two rule lists.
+
+   Split out of styles.css. Everything stays inside @layer components:
+   styles.css declares the layer order and must load first, and a rule
+   left outside a layer would outrank every layered rule in the app.
+   ========================================= */
+
+@layer components {
+  /* --- word-replacement tab: two side-by-side rule lists. The section fills
+     its tab panel and only the lists themselves scroll, so the toggles and
+     add buttons always stay in reach. --- */
+  .filter-section {
+    height: 100%;
+    min-height: 0;
+
+    .panel-cols.cols-2 {
+      height: 100%;
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    /* Columns keep the base flex stack (the blacklist column holds five blocks,
+       so a fixed three-row grid handed the stretch row to the second toggle);
+       the list group alone takes the leftover height. */
+    .panel-col { min-height: 0; }
+    .filter-list-wrap { flex: 1 1 auto; }
+
+    /* each hint sits right under its toggle; the column gap already spaces it */
+    .form-hint { margin-top: 0; }
+  }
+
+  /* List + its add buttons: the list takes all the height the column leaves,
+     so the buttons stay pinned to the panel floor — at the same height in both
+     columns, and not moving as the panel is resized or rows are added. Once
+     the list outgrows its space it scrolls. */
+  .filter-list-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-height: 0;
+
+    .filter-list { flex: 1 1 0; }
+  }
+
+  /* empty state — a quiet hint instead of a void */
+  .filter-empty {
+    margin: 0;
+    padding: var(--space-3) 0;
+    text-align: center;
+    color: var(--color-text-faint);
+    font-size: var(--text-sm);
+  }
+
+  /* --- word-replacement rule list --- */
+  .filter-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .filter-row {
+    display: grid;
+    grid-template-columns: 1fr 16px 1fr 28px;
+    align-items: center;
+    gap: var(--space-1);
+
+    .filter-arrow {
+      color: var(--color-text-faint);
+      font-size: var(--text-sm);
+      text-align: center;
+    }
+
+    .text-input {
+      padding: 3px 8px;
+      font-size: var(--text-sm);
+    }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+
+      svg { width: 14px; height: 14px; }
+    }
+  }
+
+  .filter-add {
+    width: 100%;
+    justify-content: center;
+    background: transparent;
+    border: 1px dashed var(--color-border-strong);
+    color: var(--color-text-dim);
+
+    &:hover:not(:disabled) {
+      border-color: var(--color-accent);
+      color: var(--color-text);
+      background: transparent;
+    }
+  }
+
+  /* blacklist rows: single word input + delete (no replacement target) */
+  .blacklist-row {
+    grid-template-columns: 1fr 28px;
+  }
+
+  .blacklist-actions {
+    display: flex;
+    gap: var(--space-1);
+
+    .filter-add { flex: 1; }
+  }
+
+  /* One mask for the whole column rather than a toggle per row: this panel can
+     be on camera, and per-row eye buttons would be one mis-click per row. Same
+     -webkit-text-security technique as .secret-input-wrap, and not
+     type="password" for the same reason (see js/ui-secret-input.js).
+
+     The delete buttons stay usable while masked — removing a word you cannot
+     read is still the right thing to be able to do in a hurry. */
+  .blacklist-mask[data-secret-visible="false"] .filter-source {
+    -webkit-text-security: disc;
+  }
+
+  .form-hint {
+    margin-top: var(--space-2);
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+}

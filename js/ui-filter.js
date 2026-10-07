@@ -3,7 +3,7 @@
  * @description Word-replacement UI, split into two columns: replacement rules
  * on the left and the blacklist on the right, each with its own enable toggle.
  * Appended into its own tab panel (#tab-filter) as a `.filter-section`; the
- * section fills the panel and only the rule lists scroll (see styles.css).
+ * section fills the panel and only the rule lists scroll (see css/tab-filter.css).
  *
  * The blacklist column is masked (-webkit-text-security) behind one switch for
  * the whole column, and re-masks itself when recording starts — this panel can

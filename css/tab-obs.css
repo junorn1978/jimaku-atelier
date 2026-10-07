@@ -1,0 +1,298 @@
+/* =========================================
+   字幕アトリエ — OBS tab
+
+   js/ui-obs.js: connection, scene setup and its help popovers.
+
+   Split out of styles.css. Everything stays inside @layer components:
+   styles.css declares the layer order and must load first, and a rule
+   left outside a layer would outrank every layered rule in the app.
+   ========================================= */
+
+@layer components {
+  /* --- OBS tab: one column. Head (picker, ?, action), one sentence, then
+         the selected route's settings. --- */
+  .obs-section {
+    display: grid;
+    gap: var(--space-2);
+    align-content: start;
+
+    .form-row-label {
+      color: var(--color-text-dim);
+      font-size: var(--text-md);
+      white-space: nowrap;
+    }
+  }
+
+  .obs-body {
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  /* WebSocket: toggle, URL and password on one line; wraps when narrow. The
+     URL takes the spare width, the password a fixed one. */
+  .obs-ws-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-4);
+    row-gap: var(--space-2);
+
+    .form-row {
+      grid-template-columns: max-content max-content;
+      padding: 0;
+    }
+  }
+
+  .obs-field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+  .obs-field-url      { flex: 1 1 220px; max-width: 360px; }
+  .obs-field-url .text-input { flex: 1; min-width: 0; }
+  .obs-field-password { flex: 0 1 220px; }
+  .obs-field-password .secret-input-wrap { flex: 1; min-width: 0; }
+
+  /* Nest option: toggle first, then its sentence, so the long label can wrap
+     without pushing the switch around. */
+  .obs-nest {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+
+    .form-row-label { white-space: normal; }
+  }
+
+  /* Window / capture: label, the one value, and the caveat that matters most,
+     on a single line. */
+  .obs-setting-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+  }
+
+  .obs-inline-hint {
+    margin: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+
+  /* --- OBS tab: live connection status beside the WS toggle --- */
+  /* Status line + hint share one fixed-height box that scrolls as a single
+     unit, so neither (both can wrap to several lines) ever pushes the rest of
+     the tab down. ~3 lines tall; anything beyond scrolls inside. */
+  .obs-conn {
+    margin-top: var(--space-1);
+    height: calc(var(--text-sm) * 1.3 * 3);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+  }
+
+  .obs-conn-status {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: 1.2em;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.3;
+  }
+
+  .obs-conn-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-text-faint);
+  }
+
+  .obs-conn-status[data-phase="connecting"] .obs-conn-dot {
+    background: var(--color-warning);
+    animation: dot-pulse 1.2s ease-in-out infinite;
+  }
+  .obs-conn-status[data-phase="connected"]  .obs-conn-dot {
+    background: var(--color-success);
+    box-shadow: 0 0 6px color-mix(in oklab, var(--color-success) 60%, transparent);
+  }
+  .obs-conn-status[data-phase="retrying"]   .obs-conn-dot { background: var(--color-danger); }
+
+  .obs-conn-status[data-phase="connected"] { color: var(--color-text); }
+  .obs-conn-status[data-phase="retrying"]  { color: var(--color-danger-text); }
+
+  .obs-conn-hint {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+  }
+
+  /* Sequential instructions get sequential numbers: small numbered chips
+     instead of bullets, so the order reads at a glance. */
+  .help-steps {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    counter-reset: help-step;
+
+    li {
+      counter-increment: help-step;
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: var(--space-2);
+
+      &::before {
+        content: counter(help-step);
+        display: inline-grid;
+        place-items: center;
+        width: 16px;
+        height: 16px;
+        margin-top: 1px;
+        border-radius: var(--radius-full);
+        background: var(--fill-1);
+        color: var(--color-text-dim);
+        font-size: 10px;
+        font-weight: 600;
+        line-height: 1;
+      }
+    }
+  }
+
+  /* The OBS tab stacks its two mutually exclusive bodies as siblings and hides
+     one, but the adjacent selector above matches on the DOM rather than on what
+     is rendered — so the visible body would draw a divider with nothing above
+     it. Same trap as .panel-col[hidden] + .panel-col. */
+  .panel-cols[hidden] + .panel-cols {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  /* The subtitle window's fixed key colour (OBS tab, obs.mode.window): shown,
+     not picked, so it is a swatch and the hex to type into OBS. */
+  .key-color {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin: 0;
+
+    .key-color-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: var(--radius-sm);
+      background: #00FF00;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+    }
+    code {
+      font-family: ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+      font-size: var(--text-md);
+      user-select: all;
+    }
+  }
+
+  /* Caveats rather than a sequence: same typography as .help-steps so the two
+     read as one voice, but a dot instead of a number — these are things to know,
+     not things to do in order. */
+  .help-notes {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.45;
+    list-style: none;
+
+    li {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: var(--space-2);
+
+      &::before {
+        content: "";
+        justify-self: center;
+        width: 4px;
+        height: 4px;
+        margin-top: 0.55em;
+        border-radius: var(--radius-full);
+        background: var(--color-text-dim);
+      }
+    }
+  }
+
+  /* Route picker for the OBS tab: the switch, the help button beside it, and
+     the route's one action pinned to the far end so it never moves when the
+     route changes. Kept slim — the tab body below is height-constrained. */
+  .obs-mode-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    > .seg-switch { flex-shrink: 0; }
+  }
+
+  .obs-help-btn {
+    width: 24px;
+    height: 24px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    anchor-name: --obs-help-anchor;
+  }
+
+  .obs-action {
+    margin-left: auto;
+    flex-shrink: 0;
+    anchor-name: --obs-action-anchor;
+  }
+
+  .obs-help-popover {
+    position-anchor: --obs-help-anchor;
+    position-area: bottom span-right;
+    position-try-fallbacks: flip-block;
+    margin: var(--space-2) 0;
+    max-width: min(420px, 80vw);
+
+    .help-notes {
+      margin-top: var(--space-3);
+      padding-top: var(--space-3);
+      border-top: 1px solid var(--color-border);
+    }
+  }
+
+  /* Confirm bubble under the Auto Setup button, right edges aligned. */
+  .obs-confirm-popover {
+    position-anchor: --obs-action-anchor;
+    position-area: bottom span-left;
+    position-try-fallbacks: flip-block;
+    margin: var(--space-2) 0;
+    max-width: min(300px, 80vw);
+  }
+
+  .obs-confirm-text { margin: 0 0 var(--space-3); }
+
+  .obs-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  .obs-mode-desc {
+    margin: 0 0 var(--space-1);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    line-height: 1.4;
+  }
+}

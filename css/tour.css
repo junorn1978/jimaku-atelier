@@ -14,9 +14,10 @@
 
 /* ============ the overlay ============ */
 
-/* Above .color-popover (900), which is the highest thing in styles.css. Modal
-   <dialog> lives in the top layer and would still win, but the tour is only
-   ever opened from the toolbar, which a modal covers — so the two never meet.
+/* Above .color-popover (900, css/color-picker.css), the highest thing in the
+   app's own stylesheets. Modal <dialog> lives in the top layer and would still
+   win, but the tour is only ever opened from the toolbar, which a modal
+   covers — so the two never meet.
    The root itself is transparent to the pointer; the children opt back in. */
 .tour-root {
   position: fixed;

@@ -1,0 +1,250 @@
+/* =========================================
+   字幕アトリエ — toolbar
+
+   The toolbar along the bottom of the control card: start/stop, the
+   microphone button and its panel (device, level test), the subtitle-window
+   button and the background-click lock. js/speech.js, js/ui-mic.js,
+   js/ui-obs.js.
+
+   Split out of styles.css. Everything stays inside @layer components:
+   styles.css declares the layer order and must load first, and a rule
+   left outside a layer would outrank every layered rule in the app.
+   ========================================= */
+
+@layer components {
+  /* --- start/stop (toolbar; js/speech.js) ---
+     One button (index.html, #btn-speech). Both faces sit in the same grid
+     cell so the button keeps the longer label's width; only the one for the
+     current state is visible. Here in components rather than with the rest of
+     the toolbar in layout, because it has to outrank .btn and .btn.primary. */
+  .speech-btn {
+    display: inline-grid;
+    align-self: stretch;
+    flex-shrink: 0;
+    padding-inline: 16px;
+    white-space: nowrap;
+
+    .speech-face {
+      grid-area: 1 / 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+    }
+    .speech-face-stop { visibility: hidden; }
+
+    /* Live: the stop face, on a pulsing red badge — the toolbar's one
+       at-a-glance sign that recognition is running. */
+    &[data-recording="true"] {
+      background: color-mix(in oklab, var(--color-danger) 20%, transparent);
+      color: color-mix(in oklab, var(--color-danger) 70%, white);
+
+      &:hover:not(:disabled) {
+        background: color-mix(in oklab, var(--color-danger) 30%, transparent);
+      }
+
+      .speech-face-start { visibility: hidden; }
+      .speech-face-stop  { visibility: visible; }
+      svg { animation: rec-pulse 1.4s ease-in-out infinite; }
+    }
+  }
+
+  /* --- background-click lock (toolbar) ---
+     Two glyphs in one button: an open shackle while a background click still
+     collapses/restores the panel, a closed one once it doesn't. The .is-active
+     tint alone would be too quiet for a state you check mid-stream, so the icon
+     carries it. Both are in the same inline-grid cell, hence display, not
+     opacity. --- */
+  .lock-btn {
+    .lock-icon-closed { display: none; }
+
+    &.is-active {
+      .lock-icon-open   { display: none; }
+      .lock-icon-closed { display: block; }
+    }
+  }
+
+  /* --- microphone button + panel (toolbar; ui-mic.js) --- */
+  .toolbar-start {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .mic-btn {
+    position: relative;
+    anchor-name: --mic-btn;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    white-space: nowrap;
+
+    /* Something needs attention: the picked device is unplugged (warn), or
+       the last level test found a problem (bad). */
+    &[data-alert="warn"]::after,
+    &[data-alert="bad"]::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 2px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--color-warning);
+      box-shadow: 0 0 0 2px var(--color-surface-1);
+    }
+    &[data-alert="bad"]::after { background: var(--color-danger); }
+
+    &:has(+ .mic-panel:popover-open) {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+  }
+
+  /* Opens upward: the toolbar sits at the bottom of the window. Grows
+     leftward from the button's right edge, since the button is on the right
+     half of the toolbar now. */
+  .mic-panel {
+    position-anchor: --mic-btn;
+    position-area: top span-left;
+    inset: auto;
+    /* Clears the card's top edge, which sits a toolbar-padding above the button. */
+    margin: 0 0 calc(var(--space-2) + var(--space-3));
+    width: min(440px, calc(100vw - 2 * var(--space-4)));
+    /* The area above the button is the containing block here, so 100% is all
+       the room there is; a short window scrolls the panel instead of letting
+       it spill down over the toolbar. */
+    max-height: 100%;
+    overflow-y: auto;
+    padding: var(--space-4);
+    display: none;
+    gap: var(--space-4);
+    background: var(--color-surface-1);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-popover);
+
+    &:popover-open { display: grid; }
+
+    h3 {
+      font-size: var(--text-md);
+      font-weight: 600;
+    }
+    p {
+      color: var(--color-text-dim);
+      font-size: var(--text-sm);
+      line-height: 1.45;
+    }
+  }
+
+  .mic-panel-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: var(--space-3);
+
+    .mic-select { min-width: 0; text-overflow: ellipsis; }
+  }
+
+  .mic-segment {
+    grid-template-columns: 1fr auto;
+    padding-top: var(--space-3);
+    border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+  }
+
+
+  /* --- subtitle window button (toolbar; js/ui-obs.js) ---
+     Matches the mic button's box. Lit while the window is open, in the same
+     accent the mic button wears while its panel is up. */
+  .subwin-btn {
+    align-self: stretch;
+    padding-inline: 14px;
+    white-space: nowrap;
+
+    &[aria-pressed="true"] {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+  }
+
+  /* --- level test (inside the mic panel) ---
+     One block with three states: idle shows the button and a hint, running
+     the prompt and a live bar, done the two measured bars and the advice. */
+  .mic-test {
+    display: grid;
+    gap: var(--space-2);
+
+    .mic-test-head {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: var(--space-3);
+    }
+    .mic-test-step {
+      color: var(--color-text);
+      font-weight: 600;
+    }
+
+    &[data-state="idle"]    :is(.mic-test-step, .mic-test-live, .mic-test-result) { display: none; }
+    &[data-state="running"] :is(.mic-test-hint, .mic-test-result)                 { display: none; }
+    &[data-state="done"]    :is(.mic-test-step, .mic-test-live)                   { display: none; }
+
+    .mic-test-result {
+      display: grid;
+      gap: var(--space-2);
+      justify-items: start;
+    }
+    .mic-test-bars {
+      display: grid;
+      gap: var(--space-2);
+      justify-self: stretch;
+    }
+    .mic-test-row {
+      display: grid;
+      grid-template-columns: 5em 1fr 4.5em;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+    }
+    .level-value {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      color: var(--color-text-dim);
+    }
+    /* Background above the line: that bar is the problem. */
+    .mic-test-bg.is-over .level-fill {
+      background: var(--color-danger);
+    }
+    .mic-test-verdict {
+      &[data-tone="ok"]   { color: var(--color-success); }
+      &[data-tone="warn"] { color: var(--color-warning); }
+      &[data-tone="bad"]  { color: var(--color-danger-text); }
+    }
+  }
+
+  .level-bar {
+    position: relative;
+    height: 8px;
+    border-radius: 4px;
+    background: var(--color-surface-2);
+
+    .level-fill {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--color-accent);
+      transition: width 60ms linear;
+    }
+    /* The line the background has to stay under. */
+    .level-mark {
+      position: absolute;
+      top: -3px;
+      bottom: -3px;
+      width: 2px;
+      margin-left: -1px;
+      background: var(--color-warning);
+    }
+  }
+}
