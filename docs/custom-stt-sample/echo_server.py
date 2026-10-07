@@ -18,6 +18,7 @@ import struct
 from websockets.asyncio.server import serve
 
 SAMPLE_RATE = 16000
+SILENT_DB = -50
 
 
 def level_db(pcm: bytes) -> float:
@@ -41,7 +42,9 @@ async def handle(ws, translate: bool):
         if isinstance(message, bytes):
             segment += message
             seconds = len(segment) / 2 / SAMPLE_RATE
-            if seconds - last_partial >= 0.5:
+            # Only while someone is talking: a partial during the silence after a
+            # final would read as speech to the app and keep the subtitles up.
+            if seconds - last_partial >= 0.5 and level_db(message) > SILENT_DB:
                 last_partial = seconds
                 await ws.send(json.dumps({"type": "partial", "text": f"音声 {seconds:.1f} 秒"}))
             continue

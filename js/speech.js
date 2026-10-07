@@ -802,6 +802,7 @@ async function startSpeech(lang) {
   updateButtons();
 
   if (usingCustom) {
+    beginSession('custom stt');   // the debug log's clock; there are no sessions to rotate
     customStt = connectCustomStt({
       url: sttUrl(), config: sttConfig(), onPartial: onSttPartial, onFinal: onSttFinal,
     });
