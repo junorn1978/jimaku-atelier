@@ -13,7 +13,9 @@
  *    behind with skipping only, and stayed at 0.13–0.21s with the speed-up);
  *  - detects pauses in what the recogniser is hearing, so speech.js can end a
  *    session where nobody is talking — judged on a denoised copy, so music in
- *    the background does not read as talking (see Denoiser).
+ *    the background does not read as talking (see Denoiser);
+ *  - for a custom STT server (stt-custom.js), hands what the recogniser hears
+ *    to the main thread as 16-bit PCM chunks (see tapBlock).
  *
  * Pauses are detected on the output, not the microphone. The two differ by
  * whatever is still queued, and a pause in the room while the recogniser is
@@ -61,6 +63,7 @@ const TARGET_LAG_SEC = 0.15;
 const FRAME_SEC      = 0.02;
 const SEARCH_SEC     = 0.005;
 const LAG_REPORT_SEC = 1;      // while queueing, the lag is reported this often (diagnostics)
+const TAP_SEC        = 0.1;    // PCM chunk length handed to a custom STT server
 
 const BLOCK = 128;
 
@@ -182,7 +185,7 @@ class Denoiser {
 }
 
 class InputProcessor extends AudioWorkletProcessor {
-  constructor({ processorOptions: { gateDb, dropDb, rnnoise, reportLevel } }) {
+  constructor({ processorOptions: { gateDb, dropDb, rnnoise, reportLevel, tap } }) {
     super();
     const blockSec = BLOCK / sampleRate;
     this.blockSec = blockSec;
@@ -215,6 +218,12 @@ class InputProcessor extends AudioWorkletProcessor {
     this.sinceBeat = 0;
     this.mono      = new Float32Array(BLOCK);
     this.holding   = false;
+
+    /* Custom STT: the output, as PCM chunks of TAP_SEC. Off for Web Speech,
+       which takes the track instead. */
+    this.tapLen  = Math.round(sampleRate * TAP_SEC);
+    this.tapBuf  = tap ? new Int16Array(this.tapLen) : null;
+    this.tapFill = 0;
 
     /* Sample ring buffer. w / rd are running write / read positions in
        samples; each written block also records how long the input had been
@@ -278,6 +287,7 @@ class InputProcessor extends AudioWorkletProcessor {
       out.set(mono);
       this.detect(out);
       this.probeBlock(out);
+      this.tapBlock(out);
       return true;
     }
 
@@ -289,6 +299,7 @@ class InputProcessor extends AudioWorkletProcessor {
          the pause detector: its clock stops until the audio flows again. */
       out.fill(0);
       this.probeBlock(out);
+      this.tapBlock(out);
       return true;
     }
 
@@ -304,7 +315,24 @@ class InputProcessor extends AudioWorkletProcessor {
     }
     this.detect(out);
     this.probeBlock(out);
+    this.tapBlock(out);
     return true;
+  }
+
+  /* The block the recogniser hears, appended to the PCM chunk; a full chunk
+     is transferred to the main thread and a fresh one started. Taken from the
+     output so it is exactly what a pause event describes. */
+  tapBlock(out) {
+    if (!this.tapBuf) return;
+    for (let i = 0; i < BLOCK; i++) {
+      const v = Math.max(-1, Math.min(1, out[i]));
+      this.tapBuf[this.tapFill++] = v < 0 ? v * 0x8000 : v * 0x7FFF;
+      if (this.tapFill === this.tapLen) {
+        this.port.postMessage({ type: 'pcm', buf: this.tapBuf.buffer }, [this.tapBuf.buffer]);
+        this.tapBuf  = new Int16Array(this.tapLen);
+        this.tapFill = 0;
+      }
+    }
   }
 
   lagSec() {

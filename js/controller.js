@@ -275,6 +275,23 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
 }
 
 /**
+ * Translations a custom STT server returned along with the sentence
+ * (docs/custom-stt.md), shown as they are instead of being sent to the
+ * translation engine. `translations` follows the active slots of
+ * `targetLangIds` — the snapshot sent to the server — the way the custom URL
+ * engine's answer does; slots switched since are dropped by bufferPush.
+ */
+export function deliverTranslations(translations, targetLangIds) {
+  const aligned = new Array(targetLangIds.length).fill('');
+  let i = 0;
+  targetLangIds.forEach((id, idx) => {
+    if (id && id !== 'none') aligned[idx] = String(translations[i++] ?? '');
+  });
+  const sequenceId = sequenceCounter++;
+  bufferPush({ translations: applyTargetFilter(aligned) }, 0, sequenceId, targetLangIds);
+}
+
+/**
  * One-shot manual text translation. This powers the always-visible text
  * translation tool and deliberately does not touch subtitle displays or OBS.
  */

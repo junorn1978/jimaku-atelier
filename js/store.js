@@ -89,6 +89,12 @@ const _defaults = Object.freeze({
      for background music loud enough to hide the pauses (see speech.js). */
   segmentMode:        'auto',
 
+  // --- Speech recognition engine ---
+  /* 'webspeech': the browser's recogniser. 'custom': a server the user runs,
+     reached over WebSocket at customSttUrl (docs/custom-stt.md). */
+  sttEngine:          'webspeech', // 'webspeech' | 'custom'
+  customSttUrl:       '',
+
   // --- Language selection ---
   sourceLangId:       '',
   target1LangId:      'none',

@@ -366,9 +366,65 @@
     border-left: 0;
   }
 
-  /* Offline pack column. Nothing here needs a width cap any more — the long
-     removal instructions moved into a popover. */
+  /* Recognition column: engine picker, then what that engine needs. Sized by
+     its content (the grid track above is auto), so the URL field gets a fixed
+     width rather than pushing the translation column aside as it is typed —
+     a narrow one: it is masked, and in English the row has no width to spare. */
   .lang-sub { min-width: 0; }
+
+  .stt-custom-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+
+    .secret-input-wrap { width: 160px; }
+  }
+
+  .stt-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin: 0;
+    color: var(--color-text-dim);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    max-width: 130px;
+  }
+
+  .stt-status-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stt-status-dot {
+    flex: 0 0 auto;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-text-faint);
+  }
+
+  .stt-status[data-phase="connecting"] .stt-status-dot {
+    background: var(--color-warning);
+    animation: dot-pulse 1.2s ease-in-out infinite;
+  }
+  .stt-status[data-phase="connected"] .stt-status-dot,
+  .stt-status[data-phase="ready"] .stt-status-dot {
+    background: var(--color-success);
+  }
+  .stt-status[data-phase="retrying"] .stt-status-dot,
+  .stt-status[data-phase="failed"] .stt-status-dot { background: var(--color-danger); }
+  .stt-status[data-phase="retrying"],
+  .stt-status[data-phase="failed"] { color: var(--color-danger-text); }
+
+  .offline-pack {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+
+    &.is-engine-hidden { display: none; }
+  }
 
   /* engine picker + its detail region, filling the translation column */
   .lang-engine {

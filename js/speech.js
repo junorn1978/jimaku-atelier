@@ -11,15 +11,16 @@
  * updateSource(), the rule that a final is never rendered, and the startup
  * watchdog all encode its observed behaviour rather than anything general.
  *
- * Adding a second engine therefore means extracting that boundary first —
- * roughly { start, stop, onPartial, onFinal }, with the filter, idle clear and
- * source-display logic staying above it. Budget for that refactor; nothing here
- * is a drop-in replacement point today.
+ * The one other engine, a user-run server (settings.sttEngine 'custom',
+ * stt-custom.js, docs/custom-stt.md), is a branch beside it rather than behind
+ * a shared interface: it has no sessions to rotate, so all it shares is the
+ * audio input, the button, and the display and idle-clear helpers below. See
+ * "custom STT server".
  */
 
 import { isDebugEnabled } from './logger.js';
 import { settings, subscribe } from './store.js';
-import { sendTranslationRequest, resetController, clearTargets, prepareTranslation } from './controller.js';
+import { sendTranslationRequest, resetController, clearTargets, prepareTranslation, deliverTranslations } from './controller.js';
 import { applyFilter } from './filter.js';
 import { publishSource } from './obs.js';
 import { decorateSource } from './source-decoration.js';
@@ -27,6 +28,8 @@ import { normalizeRecognised } from './normalize-ja.js';
 import { isChrome } from './env.js';
 import { keepTailVisible } from './subtitle-render.js';
 import { openAudioInput } from './audio-input.js';
+import { connectCustomStt, normalizeSttUrl } from './stt-custom.js';
+import { getLang } from './languages.js';
 
 /* ============ environment ============ */
 
@@ -50,6 +53,11 @@ let usingLocal   = false;
 let engineSegments = false;
 let input        = null;
 let inputHooks   = null;   // { onPause, onSpeech }, from setupRecognition
+
+/* Decided per start from settings.sttEngine: this run sends the audio to a
+   custom STT server instead of the recogniser. */
+let usingCustom  = false;
+let customStt    = null;
 
 /* ============ session timing trace ============ */
 
@@ -663,6 +671,70 @@ function autoRestart(options = { delay: 0 }) {
   }, options.delay);
 }
 
+/* ============ custom STT server ============ */
+
+/* The server does everything sessions, rotation and watchdogs are for on the
+   Web Speech side, so what is left here is the display: a partial is the
+   pending line, a final is the sentence — rendered, unlike a Web Speech final
+   (see onresult), since nothing replays it afterwards. */
+
+let sttLang    = '';
+let sttTargets = [];
+
+/* What the server is told (docs/custom-stt.md): the translation code, as the
+   custom URL engine sends it, plus the full id. The slots are kept as sent, to
+   align a final's translations against. */
+function sttConfig() {
+  const code = (id) => getLang(id)?.gtxCode ?? id;
+  sttTargets = [settings.target1LangId, settings.target2LangId];
+  return {
+    sourceLang:   code(sttLang),
+    sourceLocale: sttLang,
+    targetLangs:  sttTargets.filter(id => id && id !== 'none').map(code),
+  };
+}
+
+const customHooks = {
+  onPcm:   (buf) => customStt?.sendAudio(buf),
+  onPause: ()    => customStt?.pause(),
+};
+
+function cleanTranscript(raw) {
+  return raw.replace(/[、。？\s]+/g, ' ').trim();
+}
+
+function onSttPartial(raw) {
+  if (!isActive) return;
+  if (raw.trim()) cancelIdleClear();
+  const text = filterSource(cleanTranscript(raw), sttLang);
+  if (text) updateSource(text, true);
+}
+
+function onSttFinal(raw, translations) {
+  if (!isActive) return;
+  const text = filterSource(cleanTranscript(raw), sttLang);
+  if (text) {
+    if (isDebugEnabled()) console.info('[speech] stt final →', text, translations ?? '');
+    if (translations) deliverTranslations(translations, sttTargets);
+    else              sendTranslationRequest(text, previousText, sttLang);
+    previousText = text;
+    updateSource(text);
+  } else {
+    markSourceSent();
+  }
+  armIdleClear();
+}
+
+/* Translation slots changed mid-run: the server is told, so the translations
+   it returns follow them. */
+function onTargetsChanged() {
+  if (isActive && usingCustom) customStt?.configure(sttConfig());
+}
+
+function sttUrl() {
+  try { return normalizeSttUrl(settings.customSttUrl); } catch { return ''; }
+}
+
 /* ============ buttons ============ */
 
 /* One button for both (index.html, #btn-speech). Stop is always offered while
@@ -672,7 +744,8 @@ function updateButtons() {
   const btn = document.getElementById('btn-speech');
   if (!btn) return;
   btn.dataset.recording = String(isActive);
-  btn.disabled = !isActive && (isStarting || !settings.sourceLangId);
+  const engineReady = settings.sttEngine === 'custom' ? !!sttUrl() : !!recognition;
+  btn.disabled = !isActive && (isStarting || !settings.sourceLangId || !engineReady);
 }
 
 function handleToggle() {
@@ -684,7 +757,8 @@ function handleToggle() {
 
 async function handleStart() {
   const lang = settings.sourceLangId;
-  if (!lang || !recognition || isActive || isStarting) return;
+  if (!lang || isActive || isStarting) return;
+  if (settings.sttEngine === 'custom' ? !sttUrl() : !recognition) return;
 
   isStarting = true;
   updateButtons();
@@ -708,8 +782,14 @@ async function startSpeech(lang) {
      the settings dialog list devices by name). Both recognisers are started on
      this track, from the device picked in settings — the on-device model hears
      it the same as the cloud one (checked in the hamham extension). */
+  usingCustom = settings.sttEngine === 'custom';
   try {
-    usingLocal = await configureRecognition(recognition, lang);
+    if (usingCustom) {
+      usingLocal = false;
+      sttLang    = lang;
+    } else {
+      usingLocal = await configureRecognition(recognition, lang);
+    }
     input = await openInput();
   } catch (err) {
     if (isDebugEnabled()) console.warn('[speech] mic unavailable:', err);
@@ -720,6 +800,13 @@ async function startSpeech(lang) {
 
   isActive = true;
   updateButtons();
+
+  if (usingCustom) {
+    customStt = connectCustomStt({
+      url: sttUrl(), config: sttConfig(), onPartial: onSttPartial, onFinal: onSttFinal,
+    });
+    return;
+  }
 
   try {
     beginSession('handleStart');
@@ -735,7 +822,7 @@ async function startSpeech(lang) {
 function openInput() {
   return openAudioInput({
     deviceId: settings.micDeviceId,
-    ...inputHooks,
+    ...(usingCustom ? customHooks : inputHooks),
     onEnded: handleInputEnded,
   }).then((opened) => {
     if (opened.fellBack) markSession(`picked mic missing, using default: ${opened.label}`);
@@ -764,7 +851,9 @@ async function switchInput(reason) {
   const old = input;
   input = next;
   old?.close();
-  inputHooks.restart();
+  /* The server is fed from whichever input is current; only a recogniser
+     session is tied to its track. */
+  if (!usingCustom) inputHooks.restart();
   return true;
 }
 
@@ -772,7 +861,7 @@ async function switchInput(reason) {
    between sessions, so end this one (sending what it has) and let the restart
    pick the new mode up. The on-device model is not affected. */
 function onSegmentModeChanged() {
-  if (!isActive || usingLocal) return;
+  if (!isActive || usingLocal || usingCustom) return;
   engineSegments = settings.segmentMode === 'engine';
   recognition.continuous = !engineSegments;
   markSession(`segment mode → ${settings.segmentMode}`);
@@ -789,7 +878,12 @@ async function handleInputEnded() {
 function handleStop() {
   if (!isActive) return;
   isActive = false;
-  if (recognition) recognition.abort();
+  if (usingCustom) {
+    customStt?.close();
+    customStt = null;
+  } else if (recognition) {
+    recognition.abort();
+  }
   closeInput();
   /* Stop means "taking a break", so the display goes with it rather than
      freezing the last line on screen (and in the overlay) for the duration. */
@@ -801,18 +895,19 @@ function handleStop() {
 /* ============ public API ============ */
 
 export function initSpeech() {
-  if (!SpeechRecognitionImpl) {
-    if (isDebugEnabled()) console.warn('[speech] Web Speech API not available');
-    return;
-  }
-
-  recognition = setupRecognition();
-  if (!recognition) return;
+  /* Without Web Speech a custom STT server can still run, so the button is
+     wired either way; updateButtons keeps it off when neither is usable. */
+  if (SpeechRecognitionImpl) recognition = setupRecognition();
+  else if (isDebugEnabled()) console.warn('[speech] Web Speech API not available');
 
   document.getElementById('btn-speech')?.addEventListener('click', handleToggle);
 
   updateButtons();
   subscribe('sourceLangId', updateButtons);
+  subscribe('sttEngine', () => { if (isActive && usingCustom !== (settings.sttEngine === 'custom')) handleStop(); updateButtons(); });
+  subscribe('customSttUrl', updateButtons);
+  subscribe('target1LangId', onTargetsChanged);
+  subscribe('target2LangId', onTargetsChanged);
   subscribe('micDeviceId', () => switchInput('picked in settings'));
   subscribe('segmentMode', onSegmentModeChanged);
   subscribe('subClearIdleSec', onClearIdleChanged);

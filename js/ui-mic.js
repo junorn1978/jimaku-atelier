@@ -182,9 +182,10 @@ function mountTest(root, panel) {
 
   /* Background too loud for the pause detector: the one case where changing
      how sentences are split helps (see speech.js). Offered right under the
-     advice, and only while that mode is not already on. */
+     advice, and only while that mode is not already on. A custom STT server
+     splits sentences itself, so the switch would do nothing there. */
   const offerSwitch = (kind) => {
-    switchBtn.hidden = !(kind === 'noisy' && settings.segmentMode !== 'engine');
+    switchBtn.hidden = !(kind === 'noisy' && settings.segmentMode !== 'engine' && settings.sttEngine !== 'custom');
   };
 
   function showResult(voiceDb, backgroundDb) {

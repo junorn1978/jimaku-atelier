@@ -14,8 +14,8 @@
  * alignment and background. Deliberately unheaded: every row is labelled, and
  * the row a title would cost is needed for the fourth control.
  *
- * Bottom — two columns matching the matrix's sides: the Chrome-only offline
- * recognition pack on the recognition side, and HOW to translate on the other
+ * Bottom — two columns matching the matrix's sides: HOW to recognise (the
+ * browser, or a custom STT server) on the recognition side, and HOW to translate on the other
  * (one row: heading, picker, whatever the chosen engine needs, and the
  * signature at the far end). The columns are sized to their contents rather
  * than split evenly, and everything is inlined (.col-head) since this is the
@@ -38,6 +38,7 @@ import { isChrome } from './env.js';
 import { APP_VERSION } from './app-meta.js';
 import { setupLanguagePackButton, isCloudOnly } from './language-pack.js';
 import { wireSecretInputs } from './ui-secret-input.js';
+import { onSttState } from './stt-custom.js';
 import { isPromptSupported, getPromptAvailability,
          preparePromptSession, destroyPromptSession,
          isPromptLangSupported } from './translate-prompt.js';
@@ -244,37 +245,67 @@ export function mountLanguagesTab(container) {
            heading with the picker, which costs no height because the picker is
            the taller of the two. -->
       <div class="panel-cols cols-2">
-        <!-- Offline recognition pack: a property of the recognition language, so
-             it sits on the recognition side. Chrome-only; hidden elsewhere.
-             Heading inline with the button, like the engine beside it: stacked,
-             the button fell below the panel's bottom edge. -->
-        <section class="panel-col lang-sub" id="offline-pack-row" hidden>
+        <!-- How to recognise: the browser's recogniser, or a server the user
+             runs (docs/custom-stt.md). Picking the server swaps in its URL
+             and connection state; the browser side has nothing to set here
+             while the offline pack is switched off. -->
+        <section class="panel-col lang-sub lang-stt">
           <div class="col-head">
-            <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
-            <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
-
-            <!-- Removal instructions live in a popover rather than as standing
-                 text: they only matter once a pack is installed, and as a
-                 permanent paragraph they were the tallest thing in the tab.
-                 A popover (not a tooltip) stays open while the user follows the
-                 steps in the browser's own settings. -->
-            <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
-                    popovertarget="popover-offline-help"
-                    data-i18n="lang.offline.help" hidden>削除方法</button>
-
-            <div class="help-popover offline-popover" id="popover-offline-help" popover>
-              <p class="offline-pack-info" id="offline-pack-info"></p>
+            <h3 class="section-title" data-i18n="lang.stt">音声認識</h3>
+            <div class="seg-switch" role="group">
+              <label><input type="radio" name="sttEngine" value="webspeech" data-bind="sttEngine"><span data-i18n="lang.stt.browser">ブラウザ</span></label>
+              <label><input type="radio" name="sttEngine" value="custom" data-bind="sttEngine"><span data-i18n="lang.stt.custom">カスタム STT</span></label>
             </div>
 
-            <!-- Download result. In the top layer rather than in the column:
-                 this section sits on the panel's bottom edge with no room left
-                 under it, and as a paragraph the message was clipped away by
-                 .tab-panel's overflow — it was never actually visible. Anchored
-                 to the download button so it appears where the user just
-                 clicked, costs the layout nothing, and fades rather than
-                 blinking in. -->
-            <div class="help-popover offline-status-popover" id="offline-pack-status"
-                 popover role="status" aria-live="polite"></div>
+            <div class="stt-custom-row" id="stt-custom-row" hidden>
+              <!-- Masked like the translation URL: a server reached from
+                   outside usually carries its token in the query. -->
+              <div class="secret-input-wrap" data-secret-visible="false"
+                   data-secret-show="lang.engine.link.url.show"
+                   data-secret-hide="lang.engine.link.url.hide">
+                <input type="url" class="text-input secret-input" placeholder="ws://127.0.0.1:9000"
+                       data-bind="customSttUrl" autocomplete="off" spellcheck="false">
+                <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
+                  <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                    <path d="M1 1l22 22"/>
+                  </svg>
+                  <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="stt-status" id="stt-status" role="status" aria-live="polite" data-phase="idle">
+                <span class="stt-status-dot" aria-hidden="true"></span>
+                <span class="stt-status-text"></span>
+              </p>
+            </div>
+
+            <!-- Offline recognition pack: a property of the recognition
+                 language, so it sits on the recognition side. Chrome-only and
+                 currently switched off (OFFLINE_PACK_ENABLED); hidden then. -->
+            <div class="offline-pack" id="offline-pack-row" hidden>
+              <span class="form-row-label" data-i18n="lang.offline.label">オフライン音声認識パック</span>
+              <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
+
+              <!-- Removal instructions live in a popover rather than as
+                   standing text: they only matter once a pack is installed. -->
+              <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
+                      popovertarget="popover-offline-help"
+                      data-i18n="lang.offline.help" hidden>削除方法</button>
+
+              <div class="help-popover offline-popover" id="popover-offline-help" popover>
+                <p class="offline-pack-info" id="offline-pack-info"></p>
+              </div>
+
+              <!-- Download result, in the top layer: the panel's bottom edge
+                   leaves no room for it as a paragraph. -->
+              <div class="help-popover offline-status-popover" id="offline-pack-status"
+                   popover role="status" aria-live="polite"></div>
+            </div>
           </div>
         </section>
 
@@ -395,10 +426,41 @@ export function mountLanguagesTab(container) {
 
   wireExampleButtons(container);
   wireSecretInputs(container);
+  setupSttEngine(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);
   setupTranslatorEngine(container);
   setupPromptEngine(container);
+}
+
+/* The recognition picker shows what the chosen engine needs: the server's URL
+   and how the connection is doing for a custom STT server, the offline pack
+   (when it is on) for the browser. */
+function setupSttEngine(container) {
+  const row    = container.querySelector('#stt-custom-row');
+  const pack   = container.querySelector('#offline-pack-row');
+  const status = container.querySelector('#stt-status');
+  const text   = status?.querySelector('.stt-status-text');
+  if (!row || !status || !text) return;
+
+  const sync = (engine) => {
+    row.hidden = engine !== 'custom';
+    if (pack) pack.classList.toggle('is-engine-hidden', engine === 'custom');
+  };
+  sync(settings.sttEngine);
+  subscribe('sttEngine', sync);
+
+  let current = { phase: 'idle', detail: '' };
+  const render = () => {
+    status.dataset.phase = current.phase;
+    const label = t(`lang.stt.status.${current.phase}`);
+    text.textContent = current.detail ? `${label}（${current.detail}）` : label;
+    /* Truncated to fit the row (a server's error can be any length), so the
+       whole of it is on hover. */
+    status.title = text.textContent;
+  };
+  onSttState((state) => { current = state; render(); });
+  subscribe('uiLang', render);
 }
 
 /* Recognition languages that can only ever run on the cloud recogniser get a

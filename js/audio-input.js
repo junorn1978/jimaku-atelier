@@ -45,8 +45,11 @@ async function openStream(deviceId) {
 }
 
 /* Edge's recogniser only accepts a 16kHz track; 48kHz mono yields nothing.
-   (Measured in the hamham extension, 2026-09-27.) Chrome takes the native rate. */
+   (Measured in the hamham extension, 2026-09-27.) Chrome takes the native rate.
+   A custom STT server is sent 16kHz too (docs/custom-stt.md): the browser does
+   the resampling, so the worklet only has to convert to 16-bit. */
 const EDGE_SAMPLE_RATE = 16000;
+const STT_SAMPLE_RATE  = 16000;
 
 /* The pause detector's denoiser (see audio-worklet.js). Fetched once and
    handed to each worklet as bytes; without it the detector reads the raw
@@ -68,8 +71,9 @@ function loadRnnoise() {
 
 /* The microphone through the worklet into a track of its own. On failure the
    context is closed; the caller stops the microphone. */
-async function buildGraph(stream, { reportLevel = false } = {}) {
-  const ctx = new AudioContext(isEdge ? { sampleRate: EDGE_SAMPLE_RATE } : undefined);
+async function buildGraph(stream, { reportLevel = false, tap = false } = {}) {
+  const ctx = new AudioContext(tap    ? { sampleRate: STT_SAMPLE_RATE }
+                             : isEdge ? { sampleRate: EDGE_SAMPLE_RATE } : undefined);
   let rnnoise;
   try {
     if (ctx.state === 'suspended') await ctx.resume();
@@ -81,7 +85,7 @@ async function buildGraph(stream, { reportLevel = false } = {}) {
 
   const node = new AudioWorkletNode(ctx, 'speech-input', {
     outputChannelCount: [1],
-    processorOptions: { gateDb: PAUSE_GATE_DB, dropDb: PAUSE_DROP_DB, rnnoise, reportLevel },
+    processorOptions: { gateDb: PAUSE_GATE_DB, dropDb: PAUSE_DROP_DB, rnnoise, reportLevel, tap },
   });
   const dest = ctx.createMediaStreamDestination();
   dest.channelCount = 1;
@@ -102,10 +106,12 @@ async function buildGraph(stream, { reportLevel = false } = {}) {
  * @param {Function} [opts.onDenoise] whether the pause detector is denoising, (on, error) — diagnostics
  * @param {Function} [opts.onProbe]   one window of a probe (see probe below) — diagnostics
  * @param {Function} [opts.onEnded]   the device went away
+ * @param {Function} [opts.onPcm]     a custom STT server's feed: (ArrayBuffer) of 16kHz mono
+ *   16-bit PCM, ~100ms each. Given, the graph runs at 16kHz for it.
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
  *   fellBack: boolean, hold: Function, release: Function, probe: Function, close: Function }>}
  */
-export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onDenoise, onProbe, onEnded } = {}) {
+export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onDenoise, onProbe, onEnded, onPcm } = {}) {
   /* A device that is gone (unplugged, renamed) falls back rather than refusing
      to start; the settings dialog shows it as not connected. */
   const { stream, fellBack } = await openStream(deviceId);
@@ -113,7 +119,7 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
   const source = stream.getAudioTracks()[0];
   let graph;
   try {
-    graph = await buildGraph(stream);
+    graph = await buildGraph(stream, { tap: !!onPcm });
   } catch (err) {
     source.stop();
     throw err;
@@ -121,6 +127,7 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
   const { ctx, node, dest } = graph;
 
   node.port.onmessage = ({ data }) => {
+    if (data.type === 'pcm')    { onPcm?.(data.buf); return; }
     if (data.type === 'denoise') onDenoise?.(data.on, data.error);
     if (data.type === 'pause')  onPause?.();
     if (data.type === 'shortPause') onShortPause?.();
