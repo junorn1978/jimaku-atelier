@@ -1,7 +1,7 @@
 /**
  * @file stt-custom.js
  * @description The connection to a user-run speech recognition server, per
- * docs/custom-stt.md (rtl-stt/1): one WebSocket, PCM and pause hints out,
+ * docs/custom-stt.html (rtl-stt/1): one WebSocket, PCM and pause hints out,
  * partial / final results in. Display, filtering and translation stay in
  * speech.js and controller.js — this module only speaks the protocol.
  *

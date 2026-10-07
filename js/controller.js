@@ -276,7 +276,7 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
 
 /**
  * Translations a custom STT server returned along with the sentence
- * (docs/custom-stt.md), shown as they are instead of being sent to the
+ * (docs/custom-stt.html), shown as they are instead of being sent to the
  * translation engine. `translations` follows the active slots of
  * `targetLangIds` — the snapshot sent to the server — the way the custom URL
  * engine's answer does; slots switched since are dropped by bufferPush.

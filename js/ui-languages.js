@@ -351,7 +351,7 @@ export function mountLanguagesTab(container) {
                     <span class="stt-status-dot" aria-hidden="true"></span>
                     <span class="stt-status-text"></span>
                   </p>
-                  <a class="advanced-link" href="https://github.com/junorn1978/jimaku-atelier/blob/main/docs/custom-stt.md"
+                  <a class="advanced-link" href="docs/custom-stt.html"
                      target="_blank" rel="noopener" data-i18n="lang.advanced.stt.spec">接続仕様とサンプル</a>
                 </div>
               </section>

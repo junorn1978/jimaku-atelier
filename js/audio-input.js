@@ -46,7 +46,7 @@ async function openStream(deviceId) {
 
 /* Edge's recogniser only accepts a 16kHz track; 48kHz mono yields nothing.
    (Measured in the hamham extension, 2026-09-27.) Chrome takes the native rate.
-   A custom STT server is sent 16kHz too (docs/custom-stt.md): the browser does
+   A custom STT server is sent 16kHz too (docs/custom-stt.html): the browser does
    the resampling, so the worklet only has to convert to 16-bit. */
 const EDGE_SAMPLE_RATE = 16000;
 const STT_SAMPLE_RATE  = 16000;

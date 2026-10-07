@@ -1,6 +1,6 @@
 """rtl-stt/1 echo server: no model, for checking the connection only.
 
-Speaks the protocol in docs/custom-stt.md, but instead of recognising speech it
+Speaks the protocol in docs/custom-stt.html, but instead of recognising speech it
 reports what it received: while you talk, a partial with the seconds of audio
 so far; at each pause, a final with the segment's length and loudness.
 

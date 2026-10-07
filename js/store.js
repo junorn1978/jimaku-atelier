@@ -91,7 +91,7 @@ const _defaults = Object.freeze({
 
   // --- Speech recognition engine ---
   /* 'webspeech': the browser's recogniser. 'custom': a server the user runs,
-     reached over WebSocket at customSttUrl (docs/custom-stt.md). */
+     reached over WebSocket at customSttUrl (docs/custom-stt.html). */
   sttEngine:          'webspeech', // 'webspeech' | 'custom'
   customSttUrl:       '',
 

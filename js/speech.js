@@ -12,7 +12,7 @@
  * watchdog all encode its observed behaviour rather than anything general.
  *
  * The one other engine, a user-run server (settings.sttEngine 'custom',
- * stt-custom.js, docs/custom-stt.md), is a branch beside it rather than behind
+ * stt-custom.js, docs/custom-stt.html), is a branch beside it rather than behind
  * a shared interface: it has no sessions to rotate, so all it shares is the
  * audio input, the button, and the display and idle-clear helpers below. See
  * "custom STT server".
@@ -681,7 +681,7 @@ function autoRestart(options = { delay: 0 }) {
 let sttLang    = '';
 let sttTargets = [];
 
-/* What the server is told (docs/custom-stt.md): the translation code, as the
+/* What the server is told (docs/custom-stt.html): the translation code, as the
    custom URL engine sends it, plus the full id. The slots are kept as sent, to
    align a final's translations against. */
 function sttConfig() {
@@ -710,7 +710,7 @@ function onSttPartial(raw) {
   if (text) updateSource(text, true);
 }
 
-/* A final's `lang` (docs/custom-stt.md): the server heard this sentence in a
+/* A final's `lang` (docs/custom-stt.html): the server heard this sentence in a
    language of its own choosing, named by code — exact ("en", "zh-TW") or bare
    ("zh"). An exact code is matched to its language entry. A bare one stands
    for the recognition language when it shares the base, and otherwise only
