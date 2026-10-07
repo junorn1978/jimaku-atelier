@@ -264,6 +264,7 @@
   "settings.mic.test.verdict.good": "良好。",
   "settings.segment.title": "斷句方式",
   "settings.segment.desc": "BGM 很大、字幕遲遲不斷句時，請試試「交給引擎」。",
+  "settings.segment.desc.custom": "使用語音辨識伺服器時，由伺服器決定斷句。",
   "settings.segment.auto": "自動",
   "settings.segment.engine": "交給引擎",
   "settings.segment.switch": "切換為「交給引擎」",

@@ -264,6 +264,7 @@
   "settings.mic.test.verdict.good": "Good.",
   "settings.segment.title": "Sentence splitting",
   "settings.segment.desc": "If loud BGM keeps subtitles from being split, try \"Engine\".",
+  "settings.segment.desc.custom": "While a recognition server is in use, it decides where sentences end.",
   "settings.segment.auto": "Auto",
   "settings.segment.engine": "Engine",
   "settings.segment.switch": "Switch to \"Engine\"",

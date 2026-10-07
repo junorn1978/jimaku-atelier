@@ -264,6 +264,7 @@
   "settings.mic.test.verdict.good": "良好です。",
   "settings.segment.title": "文の区切り",
   "settings.segment.desc": "BGM が大きくて字幕がなかなか区切られないときは「エンジン任せ」を試してください。",
+  "settings.segment.desc.custom": "音声認識サーバーを使っている間は、文の区切りはサーバーが決めます。",
   "settings.segment.auto": "自動",
   "settings.segment.engine": "エンジン任せ",
   "settings.segment.switch": "「エンジン任せ」に切り替える",

@@ -2,7 +2,7 @@
  * @file ui-mic.js
  * @description The microphone button next to start/stop and the panel it
  * opens: which device to use, a level test, and how cloud recognition splits
- * sentences. The choice is stored as micDeviceId (+ its label); speech.js
+ * sentences (greyed out while a recognition server does that itself). The choice is stored as micDeviceId (+ its label); speech.js
  * opens that device and starts the recogniser on it.
  *
  * It lives on the toolbar rather than in the settings dialog because it is
@@ -47,6 +47,7 @@ export function mountMicPanel(button, panel) {
   _button = button;
   mountPicker(panel.querySelector('.mic-select'), panel);
   mountTest(panel.querySelector('.mic-test'), panel);
+  mountSegment(panel.querySelector('.mic-segment'));
   subscribe('micDeviceLabel', renderButton);
   /* The tooltip is the device name (translated only for "system default"), so
      it cannot be a data-i18n attribute; built when it is about to be read
@@ -54,6 +55,29 @@ export function mountMicPanel(button, panel) {
   button.addEventListener('pointerenter', renderButton);
   button.addEventListener('focus', renderButton);
   renderButton();
+}
+
+/* ============ sentence splitting ============ */
+
+/* Only the browser's recogniser is split by this; a recognition server decides
+   its own sentences. Greyed out rather than hidden while one is in use, with
+   the description saying why — a setting that vanished would read as lost. */
+function mountSegment(row) {
+  const desc = row?.querySelector('p');
+  if (!row || !desc) return;
+  const labels = row.querySelectorAll('.seg-switch label');
+
+  const sync = () => {
+    const custom = settings.sttEngine === 'custom';
+    for (const label of labels) {
+      label.classList.toggle('is-disabled', custom);
+      label.querySelector('input').disabled = custom;
+    }
+    desc.dataset.i18n = custom ? 'settings.segment.desc.custom' : 'settings.segment.desc';
+    desc.textContent = t(desc.dataset.i18n);
+  };
+  sync();
+  subscribe('sttEngine', sync);
 }
 
 /* ============ device picker ============ */
