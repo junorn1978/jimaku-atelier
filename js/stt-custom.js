@@ -56,7 +56,7 @@ export function normalizeSttUrl(input) {
  * @param {string}   opts.url
  * @param {object}   opts.config     { sourceLang, sourceLocale, targetLangs }
  * @param {Function} opts.onPartial  (text)
- * @param {Function} opts.onFinal    (text, translations | null)
+ * @param {Function} opts.onFinal    (text, translations | null, lang | null)
  * @returns {{ sendAudio: Function, pause: Function, configure: Function, close: Function }}
  */
 export function connectCustomStt({ url, config, onPartial, onFinal }) {
@@ -85,7 +85,9 @@ export function connectCustomStt({ url, config, onPartial, onFinal }) {
     try { msg = JSON.parse(data); } catch { return; }
     if (msg?.type === 'partial' && typeof msg.text === 'string') onPartial(msg.text);
     else if (msg?.type === 'final' && typeof msg.text === 'string') {
-      onFinal(msg.text, Array.isArray(msg.translations) ? msg.translations : null);
+      onFinal(msg.text,
+        Array.isArray(msg.translations) ? msg.translations : null,
+        typeof msg.lang === 'string' && msg.lang ? msg.lang : null);
     }
     else if (msg?.type === 'ready') setState('ready');
     else if (msg?.type === 'error') {

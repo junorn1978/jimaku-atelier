@@ -111,6 +111,7 @@ Whisper のように 1 文ずつ処理するモデルなら、「前の `pause` 
 
 ```json
 { "type": "final", "text": "今日はいい天気ですね。", "translations": ["今天天氣真好呢。", "Nice weather today."] }
+{ "type": "final", "text": "Thank you so much!", "lang": "en" }
 ```
 
 1 文の確定。原文の字幕を確定表示にし、翻訳に回します。
@@ -119,6 +120,11 @@ Whisper のように 1 文ずつ処理するモデルなら、「前の `pause` 
   （Google 翻訳、ブラウザ翻訳、カスタム URL）で翻訳します。
 - `translations` を**付ける**と翻訳エンジンは使わず、それをそのまま翻訳字幕に出します。
   順番は直前の `config` の `targetLangs` と同じにしてください。
+- `lang`（任意）：この文の言語。サーバーが文ごとに言語を判定する場合に付けます。
+  `config` の `sourceLang` と同じ形のコード（`en`、`ja`、`zh-TW` など）で、`zh` のような
+  地域なしのコードでも構いません（字幕アトリエが使っている言語の中から合うものを選びます）。
+  字幕アトリエはこの言語を原文として翻訳エンジンに渡します。付けなければ `config` の言語のままです。
+  `translations` を付ける場合は使いません。
 - `final` の後は、次の `partial` が来るまで認識途中の文はないものとして扱います。
 
 #### `error`（任意）
@@ -153,3 +159,5 @@ Whisper のように 1 文ずつ処理するモデルなら、「前の `pause` 
 
 `docs/custom-stt-sample/` に、faster-whisper を使う最小のサーバーと、
 モデルなしで動作確認だけできるエコーサーバーがあります。
+faster-whisper のサーバーは `--detect ja,en,zh` のように付けると、文ごとにその中から言語を判定して
+`final.lang` を返します。

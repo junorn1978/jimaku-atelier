@@ -29,7 +29,7 @@ import { isChrome } from './env.js';
 import { keepTailVisible } from './subtitle-render.js';
 import { openAudioInput } from './audio-input.js';
 import { connectCustomStt, normalizeSttUrl } from './stt-custom.js';
-import { getLang } from './languages.js';
+import { getLang, getAllLanguages } from './languages.js';
 
 /* ============ environment ============ */
 
@@ -710,13 +710,33 @@ function onSttPartial(raw) {
   if (text) updateSource(text, true);
 }
 
-function onSttFinal(raw, translations) {
+/* A final's `lang` (docs/custom-stt.md): the server heard this sentence in a
+   language of its own choosing, named by code — exact ("en", "zh-TW") or bare
+   ("zh"). An exact code is matched to its language entry. A bare one stands
+   for the recognition language when it shares the base, and otherwise only
+   when there is a single language it can mean: a bare "zh" could be any of
+   three Chinese, and Whisper writes it in either script, so guessing zh-TW for
+   simplified text made Google return it untranslated (zh-TW → zh-TW). Those
+   are left to the translation engine to detect. */
+function resolveSttLang(code) {
+  if (!code) return sttLang;
+  const langs = getAllLanguages();
+  const exact = langs.find(l => l.id === code || l.gtxCode === code);
+  if (exact) return exact.id;
+  const base = (c) => String(c ?? '').toLowerCase().split('-')[0];
+  if (base(getLang(sttLang)?.gtxCode) === base(code)) return sttLang;
+  const same = langs.filter(l => base(l.gtxCode) === base(code));
+  return same.length === 1 ? same[0].id : 'auto';
+}
+
+function onSttFinal(raw, translations, langCode) {
   if (!isActive) return;
-  const text = filterSource(cleanTranscript(raw), sttLang);
+  const lang = resolveSttLang(langCode);
+  const text = filterSource(cleanTranscript(raw), lang);
   if (text) {
-    if (isDebugEnabled()) console.info('[speech] stt final →', text, translations ?? '');
+    if (isDebugEnabled()) console.info('[speech] stt final →', text, langCode ? `(${langCode} → ${lang})` : '', translations ?? '');
     if (translations) deliverTranslations(translations, sttTargets);
-    else              sendTranslationRequest(text, previousText, sttLang);
+    else              sendTranslationRequest(text, previousText, lang);
     previousText = text;
     updateSource(text);
   } else {
