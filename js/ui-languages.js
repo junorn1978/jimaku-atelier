@@ -146,20 +146,25 @@ export function mountLanguagesTab(container) {
            alignment, background. They belong beside the colours rather than a
            tab away, because they are adjusted the same way — by looking. -->
       <section class="lang-extras">
-        <!-- The two source-scoped settings first, then the two global ones.
-             Within that pair the segmented picker leads, so it sits next to the
-             other segmented control below and the odd one out (the two little
-             symbol boxes) doesn't break the run.
+        <!-- Two groups, because the four settings are two kinds of thing: the
+             first pair only touches the source line, the second pair the whole
+             display. Laid out as four identical rows they read as one list of
+             unrelated odds and ends.
+             The source group is headed once, so its row labels drop the
+             repeated "source" word. It dims while the source line is hidden
+             (CSS :has() on the matrix toggle) but stays editable, so it can be
+             set up before the line is turned on.
              A two-state picker rather than a bare toggle: it names both states
-             instead of leaving one implied, and it matches the width of the
-             controls around it. -->
-        <span class="lang-extras-label" data-i18n="style.sourceLines">原文の行数</span>
+             instead of leaving one implied. -->
+        <div class="lang-extras-group lang-extras-source">
+        <span class="lang-extras-heading" data-i18n="style.group.source">原文</span>
+        <span class="lang-extras-label" data-i18n="style.sourceLines">行数</span>
         <div class="seg-switch" role="group">
           <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
           <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
         </div>
 
-        <span class="lang-extras-label" data-i18n="style.sourceWrap">原文符號</span>
+        <span class="lang-extras-label" data-i18n="style.sourceWrap">囲み記号</span>
         <div class="symbol-inputs">
           <input type="text" class="text-input" data-bind="subSourcePrefix"
                  data-i18n-placeholder="style.sourcePrefix.ph" data-i18n-title="style.sourcePrefix" title="左記号"
@@ -168,7 +173,12 @@ export function mountLanguagesTab(container) {
                  data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
                  autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
         </div>
+        </div>
 
+        <!-- The whole-display pair shares one row: both controls are short, so
+             stretching each across its own row only padded them with air. -->
+        <div class="lang-extras-group lang-extras-display">
+        <div class="lang-extras-pair">
         <span class="lang-extras-label" data-i18n="style.align">横位置</span>
         <div class="seg-switch seg-switch-icons style-align-control" role="group">
           <label>
@@ -202,6 +212,7 @@ export function mountLanguagesTab(container) {
             </span>
           </label>
         </div>
+        </div>
 
         <!-- Opened from a plain button rather than a filled swatch: the swatch
              would be painted in exactly the chroma-key colour, so capturing the
@@ -212,6 +223,7 @@ export function mountLanguagesTab(container) {
              The quick colours here are the three that make sense as a key
              (green / blue / magenta) plus black and white — a different list
              from the text colours, which is why each input names its own. -->
+        <div class="lang-extras-pair">
         <span class="lang-extras-label" data-i18n="style.bg">背景色</span>
         <span class="color-pick">
           <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
@@ -219,6 +231,8 @@ export function mountLanguagesTab(container) {
             <output class="color-value"></output>
           </button>
         </span>
+        </div>
+        </div>
       </section>
       </div>
 
