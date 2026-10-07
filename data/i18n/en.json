@@ -92,7 +92,7 @@
   "lang.engine.link.help.copy":       "Copy",
   "lang.engine.link.help.copied":     "Copied",
   "lang.engine.link.dialog.title.minimal": "Minimal Flask example",
-  "lang.engine.link.dialog.title.openai": "OpenAI API example (gpt-5.6-luna)",
+  "lang.engine.link.dialog.title.openai": "OpenAI API example (gpt-6-luna)",
   "lang.engine.link.dialog.title.gemini": "Gemini API example (gemini-3.1-flash-lite)",
   "lang.engine.link.example.btn.minimal":      "Minimal",
   "lang.engine.link.example.cmt.prompt":       "General translation prompt - adjust as needed",

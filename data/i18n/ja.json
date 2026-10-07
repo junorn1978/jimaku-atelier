@@ -92,7 +92,7 @@
   "lang.engine.link.help.copy":       "コピー",
   "lang.engine.link.help.copied":     "コピーしました",
   "lang.engine.link.dialog.title.minimal": "最小構成の Flask サンプル",
-  "lang.engine.link.dialog.title.openai": "OpenAI API サンプル（gpt-5.6-luna）",
+  "lang.engine.link.dialog.title.openai": "OpenAI API サンプル（gpt-6-luna）",
   "lang.engine.link.dialog.title.gemini": "Gemini API サンプル（gemini-3.1-flash-lite）",
   "lang.engine.link.example.btn.minimal":      "最小構成",
   "lang.engine.link.example.cmt.prompt":       "汎用の翻訳プロンプト（必要に応じて調整）",

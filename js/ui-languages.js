@@ -855,7 +855,8 @@ const SYSTEM_PROMPT_JA = `あなたはリアルタイム字幕の翻訳エンジ
 - 他のキー、Markdown、説明文は一切出力しない。
 - 原文に主語が明示されていない場合、主語を補わない。`;
 
-/* The same prompt with the envelope taken off. Measured on gpt-5.6-luna, the
+/* The same prompt with the envelope taken off. Measured on gpt-5.6-luna (the
+   example has since moved to gpt-6-luna without re-measuring), the
    {"translation": "..."} wrapper costs ~12 output tokens, and output tokens are
    emitted one at a time: dropping it took the median round trip down by
    380-455ms across two runs, on top of what leaving out the strict schema
@@ -882,7 +883,7 @@ import time
 
 # ${c.apiKey}
 API_KEY = 'YOUR_API_KEY'
-MODEL = 'gpt-5.6-luna'
+MODEL = 'gpt-6-luna'
 
 app = Flask(__name__)
 CORS(app)

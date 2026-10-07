@@ -92,7 +92,7 @@
   "lang.engine.link.help.copy":       "複製",
   "lang.engine.link.help.copied":     "已複製",
   "lang.engine.link.dialog.title.minimal": "最小 Flask 範例",
-  "lang.engine.link.dialog.title.openai": "OpenAI API 範例（gpt-5.6-luna）",
+  "lang.engine.link.dialog.title.openai": "OpenAI API 範例（gpt-6-luna）",
   "lang.engine.link.dialog.title.gemini": "Gemini API 範例（gemini-3.1-flash-lite）",
   "lang.engine.link.example.btn.minimal":      "最小",
   "lang.engine.link.example.cmt.prompt":       "通用翻譯 prompt，可自行調整",
