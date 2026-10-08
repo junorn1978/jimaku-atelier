@@ -510,7 +510,7 @@ function setupAdvanced(container) {
    🌐 after their name in the source picker. A native <option> holds text
    only, so the marker is an emoji rather than an SVG icon; it rides along as
    data-i18n-suffix so a UI-language switch keeps it. Independent of the
-   (currently hidden) offline-pack row: it answers "will this ever run
+   (off-by-default) offline-pack row: it answers "will this ever run
    locally", not "is a pack installed". */
 const CLOUD_ONLY_MARK = ' 🌐';
 
@@ -787,7 +787,8 @@ function setupPromptEngine(container) {
   }).catch(() => disable('lang.engine.prompt.unavailable', true));
 }
 
-/* Withheld on every browser. First hidden 2026-09-26, when Chrome 156's packs
+/* Off by default, behind the experimental switch in the settings dialog
+   (settings.showOfflinePack). First hidden 2026-09-26, when Chrome 156's packs
    stopped being predictable: the same build offered 'dictation' packs in one
    profile and reported them 'unavailable' in a freshly created one, and
    available() kept answering stale results within a page until it was
@@ -795,24 +796,37 @@ function setupPromptEngine(container) {
    Briefly re-enabled for testing on 2026-10-03, then hidden again: the
    install() pack had split from the accessibility (Live Caption) model, with
    visibly different output, and the new model was too heavy for the dev PC.
-   An installed model still wins over processLocally=false, as before.
-   Flip back to true once the models settle; the layout handles the hidden
-   row (it is the Edge state). */
-const OFFLINE_PACK_ENABLED = false;
-
+   An installed model still wins over processLocally=false, as before —
+   which is why the switch only hides the button, and removal stays in
+   Chrome's accessibility settings. Make it default-on once the models
+   settle; the layout handles the hidden row (it is the Edge state). */
 function setupOfflinePack(container) {
   /* On-device packs are Chrome-only — leave the row hidden elsewhere. */
-  if (!OFFLINE_PACK_ENABLED || !isChrome) return;
+  if (!isChrome) return;
   const row    = container.querySelector('#offline-pack-row');
   const button = container.querySelector('#btn-offline-pack');
   const status = container.querySelector('#offline-pack-status');
   const info   = container.querySelector('#offline-pack-info');
   const help   = container.querySelector('#btn-offline-help');
   if (!row || !button || !status || !info) return;
-  /* The whole block — button, name, status and info — lives below the source
-     row and stays hidden on browsers without on-device packs. */
-  row.hidden = false;
-  setupLanguagePackButton({ button, status, info, help });
+
+  /* Wired on first show rather than at mount, so nobody who leaves the switch
+     off pays for the available() probes. setupLanguagePackButton() attaches
+     listeners and subscriptions, so it must run once only. */
+  let wired = false;
+  const sync = (on) => {
+    row.hidden = !on;
+    if (!on) {
+      /* A hidden trigger leaves its popovers orphaned on screen. */
+      for (const p of row.querySelectorAll('[popover]')) {
+        if (p.matches(':popover-open')) p.hidePopover();
+      }
+      return;
+    }
+    if (!wired) { wired = true; setupLanguagePackButton({ button, status, info, help }); }
+  };
+  subscribe('showOfflinePack', sync);
+  sync(settings.showOfflinePack);
 }
 
 function wireExampleButtons(container) {

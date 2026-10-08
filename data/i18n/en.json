@@ -283,6 +283,8 @@
   "settings.clearIdle.sec30":"30 seconds",
   "settings.browserAI.title": "Browser AI translation",
   "settings.browserAI.desc": "Not recommended: translates with Chrome’s Prompt API (Gemini Nano). It is slow to display, and its translation quality is moderate while its resource use is heavy. The model stays in memory while selected. Turning this on adds it to the engine picker.",
+  "settings.offlinePack.title": "Offline recognition pack (experimental)",
+  "settings.offlinePack.desc": "Experimental; downloading is not recommended. Turning this on shows a download button for Chrome’s offline recognition pack in the Languages tab. The on-device models are still changing heavily, recognise differently from the cloud, and use a lot of resources. Once downloaded, a pack stays in the browser and is used first even if you turn this off again. To undo it, go to your browser’s Settings → Accessibility → Live Caption and delete all offline languages.",
   "settings.debug.title":   "Debug log",
   "settings.debug.desc":    "Show detailed logs in the browser console.",
   "settings.reset.title":   "Reset settings",

@@ -121,6 +121,12 @@ const _defaults = Object.freeze({
      outside en/ja/es/de/fr. It only joins the engine picker when this is on,
      so the code stays reachable — and verifiable — without being offered. */
   enableBrowserAI:    false,
+  /* The Chrome offline recognition pack download button (Languages tab). Off
+     by default: the on-device models are still changing heavily (see the note
+     on setupOfflinePack in ui-languages.js). Turning it off only hides the
+     button — an installed pack stays in the browser and keeps being used, and
+     is removed from Chrome's accessibility settings, not from here. */
+  showOfflinePack:    false,
 
   // --- Manual text translation ---
   manualTargetLangId: '',

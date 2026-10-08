@@ -9,6 +9,7 @@ import { applyTo, t } from './i18n.js';
 import { isDebugEnabled, setDebugEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 import { APP_VERSION } from './app-meta.js';
+import { isChrome } from './env.js';
 
 export function mountSettingsDialog(container) {
   if (!container) return;
@@ -78,6 +79,23 @@ export function mountSettingsDialog(container) {
         </div>
         <label class="toggle">
           <input type="checkbox" data-bind="enableBrowserAI">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Experimental: the on-device models are still changing heavily, so the
+         Languages tab's download button stays hidden unless asked for. Off only
+         hides it — an installed pack stays and keeps being used, so the
+         description says where to remove one. Chrome-only, like the button. -->
+    <section class="dialog-section"${isChrome ? '' : ' hidden'}>
+      <div class="dialog-setting-row">
+        <div>
+          <h3 data-i18n="settings.offlinePack.title">オフライン音声認識パック</h3>
+          <p data-i18n="settings.offlinePack.desc">実験的</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" data-bind="showOfflinePack">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
         </label>
       </div>

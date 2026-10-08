@@ -283,6 +283,8 @@
   "settings.clearIdle.sec30":"30 秒",
   "settings.browserAI.title": "瀏覽器 AI 翻譯",
   "settings.browserAI.desc": "不建議使用：使用 Chrome 的 Prompt API（Gemini Nano）翻譯。顯示速度緩慢，翻譯品質中等，但占用資源龐大。選用期間模型會常駐記憶體。開啟後會出現在翻譯引擎的選項中。",
+  "settings.offlinePack.title": "離線辨識語言包（實驗性）",
+  "settings.offlinePack.desc": "實驗性質，不建議下載使用：開啟後會在「語言」分頁顯示 Chrome 離線辨識語言包的下載按鈕。本機模型仍在大幅變動，辨識結果與雲端不同，且相當占用資源。下載後即使關閉此開關，模型仍會留在瀏覽器中並優先用於辨識；若要還原，請至瀏覽器的 設定 → 無障礙設定 → 即時字幕，刪除所有離線語言。",
   "settings.debug.title":   "Debug log",
   "settings.debug.desc":    "在瀏覽器 console 輸出詳細紀錄。",
   "settings.reset.title":   "重設設定",

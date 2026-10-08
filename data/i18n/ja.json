@@ -283,6 +283,8 @@
   "settings.clearIdle.sec30":"30 秒",
   "settings.browserAI.title": "ブラウザ AI 翻訳",
   "settings.browserAI.desc": "非推奨：Chrome の Prompt API（Gemini Nano）で翻訳します。表示が遅く、翻訳品質は中程度ですが、リソースを大量に消費します。モデルは選択中、メモリに常駐します。有効にすると翻訳エンジンの選択肢に現れます。",
+  "settings.offlinePack.title": "オフライン音声認識パック（実験的）",
+  "settings.offlinePack.desc": "実験的な機能のため、ダウンロードはおすすめしません。有効にすると、言語タブに Chrome のオフライン音声認識パックのダウンロードボタンが現れます。端末内のモデルはまだ大きく変わり続けており、認識結果はクラウドと異なり、リソースも大きく消費します。ダウンロード後はこのスイッチを切ってもモデルはブラウザに残り、優先して認識に使われます。元に戻すには、ブラウザの［設定］→［ユーザー補助機能］→［リアルタイム字幕］を開き、オフライン言語をすべて削除してください。",
   "settings.debug.title":   "デバッグログ",
   "settings.debug.desc":    "ブラウザのコンソールに詳細なログを出力します。",
   "settings.reset.title":   "設定をリセット",
