@@ -27,7 +27,8 @@ import { decorateSource } from './source-decoration.js';
 import { normalizeRecognised } from './normalize-ja.js';
 import { isChrome } from './env.js';
 import { keepTailVisible } from './subtitle-render.js';
-import { openAudioInput } from './audio-input.js';
+import { openAudioInput, TAB_AUDIO, NoTabAudioError } from './audio-input.js';
+import { t } from './i18n.js';
 import { connectCustomStt, normalizeSttUrl } from './stt-custom.js';
 import { getLang, getAllLanguages } from './languages.js';
 
@@ -801,18 +802,24 @@ async function startSpeech(lang) {
   /* Opening the microphone doubles as the permission prompt (and is what lets
      the settings dialog list devices by name). Both recognisers are started on
      this track, from the device picked in settings — the on-device model hears
-     it the same as the cloud one (checked in the hamham extension). */
+     it the same as the cloud one (checked in the hamham extension).
+     The input is opened first: a tab's audio can only be asked for while the
+     click that pressed start still counts, and the recogniser's set-up awaits
+     the browser for an unknown time. */
   usingCustom = settings.sttEngine === 'custom';
   try {
+    input = await openInput();
     if (usingCustom) {
       usingLocal = false;
       sttLang    = lang;
     } else {
       usingLocal = await configureRecognition(recognition, lang);
     }
-    input = await openInput();
   } catch (err) {
     if (isDebugEnabled()) console.warn('[speech] mic unavailable:', err);
+    /* Cancelling the tab dialog needs no message; sharing a tab with its
+       audio box left unticked looks like it worked, so it does. */
+    if (err instanceof NoTabAudioError) alert(t('settings.mic.tab.noAudio'));
     closeInput();
     document.querySelector('.subtitle-display')?.classList.remove('is-recording');
     return;
@@ -866,6 +873,7 @@ async function switchInput(reason) {
     next = await openInput();
   } catch (err) {
     if (isDebugEnabled()) console.warn('[speech] reopening mic failed:', err);
+    if (err instanceof NoTabAudioError) alert(t('settings.mic.tab.noAudio'));
     return false;
   }
   if (!isActive) { next.close(); return true; }
@@ -893,7 +901,17 @@ function onSegmentModeChanged() {
    the settings now resolve to — the default device, if the picked one is the
    one that went — and stop only when there is no microphone left at all. */
 async function handleInputEnded() {
-  if (!(await switchInput('device ended'))) handleStop();
+  /* A shared tab ends when the user stops sharing or closes it, and cannot be
+     reopened without a click: that is a stop. */
+  if (input?.tab || !(await switchInput('device ended'))) handleStop();
+}
+
+/* Picked in the panel while running. Picking a tab opens the browser's dialog
+   right away (the pick is the click it needs); cancelling it, or a tab without
+   audio, stops rather than carrying on with a microphone the setting no longer
+   names. */
+async function onDeviceChanged() {
+  if (!(await switchInput('picked in settings')) && settings.micDeviceId === TAB_AUDIO) handleStop();
 }
 
 function handleStop() {
@@ -929,7 +947,7 @@ export function initSpeech() {
   subscribe('customSttUrl', updateButtons);
   subscribe('target1LangId', onTargetsChanged);
   subscribe('target2LangId', onTargetsChanged);
-  subscribe('micDeviceId', () => switchInput('picked in settings'));
+  subscribe('micDeviceId', onDeviceChanged);
   subscribe('segmentMode', onSegmentModeChanged);
   subscribe('subClearIdleSec', onClearIdleChanged);
   subscribe('subSourcePrefix', redecorateSource);

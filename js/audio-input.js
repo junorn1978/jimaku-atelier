@@ -31,9 +31,45 @@ export const PAUSE_DROP_DB = 12;
 
 const PROCESSING_OFF = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
+/* The device id that stands for a browser tab's audio instead of a microphone.
+   Shared through getDisplayMedia, which has three consequences callers carry:
+   it only opens from a click (so it cannot be reopened on its own when it
+   ends), the user picks the tab in the browser's dialog every time, and the
+   tab is only heard when its "share tab audio" box is ticked. */
+export const TAB_AUDIO = 'tab';
+
+/* Thrown when the user shared a tab (or window) without its audio. */
+export class NoTabAudioError extends Error {
+  constructor() { super('the shared surface has no audio'); this.name = 'NoTabAudioError'; }
+}
+
+/* Video is required to ask for at all; it is stopped as soon as it arrives,
+   which leaves the audio running. The tab keeps playing to the speakers. */
+async function openTabStream() {
+  const controller = typeof CaptureController === 'function' ? new CaptureController() : undefined;
+  const stream = await navigator.mediaDevices.getDisplayMedia({
+    video: true,
+    audio: PROCESSING_OFF,
+    controller,
+    selfBrowserSurface: 'exclude',   // this page's own tab would only hear itself
+    surfaceSwitching:   'include',   // "share this tab instead", without restarting
+    systemAudio:        'include',   // a whole screen can bring the system's audio on Windows
+  });
+  /* The browser otherwise brings the shared tab to the front; the subtitles
+     are what the user is looking at. Has to be called right after resolving. */
+  try { controller?.setFocusBehavior('no-focus-change'); } catch { /* surface type without focus */ }
+  stream.getVideoTracks().forEach(t => t.stop());
+  if (!stream.getAudioTracks().length) {
+    stream.getTracks().forEach(t => t.stop());
+    throw new NoTabAudioError();
+  }
+  return stream;
+}
+
 /* The picked device, or the default one when it is gone (fellBack). Permission
    errors are not a missing device and go straight up. */
 async function openStream(deviceId) {
+  if (deviceId === TAB_AUDIO) return { stream: await openTabStream(), fellBack: false };
   if (deviceId) {
     try {
       return { stream: await navigator.mediaDevices.getUserMedia({ audio: { ...PROCESSING_OFF, deviceId: { exact: deviceId } } }), fellBack: false };
@@ -96,7 +132,7 @@ async function buildGraph(stream, { reportLevel = false, tap = false } = {}) {
 /**
  * Opens the device and builds the graph.
  * @param {object} opts
- * @param {string}   [opts.deviceId]  '' / undefined → the system default
+ * @param {string}   [opts.deviceId]  '' / undefined → the system default; TAB_AUDIO → a browser tab
  * @param {Function} [opts.onPause]   what the recogniser hears went quiet
  * @param {Function} [opts.onShortPause] …went quiet briefly (150ms, a breath)
  * @param {Function} [opts.onSpeech]  …is speech (repeats while it is)
@@ -109,7 +145,7 @@ async function buildGraph(stream, { reportLevel = false, tap = false } = {}) {
  * @param {Function} [opts.onPcm]     a custom STT server's feed: (ArrayBuffer) of 16kHz mono
  *   16-bit PCM, ~100ms each. Given, the graph runs at 16kHz for it.
  * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
- *   fellBack: boolean, hold: Function, release: Function, probe: Function, close: Function }>}
+ *   tab: boolean, fellBack: boolean, hold: Function, release: Function, probe: Function, close: Function }>}
  */
 export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onDenoise, onProbe, onEnded, onPcm } = {}) {
   /* A device that is gone (unplugged, renamed) falls back rather than refusing
@@ -144,6 +180,7 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
     track:    dest.stream.getAudioTracks()[0],
     label:    source.label,
     deviceId: source.getSettings().deviceId || '',
+    tab:      deviceId === TAB_AUDIO,
     fellBack,
     hold:     () => node.port.postMessage('hold'),
     release:  () => node.port.postMessage('release'),

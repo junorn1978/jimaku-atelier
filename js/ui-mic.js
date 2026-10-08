@@ -18,7 +18,7 @@
 
 import { settings, subscribe } from './store.js';
 import { t } from './i18n.js';
-import { openLevelMeter, PAUSE_GATE_DB, PAUSE_DROP_DB } from './audio-input.js';
+import { openLevelMeter, PAUSE_GATE_DB, PAUSE_DROP_DB, TAB_AUDIO } from './audio-input.js';
 import { isDebugEnabled } from './logger.js';
 
 /* The browser's aliases for "whatever Windows says" — the first option already
@@ -32,7 +32,8 @@ let _button = null;
 
 function renderButton() {
   if (!_button) return;
-  const label = settings.micDeviceLabel || t('settings.mic.systemDefault');
+  const label = settings.micDeviceId === TAB_AUDIO ? t('settings.mic.tab.option')
+              : settings.micDeviceLabel || t('settings.mic.systemDefault');
   /* The button's own text already says what it opens; the tooltip only adds
      which device that is. The accessible name keeps both, visible text first. */
   _button.title = label;
@@ -102,11 +103,12 @@ function mountPicker(select, panel) {
 
     const id = settings.micDeviceId;
     const label = settings.micDeviceLabel;
+    const isTab = id === TAB_AUDIO;
 
     /* Device ids are per-site and can be reset (cleared site data); the label
        survives that, so a saved device that vanished is looked up by name
        before being declared missing. Writing the setting re-runs refresh. */
-    if (id && label && !devices.some(d => d.deviceId === id)) {
+    if (id && !isTab && label && !devices.some(d => d.deviceId === id)) {
       const same = devices.find(d => d.label === label);
       if (same) { settings.micDeviceId = same.deviceId; return; }
     }
@@ -118,9 +120,14 @@ function mountPicker(select, panel) {
        where it left off; recognition meanwhile falls back to the default.
        Without permission there are no ids to compare against, so nothing can
        be called missing yet. */
-    status.missing = !!id && devices.length > 0 && !devices.some(d => d.deviceId === id);
-    if (id && !devices.some(d => d.deviceId === id)) {
+    status.missing = !!id && !isTab && devices.length > 0 && !devices.some(d => d.deviceId === id);
+    if (id && !isTab && !devices.some(d => d.deviceId === id)) {
       opts.push(option(id, t('settings.mic.missing').replace('{label}', label || id.slice(0, 8))));
+    }
+    /* Not a device: set apart below a line, last, so the microphones read as
+       one list. */
+    if (navigator.mediaDevices.getDisplayMedia) {
+      opts.push(document.createElement('hr'), option(TAB_AUDIO, t('settings.mic.tab.option')));
     }
     select.replaceChildren(...opts);
     select.value = id;
@@ -128,7 +135,7 @@ function mountPicker(select, panel) {
   }
 
   select.addEventListener('change', () => {
-    settings.micDeviceLabel = select.value ? select.selectedOptions[0]?.textContent || '' : '';
+    settings.micDeviceLabel = select.value && select.value !== TAB_AUDIO ? select.selectedOptions[0]?.textContent || '' : '';
     settings.micDeviceId = select.value;
   });
 
@@ -246,6 +253,9 @@ function mountTest(root, panel) {
   async function run() {
     if (running) return;
     if (isRecording()) { fail('settings.mic.test.busy'); return; }
+    /* It asks the user to speak and then be quiet; a tab does neither on cue,
+       and opening one would put up the share dialog. */
+    if (settings.micDeviceId === TAB_AUDIO) { fail('settings.mic.test.tab'); return; }
 
     let meter;
     try {
