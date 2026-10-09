@@ -31,7 +31,8 @@ export const PAUSE_DROP_DB = 12;
 
 const PROCESSING_OFF = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
-/* The device id that stands for a browser tab's audio instead of a microphone.
+/* The device id that stands for a browser tab's audio instead of a microphone
+   — or an application's, when a window is picked instead of a tab.
    Shared through getDisplayMedia, which has three consequences callers carry:
    it only opens from a click (so it cannot be reopened on its own when it
    ends), the user picks the tab in the browser's dialog every time, and the
@@ -54,6 +55,13 @@ async function openTabStream() {
     selfBrowserSurface: 'exclude',   // this page's own tab would only hear itself
     surfaceSwitching:   'include',   // "share this tab instead", without restarting
     systemAudio:        'include',   // a whole screen can bring the system's audio on Windows
+    /* A window brings its application's audio only (all of that app's
+       windows), not the whole system's: Chrome's dialog then offers "share
+       application audio" where it otherwise offers system audio. A desktop
+       app (Discord, a media player) is heard without everything else that
+       plays. Tested with a media player on Chrome 155 and Edge, Windows,
+       2026-10-09; browsers without it ignore the option. */
+    windowAudio:        'window',
   });
   /* The browser otherwise brings the shared tab to the front; the subtitles
      are what the user is looking at. Has to be called right after resolving. */
