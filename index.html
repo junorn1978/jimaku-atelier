@@ -6,6 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title data-i18n="app.title">字幕アトリエ</title>
   <link rel="icon" type="image/png" href="images/icon.png">
+  <!-- The second window (index.html?ch=2, js/channel.js) wears another accent
+       from the first paint, so the two are not mistaken for each other. Its
+       title gets a (2) from js/i18n.js. -->
+  <script>
+    if (new URLSearchParams(location.search).get('ch') === '2') document.documentElement.dataset.ch = '2';
+  </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -75,6 +81,9 @@
         <!-- The live controls: start/stop, and the subtitle window the
              result goes out through. -->
         <div class="toolbar-start">
+          <!-- Shown in the second window only (css/toolbar.css): which window
+               this is, where the eye goes when pressing start. -->
+          <span class="ch-badge" data-i18n-title="settings.second.badge" title="2つ目の窓">2</span>
           <!-- Start and stop are one button (js/speech.js): it offers start
                while idle and stop while recognising. data-recording is the
                single source of truth for "are we live" — js/controller.js,
@@ -189,6 +198,17 @@
                   <label><input type="radio" name="segmentMode" value="auto" data-bind="segmentMode"><span data-i18n="settings.segment.auto">自動</span></label>
                   <label><input type="radio" name="segmentMode" value="engine" data-bind="segmentMode"><span data-i18n="settings.segment.engine">エンジン</span></label>
                 </div>
+              </div>
+
+              <!-- Opens the second window (js/second-window.js): another input,
+                   recognised and put out on its own. Removed in the second
+                   window itself, which cannot open a third. -->
+              <div class="mic-panel-row mic-second">
+                <div>
+                  <h3 data-i18n="settings.second.title">2つ目の窓</h3>
+                  <p data-i18n="settings.second.desc">説明</p>
+                </div>
+                <button type="button" class="btn" id="second-window-btn" data-i18n="settings.second.open">開く</button>
               </div>
             </div>
 

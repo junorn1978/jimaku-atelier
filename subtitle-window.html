@@ -8,6 +8,12 @@
        its window again by title, so this string is what the user picks in OBS
        and has to stay the same across launches and interface languages. -->
   <title>字幕アトリエ — 字幕ウィンドウ</title>
+  <!-- The second app window's subtitle window (js/channel.js) is told apart
+       by a (2), set before anything shows and never again, so it is just as
+       fixed as the first one's for OBS to find. -->
+  <script>
+    if (new URLSearchParams(location.search).get('ch') === '2') document.title += '（2）';
+  </script>
   <link rel="icon" type="image/png" href="images/icon.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">

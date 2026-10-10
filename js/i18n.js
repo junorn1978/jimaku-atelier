@@ -10,6 +10,7 @@
  */
 
 import { isDebugEnabled } from './logger.js';
+import { CHANNEL } from './channel.js';
 
 const _cache = new Map();
 let _current = 'ja';
@@ -29,7 +30,9 @@ function _apply(root = document) {
     const key = el.dataset.i18n;
     const val = _dict[key];
     if (val == null) return;
-    if (el.tagName === 'TITLE') document.title = val;
+    /* The second window (js/channel.js) is told apart by its title too —
+       which is also what OBS's Window Capture picks it by. */
+    if (el.tagName === 'TITLE') document.title = CHANNEL === 2 ? `${val}（2）` : val;
     /* data-i18n-suffix: a fixed marker kept after the translated text (the
        cloud-only 🌐 on recognition languages). */
     else el.textContent = val + (el.dataset.i18nSuffix ?? '');

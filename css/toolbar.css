@@ -76,6 +76,23 @@
     gap: var(--space-2);
   }
 
+  /* "2" before start/stop, in the second window only (js/channel.js). */
+  .ch-badge {
+    display: none;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding-inline: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-accent-fill);
+    color: #fff;
+    font-size: var(--text-sm);
+    font-weight: 700;
+    line-height: 1;
+
+    :root[data-ch="2"] & { display: inline-grid; }
+  }
+
   .mic-btn {
     position: relative;
     anchor-name: --mic-btn;
@@ -152,7 +169,8 @@
     .mic-select { min-width: 0; text-overflow: ellipsis; }
   }
 
-  .mic-segment {
+  .mic-segment,
+  .mic-second {
     grid-template-columns: 1fr auto;
     padding-top: var(--space-3);
     border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);

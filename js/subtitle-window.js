@@ -18,7 +18,7 @@
  */
 
 import { isDebugEnabled } from './logger.js';
-import { CHANNEL_NAME, WINDOW_NAME, GEOMETRY_KEY } from './subtitle-window-protocol.js';
+import { CHANNEL_NAME, WINDOW_NAME, WINDOW_URL, GEOMETRY_KEY } from './subtitle-window-protocol.js';
 
 const DEFAULT_WIDTH  = 1280;
 const DEFAULT_HEIGHT = 240;
@@ -108,7 +108,7 @@ export function openSubtitleWindow() {
   /* A window that is open but not ours (opened before this page reloaded)
      shares the name, so this call would navigate it to the same URL — a
      reload, which is harmless, and it hands us the reference back. */
-  win = window.open('subtitle-window.html', WINDOW_NAME, features.join(','));
+  win = window.open(WINDOW_URL, WINDOW_NAME, features.join(','));
   if (!win && isDebugEnabled()) console.warn('[subwin] window.open was blocked');
   /* Open is reported by the window's hello, not here: it has not loaded yet. */
 }

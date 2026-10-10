@@ -103,12 +103,16 @@
   <script type="module">
     import { keepTailVisible, setupCinemaScroll } from './js/subtitle-render.js';
 
-    /* Hash params: #url=...&pwd=...&mode=all|source|target1|target2 */
+    /* Hash params: #url=...&pwd=...&mode=all|source|target1|target2&ch=2 */
     const hashParams  = new URLSearchParams(location.hash.replace(/^#/, ''));
     const queryParams = new URLSearchParams(location.search);
     const wsUrl = hashParams.get('url')  || queryParams.get('url')  || 'ws://127.0.0.1:4455';
     const wsPwd = hashParams.get('pwd')  || queryParams.get('pwd')  || '';
     const mode  = hashParams.get('mode') || queryParams.get('mode') || 'all';
+    /* Which app window's subtitles to draw: the second one (js/channel.js)
+       makes its overlays with ch=2 and tags its events with ch: 2. Neither
+       means the first, so overlays made before there was a second still work. */
+    const channel = (hashParams.get('ch') || queryParams.get('ch')) === '2' ? 2 : 1;
 
     /* Per-mode hiding: a "target1-only" overlay shouldn't show the source line. */
     const HIDE_MAP = {
@@ -219,7 +223,8 @@
 
         if (op === 5
             && d.eventType === 'CustomEvent'
-            && d.eventData?.type === 'rtl_subtitle_update') {
+            && d.eventData?.type === 'rtl_subtitle_update'
+            && (d.eventData.ch === 2 ? 2 : 1) === channel) {
           const data = d.eventData;
 
           if (data.alignment) {

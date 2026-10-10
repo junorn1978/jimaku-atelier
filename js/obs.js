@@ -8,12 +8,20 @@
  * Connection is reactive — it follows settings.obsEnabled / obsUrl /
  * obsPassword. Style changes also trigger a re-broadcast so overlays update
  * immediately without waiting for the next subtitle frame.
+ *
+ * The second app window (js/channel.js) connects and broadcasts the same way,
+ * so its events carry ch: 2 and its overlays are made with &ch=2 to draw only
+ * those; an event without ch is the first window's, which keeps overlays set
+ * up before there was a second window working as they are. Auto Setup names
+ * the second window's sources apart (RTL-Subtitle-2-…), or it would rewrite
+ * the first window's sources to point at its own subtitles.
  */
 
 import { isDebugEnabled } from './logger.js';
 import { settings, subscribe } from './store.js';
 import { t } from './i18n.js';
 import { decorateSource } from './source-decoration.js';
+import { CHANNEL } from './channel.js';
 
 const DEFAULT_WS_URL    = 'ws://127.0.0.1:4455';
 const RECONNECT_DELAY_MS = 2000;
@@ -226,6 +234,7 @@ function publish() {
       requestData: {
         eventData: {
           type:       'rtl_subtitle_update',
+          ch:         CHANNEL,
           source:     latestSourcePending ? decorateSource(latestSource) : latestSource,
           target1:    latestTarget1,
           target2:    latestTarget2,
@@ -311,16 +320,18 @@ export function getOverlayUrl(mode) {
   const url = (settings.obsUrl || '').trim() || DEFAULT_WS_URL;
   const pwd = (settings.obsPassword || '').trim();
   const modeParam = (mode && mode !== 'all') ? `&mode=${encodeURIComponent(mode)}` : '';
-  return `${getBaseUrl()}/overlay.html#url=${encodeURIComponent(url)}&pwd=${encodeURIComponent(pwd)}${modeParam}`;
+  const chParam   = CHANNEL === 2 ? '&ch=2' : '';
+  return `${getBaseUrl()}/overlay.html#url=${encodeURIComponent(url)}&pwd=${encodeURIComponent(pwd)}${modeParam}${chParam}`;
 }
 
 /* ============ auto-setup (creates OBS browser sources) ============ */
 
+const SOURCE_PREFIX = CHANNEL === 2 ? 'RTL-Subtitle-2' : 'RTL-Subtitle';
 const AUTO_SOURCES = [
-  { name: 'RTL-Subtitle-All',           mode: 'all',     visible: true  },
-  { name: 'RTL-Subtitle-Source',        mode: 'source',  visible: false },
-  { name: 'RTL-Subtitle-Translation-1', mode: 'target1', visible: false },
-  { name: 'RTL-Subtitle-Translation-2', mode: 'target2', visible: false },
+  { name: `${SOURCE_PREFIX}-All`,           mode: 'all',     visible: true  },
+  { name: `${SOURCE_PREFIX}-Source`,        mode: 'source',  visible: false },
+  { name: `${SOURCE_PREFIX}-Translation-1`, mode: 'target1', visible: false },
+  { name: `${SOURCE_PREFIX}-Translation-2`, mode: 'target2', visible: false },
 ];
 
 const OVERLAY_CSS = 'body { background-color: rgba(0,0,0,0); margin: 0 auto; overflow: hidden; }';
@@ -406,7 +417,10 @@ async function executeAutoSetup() {
 
     if (nest) await ensureSceneItem(liveScene, NEST_SCENE, true);
 
-    alert(t(settings.obsNestSources ? 'obs.autoSetup.done.nested' : 'obs.autoSetup.done'));
+    /* The messages name the first window's source; the second window's is
+       named the same way with its prefix. */
+    alert(t(settings.obsNestSources ? 'obs.autoSetup.done.nested' : 'obs.autoSetup.done')
+      .replace('RTL-Subtitle-All', AUTO_SOURCES[0].name));
   } catch (err) {
     if (isDebugEnabled()) console.error('[obs] auto setup failed:', err);
     alert(`${t('obs.autoSetup.failed')} ${err.message}`);

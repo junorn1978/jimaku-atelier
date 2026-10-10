@@ -7,11 +7,45 @@
  *   import { settings, subscribe } from './store.js';
  *   settings.uiLang = 'en';
  *   subscribe('uiLang', (val) => console.log('language is now', val));
+ *
+ * Two windows can hold the store at once — the app and its second window
+ * (js/channel.js) — and the store is one object in localStorage. Two things
+ * keep them from undoing each other:
+ *  - a write stores only the key that changed, into what localStorage holds
+ *    now, rather than this window's whole copy, which would put back whatever
+ *    the other window changed since this one loaded;
+ *  - a change the other window stores reaches this one's copy and subscribers
+ *    (the storage event), so a shared setting changed in one is live in both.
+ * The second window keeps the settings that belong to one input (PER_CHANNEL)
+ * in an object of its own; everything else is shared.
  */
 
 import { isDebugEnabled } from './logger.js';
+import { CHANNEL } from './channel.js';
 
 const STORAGE_KEY = 'rtl-settings-v1';
+const CH2_STORAGE_KEY = 'rtl-settings-v1-ch2';
+
+/* What the second window sets for itself: the input, what it is recognised
+   as and translated into, and how its subtitles look and stay — a guest's
+   subtitles can be another language, another colour, another place. The
+   panel's layout too, as the two windows are sized apart. Everything else
+   (interface, translation engine, filters, OBS connection) is one setting
+   for both, changed from either. */
+const PER_CHANNEL = new Set([
+  'micDeviceId', 'micDeviceLabel', 'segmentMode', 'sttEngine', 'customSttUrl',
+  'sourceLangId', 'target1LangId', 'target2LangId',
+  'subAlign', 'subBg', 'subOverflow', 'subShowSource', 'subSourceSingleLine', 'subClearIdleSec',
+  'subSourceColor', 'subSourceStroke', 'subSourceStrokeW', 'subSourceSize',
+  'subSourcePrefix', 'subSourceSuffix',
+  'subTarget1Color', 'subTarget1Stroke', 'subTarget1StrokeW', 'subTarget1Size',
+  'subTarget2Color', 'subTarget2Stroke', 'subTarget2StrokeW', 'subTarget2Size',
+  'panelCollapsed', 'panelLocked', 'panelHeight', 'activeTab',
+]);
+
+/* The second window starts from the first one's values, except the device:
+   it is opened to listen to another one. */
+const NOT_COPIED = new Set(['micDeviceId', 'micDeviceLabel']);
 
 /**
  * Pick the interface language for someone who has never chosen one.
@@ -186,23 +220,51 @@ const _defaults = Object.freeze({
   obsPassword:        '',
 });
 
-function _load() {
+/* Which stored object holds `key` for this window. */
+function _storeOf(key) {
+  return CHANNEL === 2 && PER_CHANNEL.has(key) ? CH2_STORAGE_KEY : STORAGE_KEY;
+}
+
+function _read(storageKey) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ..._defaults };
-    return { ..._defaults, ...JSON.parse(raw) };
+    const raw = localStorage.getItem(storageKey);
+    return raw ? JSON.parse(raw) : null;
   } catch (err) {
-    if (isDebugEnabled()) console.warn('[store] load failed, using defaults:', err);
-    return { ..._defaults };
+    if (isDebugEnabled()) console.warn(`[store] read of ${storageKey} failed:`, err);
+    return null;
   }
 }
 
-function _save(data) {
+function _write(storageKey, obj) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    localStorage.setItem(storageKey, JSON.stringify(obj));
   } catch (err) {
     if (isDebugEnabled()) console.warn('[store] save failed:', err);
   }
+}
+
+function _load() {
+  const shared = _read(STORAGE_KEY) || {};
+  const data = { ..._defaults, ...shared };
+  if (CHANNEL === 2) {
+    let own = _read(CH2_STORAGE_KEY);
+    if (!own) {
+      own = {};
+      for (const key of PER_CHANNEL) {
+        if (!NOT_COPIED.has(key) && key in shared) own[key] = shared[key];
+      }
+      _write(CH2_STORAGE_KEY, own);
+    }
+    for (const key of PER_CHANNEL) data[key] = key in own ? own[key] : _defaults[key];
+  }
+  return data;
+}
+
+function _save(key, value) {
+  const storageKey = _storeOf(key);
+  const stored = _read(storageKey) || {};
+  stored[key] = value;
+  _write(storageKey, stored);
 }
 
 const _data = _load();
@@ -225,7 +287,7 @@ export const settings = new Proxy(_data, {
   set(target, key, value) {
     if (target[key] === value) return true;
     target[key] = value;
-    _save(target);
+    _save(key, value);
     _notify(key, value);
     return true;
   },
@@ -247,11 +309,44 @@ export function subscribe(key, callback) {
   return () => _listeners.get(key).delete(callback);
 }
 
-/** Reset all settings to defaults. Does NOT fire subscribers (caller should reload page). */
+/* Another window stored a change: take what it changed in the objects this
+   window reads, and tell this window's subscribers as if it were set here.
+   Compared as JSON, since the arrays (filter rules) arrive as new objects. */
+window.addEventListener('storage', (e) => {
+  if (e.storageArea !== localStorage) return;
+  if (e.key !== STORAGE_KEY && e.key !== CH2_STORAGE_KEY) return;
+  const stored = _read(e.key) || {};
+  for (const key of Object.keys(_defaults)) {
+    if (_storeOf(key) !== e.key) continue;
+    const next = key in stored ? stored[key] : _defaults[key];
+    if (JSON.stringify(_data[key]) === JSON.stringify(next)) continue;
+    _data[key] = next;
+    _notify(key, next);
+  }
+});
+
+/** Tell `key`'s subscribers again, with the value it already has: for a change
+ *  that something had to act on before the rest could follow (the interface
+ *  language, switched from the other window, has to be loaded before anything
+ *  re-renders in it). */
+export function renotify(key) {
+  _notify(key, _data[key]);
+}
+
+/** Reset all settings to defaults. Does NOT fire subscribers (caller should reload page).
+ *  From the second window, the first window's own settings are left as they are. */
 export function resetSettings() {
   Object.keys(_data).forEach(k => { delete _data[k]; });
   Object.assign(_data, _defaults);
-  _save(_data);
+  if (CHANNEL === 2) {
+    const shared = _read(STORAGE_KEY) || {};
+    const firstOwn = {};
+    for (const key of PER_CHANNEL) if (key in shared) firstOwn[key] = shared[key];
+    _write(STORAGE_KEY, firstOwn);
+    _write(CH2_STORAGE_KEY, {});
+  } else {
+    _write(STORAGE_KEY, {});
+  }
 }
 
 /** Read-only access to defaults (e.g., for "reset this field" UI). */

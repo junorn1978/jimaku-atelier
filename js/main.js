@@ -5,7 +5,7 @@
  * output projection, and wires document-level interactions.
  */
 
-import { settings } from './store.js';
+import { settings, subscribe, renotify } from './store.js';
 import { setLanguage, getLanguage, applyTo } from './i18n.js';
 import { loadLanguages } from './languages.js';
 import { isDebugEnabled } from './logger.js';
@@ -26,6 +26,7 @@ import { initLayoutToggles } from './ui-layout.js';
 import { initSettingsTabs } from './ui-tabs.js';
 import { initTour } from './tour.js';
 import { mountMicPanel } from './ui-mic.js';
+import { mountSecondWindowButton } from './second-window.js';
 
 async function init() {
   /* First, before anything awaits: the page is cloaked while booting, but the
@@ -51,6 +52,7 @@ async function init() {
   mountSettingsDialog(document.querySelector('#dialog-settings .dialog-body'));
   mountMicPanel(document.getElementById('mic-btn'), document.getElementById('mic-panel'));
   mountSubtitleWindowButton(document.getElementById('subwin-btn'));
+  mountSecondWindowButton(document.getElementById('second-window-btn'));
 
   /* New DOM was just injected — re-apply translations and hook up bindings. */
   applyTo(document);
@@ -91,6 +93,18 @@ async function init() {
 /* -------- interface language switcher -------- */
 
 function wireLangSwitcher() {
+  /* The interface language is shared with the second window (js/channel.js):
+     switched there, the store reports it here, and this window follows. Its
+     other uiLang subscribers ran on that report already, with the dictionary
+     not loaded yet, so they are told again once it is. A switch made here
+     loads first and stores after, and passes straight through. */
+  subscribe('uiLang', async (lang) => {
+    if (!lang || lang === getLanguage()) return;
+    await setLanguage(lang);
+    syncLangSwitcher();
+    renotify('uiLang');
+  });
+
   const menu = document.getElementById('lang-menu');
   menu?.querySelectorAll('button[data-lang]').forEach(btn => {
     btn.addEventListener('click', async () => {

@@ -204,6 +204,24 @@
     --color-scrim:    rgba(60, 40, 20, 0.32);
   }
 
+  /* The second window (index.html?ch=2, js/channel.js): purple in place of
+     the accent, in both themes, so the two windows are told apart at a glance
+     — the start button above all. Nothing else changes; the subtitles are
+     the user's colours either way.
+     Contrast, measured: white on accent-fill 6.0:1 (dark), 6.9:1 (light). */
+  :root[data-ch="2"] {
+    --color-accent:            #bf5af2;
+    --color-accent-hover:      #c86ff5;
+    --color-accent-fill:       #8944ab;
+    --color-accent-fill-hover: #7a3a99;
+  }
+  :root[data-ch="2"][data-theme="light"] {
+    --color-accent:            #7b3fa0;
+    --color-accent-hover:      #8c4db3;
+    --color-accent-fill:       #7b3fa0;
+    --color-accent-fill-hover: #6a3389;
+  }
+
   /* 日文 UI 時把 CJK 那一段換成日文字形。同一個碼位在台日兩地的寫法不同
      （直、骨、喝…），這無法靠 fallback 順序處理，必須明確覆寫。
      TC 與 JP 同源，所以換的只是字形，字寬不變。

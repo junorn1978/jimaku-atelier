@@ -17,18 +17,26 @@
  *     bye                                   the subtitle window is going away
  */
 
+import { CHANNEL, perChannel } from './channel.js';
+
+/* Everything here is per channel (js/channel.js): the second app window has a
+   subtitle window of its own, opened with the same ?ch=2, and the two pairs
+   must neither hear each other nor share a window or its place on screen. */
+
 /* BroadcastChannel reaches every same-origin document in this browser profile,
    which is exactly the reach needed: the app and the window it opened. It does
    NOT reach OBS's browser sources (a separate browser), which is why
    overlay.html keeps its WebSocket. */
-export const CHANNEL_NAME = 'rtl-subtitle-window';
+export const CHANNEL_NAME = perChannel('rtl-subtitle-window');
 
 /* window.open target name. Reusing it means a second "open" finds the window
    that is already up instead of stacking another one. */
-export const WINDOW_NAME = 'rtl-subtitle-window';
+export const WINDOW_NAME = perChannel('rtl-subtitle-window');
 
 /* Last position and size, written by the subtitle window, read by the app when
-   it opens one. Kept apart from the settings store on purpose: the store saves
-   its whole object on every write, so a second document writing it would
-   overwrite whatever the app window changed in the meantime. */
-export const GEOMETRY_KEY = 'rtl-subtitle-window-geometry';
+   it opens one. Kept apart from the settings store: the subtitle window does
+   not load the store, and has no other reason to. */
+export const GEOMETRY_KEY = perChannel('rtl-subtitle-window-geometry');
+
+/* The subtitle window's page, carrying the channel along. */
+export const WINDOW_URL = CHANNEL === 2 ? 'subtitle-window.html?ch=2' : 'subtitle-window.html';
