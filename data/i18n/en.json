@@ -119,6 +119,7 @@
   "lang.engine.link.example.cmt.clean":        "Cheap insurance: strip surrounding quotes, nothing more",
   "lang.engine.link.example.cmt.timeout":      "Fail fast: the SDK defaults to a 600s read timeout and 2 retries. A late subtitle is worse than a missing one",
   "lang.engine.link.example.cmt.timeoutUnit":  "This timeout is in milliseconds (the OpenAI one is in seconds)",
+  "lang.engine.link.example.cmt.serverDeadline": "The SDK also sends this timeout to the server as X-Server-Timeout, and Gemini rejects anything under 10s with a 400. Sending 10 ourselves only satisfies the server; we still give up locally at 5s",
   "lang.engine.link.example.cmt.perLangFail":  "One language failing must not take the others down: leave just that line empty",
   "lang.engine.link.steps.title":              "Steps",
   "lang.engine.link.steps.install":            "Install packages:",

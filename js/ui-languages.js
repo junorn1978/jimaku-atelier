@@ -940,6 +940,7 @@ function exampleComments() {
     timing:       t('lang.engine.link.example.cmt.timing'),
     timeout:      t('lang.engine.link.example.cmt.timeout'),
     timeoutUnit:  t('lang.engine.link.example.cmt.timeoutUnit'),
+    serverDeadline: t('lang.engine.link.example.cmt.serverDeadline'),
     perLangFail:  t('lang.engine.link.example.cmt.perLangFail'),
   };
 }
@@ -1110,7 +1111,11 @@ app = Flask(__name__)
 CORS(app)
 # ${c.timeout}
 # ${c.timeoutUnit}
-client = genai.Client(api_key=API_KEY, http_options={'timeout': 5000})
+# ${c.serverDeadline}
+client = genai.Client(api_key=API_KEY, http_options={
+    'timeout': 5000,
+    'headers': {'X-Server-Timeout': '10'},
+})
 
 # ${c.prompt}
 SYSTEM_PROMPT = """${SYSTEM_PROMPT_JA}"""

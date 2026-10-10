@@ -119,6 +119,7 @@
   "lang.engine.link.example.cmt.clean":        "念のための後始末。囲みの引用符だけ落とす",
   "lang.engine.link.example.cmt.timeout":      "タイムアウトと再試行を短く：SDK 既定は読み取り 600 秒・再試行 2 回。字幕は遅れて届くより落ちる方がよい",
   "lang.engine.link.example.cmt.timeoutUnit":  "こちらの timeout はミリ秒単位（OpenAI 側は秒）",
+  "lang.engine.link.example.cmt.serverDeadline": "SDK はこの timeout を X-Server-Timeout としてサーバーにも送るが、Gemini は 10 秒未満を 400 で拒否する。10 を自分で送るのはサーバーを通すためだけで、手元では 5 秒で打ち切る",
   "lang.engine.link.example.cmt.perLangFail":  "一つの言語の失敗で他の言語まで落とさない：その行だけ空にする",
   "lang.engine.link.steps.title":              "利用手順",
   "lang.engine.link.steps.install":            "依存パッケージをインストール：",
