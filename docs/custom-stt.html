@@ -519,7 +519,7 @@
     <h2>サンプル</h2>
     <p>
       リポジトリの <a href="https://github.com/junorn1978/jimaku-atelier/tree/main/docs/custom-stt-sample"><code>docs/custom-stt-sample/</code></a>
-      に、動かせるサーバーが 2 つあります。
+      に、動かせるサーバーが 3 つあります。
     </p>
     <div class="table-wrap">
       <table>
@@ -527,6 +527,7 @@
         <tbody>
           <tr><td><code>echo_server.py</code></td><td>モデルなし。受け取った音声の長さを返すだけで、接続の確認用です。<code>--translate</code> で仮の翻訳も返します。</td></tr>
           <tr><td><code>whisper_server.py</code></td><td>faster-whisper を使う最小のサーバー。<code>pause</code> ごとに 1 文として認識します。</td></tr>
+          <tr><td><code>soniox_server.py</code></td><td>クラウドの Soniox に音声を中継するサーバー。文の区切りは Soniox が決めるので <code>pause</code> は使いません。API キーはこのサーバー側に置きます。</td></tr>
         </tbody>
       </table>
     </div>
@@ -538,6 +539,14 @@ python whisper_server.py --model large-v3-turbo --device cuda --compute-type int
     <p>
       <code>--detect ja,en,zh</code> のように付けると、文ごとにその中から言語を判定して <code>final.lang</code> を返します。
       候補を絞ると、「はい」「OK」のような短い文でも判定を外しにくくなります。
+    </p>
+    <pre><code>pip install websockets
+$env:SONIOX_API_KEY = "..."   # PowerShell
+
+python soniox_server.py --detect ja,en</code></pre>
+    <p>
+      Soniox は接続している時間で課金されます。字幕アトリエは開始している間、無音も含めて音声を送り続けるので、
+      開始から停止までがそのまま課金対象です。<code>--detect</code> は whisper_server.py と同じ意味です。
     </p>
   </section>
 
