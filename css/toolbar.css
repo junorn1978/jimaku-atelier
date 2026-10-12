@@ -225,6 +225,13 @@
     white-space: nowrap;
   }
 
+  /* While a tab is shared (js/ui-mic.js): the microphone is not what
+     recognition hears, so its row and the level test are greyed out. Their
+     controls are disabled from JS; sentence splitting stays as it is. */
+  .mic-panel[data-tab-shared="true"] :is(.mic-device, .mic-test) {
+    opacity: 0.45;
+  }
+
   /* --- level test (inside the mic panel) ---
      One block with three states: idle shows the button and a hint, running
      the prompt and a live bar, done the two measured bars and the advice. */

@@ -20,7 +20,8 @@
  * the device list: picking it would put up the dialog listing every tab and
  * window at once, which is a different kind of act from picking a microphone,
  * and as a button the share being on is visible at a glance. While it is on,
- * recognition listens to the tab and the device list is disabled.
+ * recognition listens to the tab, and the device list and the level test are
+ * disabled; sentence splitting still applies.
  */
 
 import { settings, subscribe } from './store.js';
@@ -62,6 +63,11 @@ export function mountMicPanel(button, panel) {
   mountSegment(panel.querySelector('.mic-segment'));
   mountTabShareButton(document.getElementById('tab-audio-btn'));
   mountTabShareBadge(document.getElementById('tab-share-badge'));
+  /* The device row and the level test are greyed out while a tab is shared
+     (css/toolbar.css); sentence splitting still applies to the tab. */
+  const syncSharing = () => { panel.dataset.tabShared = hasTabShare(); };
+  onTabShareChange(syncSharing);
+  syncSharing();
   subscribe('micDeviceLabel', renderButton);
   /* The tooltip is the device name (translated only for "system default"), so
      it cannot be a data-i18n attribute; built when it is about to be read
@@ -327,7 +333,7 @@ function mountTest(root, panel) {
   }
 
   async function run() {
-    if (running) return;
+    if (running || hasTabShare()) return;
     if (isRecording()) { fail('settings.mic.test.busy'); return; }
 
     let meter;
@@ -377,10 +383,23 @@ function mountTest(root, panel) {
     } finally {
       meter.close();
       running = null;
-      button.disabled = false;
+      button.disabled = hasTabShare();
       if (cancelled) show('idle');
     }
   }
+
+  /* A shared tab is what recognition listens to, so a test of the microphone
+     would judge input that is not used: off while sharing, and a test in
+     progress is ended. The tooltip says how to go back. */
+  const syncSharing = () => {
+    const sharing = hasTabShare();
+    if (sharing) running?.cancel();
+    button.disabled = sharing || !!running;
+    switchBtn.disabled = sharing;
+    button.title = sharing ? t('settings.mic.tab.selectDisabled') : '';
+  };
+  onTabShareChange(syncSharing);
+  syncSharing();
 
   button.addEventListener('click', run);
   switchBtn.addEventListener('click', () => {
