@@ -36,7 +36,7 @@ export function onSttState(fn) {
 /* ============ URL ============ */
 
 /* Bare host[:port][/path] gets ws:// for this machine and the LAN, wss://
-   otherwise — the same guess translate-link.js makes for http. */
+   otherwise. */
 export function normalizeSttUrl(input) {
   let url = String(input ?? '').trim();
   if (!url) return '';

@@ -1,19 +1,19 @@
 /**
  * @file ui-mic.js
- * @description The microphone button next to start/stop and the panel it
- * opens: which device to use, a level test, and how cloud recognition splits
- * sentences (greyed out while a recognition server does that itself). The choice is stored as micDeviceId (+ its label); speech.js
- * opens that device and starts the recogniser on it.
+ * @description The microphone button beside the settings tabs and the panel
+ * it opens: which device to use, a level test, and how cloud recognition
+ * splits sentences (greyed out while a recognition server does that itself).
+ * The choice is stored as micDeviceId (+ its label); speech.js opens that
+ * device and starts the recogniser on it.
  *
- * It lives on the toolbar rather than in the settings dialog because it is
- * what gets checked right before pressing start, and a gear is easy to never
- * open. The button carries a dot when something needs attention — the picked
- * device is unplugged, or the last test found a problem — so the panel does
- * not have to be opened to find out.
+ * Not in the settings dialog, where a gear is easy to never open (why it sits
+ * where it does: index.html). The button carries a dot when something needs
+ * attention — the picked device is unplugged, or the last test found a
+ * problem — so the panel does not have to be opened to find out.
  *
- * The device list is rebuilt each time the panel opens rather than kept live:
+ * The device list is rebuilt when the panel opens and when devices change:
  * labels only exist once microphone permission has been granted, which happens
- * on the first start.
+ * on the first start or level test.
  *
  * Next to it, the tab-audio button shares a browser tab's (or an app window's)
  * audio, or ends the share — the hamham extension's design. Not an entry in
@@ -34,7 +34,7 @@ import { isDebugEnabled } from './logger.js';
 const ALIASES = new Set(['default', 'communications']);
 
 /* What a shared tab was stored as when it was an entry in the device list
-   (unreleased); cleared on load. */
+   (v1.25.0–v1.26.2); cleared on load. */
 const LEGACY_TAB_ID = 'tab';
 
 /* What the button's dot reports. Both reset when the device changes: a new
@@ -63,8 +63,7 @@ export function mountMicPanel(button, panel) {
   mountSegment(panel.querySelector('.mic-segment'));
   mountTabShareButton(document.getElementById('tab-audio-btn'));
   mountTabShareBadge(document.getElementById('tab-share-badge'));
-  /* The device row and the level test are greyed out while a tab is shared
-     (css/toolbar.css); sentence splitting still applies to the tab. */
+  /* Greys out the device row and the level test (css/toolbar.css). */
   const syncSharing = () => { panel.dataset.tabShared = hasTabShare(); };
   onTabShareChange(syncSharing);
   syncSharing();
