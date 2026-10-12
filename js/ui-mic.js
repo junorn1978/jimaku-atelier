@@ -12,8 +12,8 @@
  * problem — so the panel does not have to be opened to find out.
  *
  * The device list is rebuilt when the panel opens and when devices change:
- * labels only exist once microphone permission has been granted, which happens
- * on the first start or level test.
+ * devices are only listed once microphone permission has been granted, which
+ * is asked for on load.
  *
  * Next to it, the tab-audio button shares a browser tab's (or an app window's)
  * audio, or ends the share — the hamham extension's design. Not an entry in
@@ -227,6 +227,21 @@ function mountPicker(select, panel) {
   });
   panel.addEventListener('toggle', (e) => { if (e.newState === 'open') refresh(); });
   refresh();
+  askPermission().then((granted) => { if (granted) refresh(); });
+}
+
+async function askPermission() {
+  try {
+    const { state } = await navigator.permissions.query({ name: 'microphone' });
+    if (state !== 'prompt') return false;
+  } catch { }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach(t => t.stop());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /* ============ level test ============ */

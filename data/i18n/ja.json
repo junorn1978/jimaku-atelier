@@ -247,7 +247,7 @@
   "settings.mic.button":    "マイク設定",
   "settings.mic.systemDefault": "システムの既定",
   "settings.mic.unnamed": "名前のないマイク",
-  "settings.mic.needPermission": "一度開始すると一覧が表示されます",
+  "settings.mic.needPermission": "マイクの使用を許可すると一覧が表示されます",
   "settings.mic.missing": "{label}（未接続・既定を使用中）",
   "settings.mic.tab.option": "ブラウザのタブ・アプリの音声",
   "settings.mic.tab.button": "タブの音声",

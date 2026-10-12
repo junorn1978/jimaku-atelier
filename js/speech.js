@@ -794,8 +794,8 @@ async function startSpeech(lang) {
   prepareTranslation();
   document.querySelector('.subtitle-display')?.classList.add('is-recording');
 
-  /* Opening the microphone doubles as the permission prompt (and is what lets
-     the mic panel list devices by name). Both recognisers are started on
+  /* Permission is normally granted on load (ui-mic.js); if it was dismissed
+     there, opening the microphone here asks again. Both recognisers are started on
      this track, from the device picked in the mic panel (or the shared tab,
      while one is shared) — the on-device model hears it the same as the cloud one
      (checked in the hamham extension). */

@@ -247,7 +247,7 @@
   "settings.mic.button":    "麥克風設定",
   "settings.mic.systemDefault": "系統預設",
   "settings.mic.unnamed": "未命名的麥克風",
-  "settings.mic.needPermission": "開始過一次後會顯示清單",
+  "settings.mic.needPermission": "允許使用麥克風後會顯示清單",
   "settings.mic.missing": "{label}（未連接，目前使用預設）",
   "settings.mic.tab.option": "瀏覽器分頁或應用程式的聲音",
   "settings.mic.tab.button": "分頁音訊",

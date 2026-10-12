@@ -247,7 +247,7 @@
   "settings.mic.button":    "Mic settings",
   "settings.mic.systemDefault": "System default",
   "settings.mic.unnamed": "Unnamed microphone",
-  "settings.mic.needPermission": "The list appears after the first start",
+  "settings.mic.needPermission": "The list appears once microphone access is allowed",
   "settings.mic.missing": "{label} (not connected, using default)",
   "settings.mic.tab.option": "Browser tab or app audio",
   "settings.mic.tab.button": "Tab audio",
