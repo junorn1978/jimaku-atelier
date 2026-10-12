@@ -121,6 +121,20 @@
             </svg>
             <span data-i18n="toolbar.subwin">字幕ウィンドウ</span>
           </button>
+
+          <!-- Shown while a tab (or window) is being shared, and only while
+               the panel is collapsed (css/toolbar.css): the tab-audio button
+               that says so otherwise is hidden with the tabs then. Read-only,
+               like the collapsed readout. The tooltip names what is shared. -->
+          <span class="tab-share-badge" id="tab-share-badge" hidden>
+            <!-- speaker icon -->
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 5 6 9H2v6h4l5 4z"/>
+              <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+              <path d="M19 5a10 10 0 0 1 0 14"/>
+            </svg>
+            <span data-i18n="toolbar.tabShare">タブ音声を共有中</span>
+          </span>
         </div>
 
         <!-- Shown in the gap between the two groups while the panel is
@@ -211,6 +225,24 @@
                 <button type="button" class="btn" id="second-window-btn" data-i18n="settings.second.open">開く</button>
               </div>
             </div>
+
+            <!-- Shares a tab's (or window's) audio, or ends the share
+                 (js/ui-mic.js, js/audio-input.js). A button of its own rather
+                 than an entry in the device list, as in the hamham extension:
+                 the share is opened and ended here, recognition listens to it
+                 whenever it is on, and the mic list is disabled meanwhile.
+                 After the panel, not before it: .mic-btn's open style looks
+                 for the panel right after it. Text, title and aria-pressed
+                 are set from JS. -->
+            <button type="button" class="tab-audio-btn" id="tab-audio-btn" aria-pressed="false" hidden>
+              <!-- speaker icon -->
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M11 5 6 9H2v6h4l5 4z"/>
+                <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+                <path d="M19 5a10 10 0 0 1 0 14"/>
+              </svg>
+              <span class="tab-audio-label"></span>
+            </button>
 
             <span class="settings-nav-sep" aria-hidden="true"></span>
 

@@ -502,10 +502,11 @@
 
       /* The active tab is a raised material chip, matching the segmented
          switches beside it. No animation on switching — tabs are flipped
-         dozens of times a day. The microphone button wears the same chip so
+         dozens of times a day. The microphone and tab-audio buttons wear the same chip so
          the track reads as one row of equals. */
       .tab-btn,
-      .mic-btn {
+      .mic-btn,
+      .tab-audio-btn {
         padding: 3px 12px;
         font-size: var(--text-md);
         color: var(--color-text-dim);

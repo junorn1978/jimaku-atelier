@@ -14,16 +14,27 @@
  * The device list is rebuilt each time the panel opens rather than kept live:
  * labels only exist once microphone permission has been granted, which happens
  * on the first start.
+ *
+ * Next to it, the tab-audio button shares a browser tab's (or an app window's)
+ * audio, or ends the share — the hamham extension's design. Not an entry in
+ * the device list: picking it would put up the dialog listing every tab and
+ * window at once, which is a different kind of act from picking a microphone,
+ * and as a button the share being on is visible at a glance. While it is on,
+ * recognition listens to the tab and the device list is disabled.
  */
 
 import { settings, subscribe } from './store.js';
 import { t } from './i18n.js';
-import { openLevelMeter, PAUSE_GATE_DB, PAUSE_DROP_DB, TAB_AUDIO } from './audio-input.js';
+import { openLevelMeter, openTabShare, closeTabShare, hasTabShare, getTabShareLabel, onTabShareChange, NoTabAudioError, PAUSE_GATE_DB, PAUSE_DROP_DB } from './audio-input.js';
 import { isDebugEnabled } from './logger.js';
 
 /* The browser's aliases for "whatever Windows says" — the first option already
    means that, so listing them again would only offer the same thing twice. */
 const ALIASES = new Set(['default', 'communications']);
+
+/* What a shared tab was stored as when it was an entry in the device list
+   (unreleased); cleared on load. */
+const LEGACY_TAB_ID = 'tab';
 
 /* What the button's dot reports. Both reset when the device changes: a new
    device has not been tested, and is not the one that went missing. */
@@ -32,8 +43,7 @@ let _button = null;
 
 function renderButton() {
   if (!_button) return;
-  const label = settings.micDeviceId === TAB_AUDIO ? t('settings.mic.tab.option')
-              : settings.micDeviceLabel || t('settings.mic.systemDefault');
+  const label = settings.micDeviceLabel || t('settings.mic.systemDefault');
   /* The button's own text already says what it opens; the tooltip only adds
      which device that is. The accessible name keeps both, visible text first. */
   _button.title = label;
@@ -46,9 +56,12 @@ function renderButton() {
 export function mountMicPanel(button, panel) {
   if (!button || !panel) return;
   _button = button;
+  if (settings.micDeviceId === LEGACY_TAB_ID) settings.micDeviceId = '';
   mountPicker(panel.querySelector('.mic-select'), panel);
   mountTest(panel.querySelector('.mic-test'), panel);
   mountSegment(panel.querySelector('.mic-segment'));
+  mountTabShareButton(document.getElementById('tab-audio-btn'));
+  mountTabShareBadge(document.getElementById('tab-share-badge'));
   subscribe('micDeviceLabel', renderButton);
   /* The tooltip is the device name (translated only for "system default"), so
      it cannot be a data-i18n attribute; built when it is about to be read
@@ -56,6 +69,65 @@ export function mountMicPanel(button, panel) {
   button.addEventListener('pointerenter', renderButton);
   button.addEventListener('focus', renderButton);
   renderButton();
+}
+
+/* ============ tab-audio button ============ */
+
+const tabShareName = () => getTabShareLabel() || t('settings.mic.tab.option');
+
+/* Text and tooltip follow the share and the language. The tooltip is rebuilt
+   on hover as well, since what is shared can change from the browser's side
+   ("share this tab instead"). */
+function renderTabShareButton(btn) {
+  const sharing = hasTabShare();
+  btn.setAttribute('aria-pressed', String(sharing));
+  btn.querySelector('.tab-audio-label').textContent = t(sharing ? 'settings.mic.tab.buttonOn' : 'settings.mic.tab.button');
+  btn.title = sharing
+    ? t('settings.mic.tab.titleOn').replace('{label}', tabShareName())
+    : t('settings.mic.tab.titleOff');
+}
+
+/* Shown only where sharing works. Ending the share mid-run stops recognition
+   (speech.js) rather than falling back to the microphone. */
+function mountTabShareButton(btn) {
+  if (!btn || !navigator.mediaDevices?.getDisplayMedia) return;
+  btn.hidden = false;
+  btn.addEventListener('click', async () => {
+    if (hasTabShare()) { closeTabShare(); return; }
+    btn.disabled = true;   // no second dialog while this one is open
+    try {
+      await openTabShare();
+    } catch (err) {
+      /* Cancelling the dialog is the user's own call and needs no message;
+         sharing without the audio box ticked looks like it worked, so it does. */
+      if (err instanceof NoTabAudioError) alert(t('settings.mic.tab.noAudio'));
+      else if (err?.name !== 'NotAllowedError' && isDebugEnabled()) console.warn('[mic] tab share failed:', err);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  onTabShareChange(() => renderTabShareButton(btn));
+  subscribe('uiLang', () => renderTabShareButton(btn));
+  btn.addEventListener('pointerenter', () => renderTabShareButton(btn));
+  btn.addEventListener('focus', () => renderTabShareButton(btn));
+  renderTabShareButton(btn);
+}
+
+/* ============ tab-share badge ============ */
+
+/* The tab-audio button is hidden with the settings track while the panel is
+   collapsed; this read-only badge says the share is on in its place (shown
+   only then, css/toolbar.css). The tooltip is built on hover, like the mic
+   button's, so it follows a language switch. */
+function mountTabShareBadge(badge) {
+  if (!badge) return;
+  const render = () => { badge.hidden = !hasTabShare(); };
+  const renderTitle = () => {
+    badge.title = t('toolbar.tabShare.title').replace('{label}', tabShareName());
+  };
+  onTabShareChange(render);
+  badge.addEventListener('pointerenter', renderTitle);
+  render();
 }
 
 /* ============ sentence splitting ============ */
@@ -103,12 +175,11 @@ function mountPicker(select, panel) {
 
     const id = settings.micDeviceId;
     const label = settings.micDeviceLabel;
-    const isTab = id === TAB_AUDIO;
 
     /* Device ids are per-site and can be reset (cleared site data); the label
        survives that, so a saved device that vanished is looked up by name
        before being declared missing. Writing the setting re-runs refresh. */
-    if (id && !isTab && label && !devices.some(d => d.deviceId === id)) {
+    if (id && label && !devices.some(d => d.deviceId === id)) {
       const same = devices.find(d => d.label === label);
       if (same) { settings.micDeviceId = same.deviceId; return; }
     }
@@ -120,22 +191,27 @@ function mountPicker(select, panel) {
        where it left off; recognition meanwhile falls back to the default.
        Without permission there are no ids to compare against, so nothing can
        be called missing yet. */
-    status.missing = !!id && !isTab && devices.length > 0 && !devices.some(d => d.deviceId === id);
-    if (id && !isTab && !devices.some(d => d.deviceId === id)) {
+    status.missing = !!id && devices.length > 0 && !devices.some(d => d.deviceId === id);
+    if (id && !devices.some(d => d.deviceId === id)) {
       opts.push(option(id, t('settings.mic.missing').replace('{label}', label || id.slice(0, 8))));
-    }
-    /* Not a device: set apart below a line, last, so the microphones read as
-       one list. */
-    if (navigator.mediaDevices.getDisplayMedia) {
-      opts.push(document.createElement('hr'), option(TAB_AUDIO, t('settings.mic.tab.option')));
     }
     select.replaceChildren(...opts);
     select.value = id;
     renderButton();
   }
 
+  /* Disabled while a tab is shared: that is what recognition listens to, so
+     picking a microphone would do nothing. The tooltip says how to go back. */
+  const syncSharing = () => {
+    const sharing = hasTabShare();
+    select.disabled = sharing;
+    select.title = sharing ? t('settings.mic.tab.selectDisabled') : '';
+  };
+  onTabShareChange(syncSharing);
+  syncSharing();
+
   select.addEventListener('change', () => {
-    settings.micDeviceLabel = select.value && select.value !== TAB_AUDIO ? select.selectedOptions[0]?.textContent || '' : '';
+    settings.micDeviceLabel = select.value ? select.selectedOptions[0]?.textContent || '' : '';
     settings.micDeviceId = select.value;
   });
 
@@ -253,9 +329,6 @@ function mountTest(root, panel) {
   async function run() {
     if (running) return;
     if (isRecording()) { fail('settings.mic.test.busy'); return; }
-    /* It asks the user to speak and then be quiet; a tab does neither on cue,
-       and opening one would put up the share dialog. */
-    if (settings.micDeviceId === TAB_AUDIO) { fail('settings.mic.test.tab'); return; }
 
     let meter;
     try {

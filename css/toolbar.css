@@ -191,6 +191,40 @@
     }
   }
 
+  /* --- tab-audio button (settings track; js/ui-mic.js) ---
+     The mic button's chip (styles.css), lit while sharing in the accent the
+     subtitle-window button wears while its window is open. */
+  .tab-audio-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    white-space: nowrap;
+
+    &[aria-pressed="true"],
+    &[aria-pressed="true"]:hover {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+    &:disabled { opacity: 0.45; cursor: progress; }
+  }
+
+  /* --- tab-share badge (toolbar; js/ui-mic.js) ---
+     Stands in for the tab-audio button while the panel is collapsed and the
+     settings track with it. A label, not a button: no fill of its own to read
+     as pressable. [hidden] still wins (utilities) when nothing is shared. */
+  .tab-share-badge {
+    display: none;
+    .panel-collapsed & { display: inline-flex; }
+    align-items: center;
+    gap: var(--space-1);
+    padding: 3px 10px;
+    border: 1px solid color-mix(in oklab, var(--color-accent) 45%, transparent);
+    border-radius: var(--radius-full);
+    color: var(--color-accent-hover);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+  }
+
   /* --- level test (inside the mic panel) ---
      One block with three states: idle shows the button and a hint, running
      the prompt and a live bar, done the two measured bars and the advice. */
