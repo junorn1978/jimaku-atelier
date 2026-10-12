@@ -15,17 +15,11 @@
  * event, which is exactly what ui-bind.js already listens for, so the settings
  * store and the live output need no knowledge of any of this.
  *
- * Markup contract (authored, not injected — the triggers sit inside grid cells
- * whose layout the picker must not disturb):
- *
- *   <span class="color-cell">
- *     <input type="color" class="visually-hidden" data-bind="…" list="…">
- *     <button type="button" data-color-trigger class="color-swatch"></button>
- *     <output class="color-value"></output>
- *   </span>
- *
- * The trigger finds its input inside its own parent; quick colours come from
- * the <datalist> named by that input's `list` attribute.
+ * Markup is authored, not injected — the triggers sit inside grid cells whose
+ * layout the picker must not disturb. A [data-color-trigger] finds its input
+ * inside its own parent; quick colours come from the <datalist> named by that
+ * input's `list` attribute. A trigger with .color-trigger-text gets no swatch
+ * (see syncTrigger).
  */
 
 import { subscribe } from './store.js';
@@ -92,8 +86,8 @@ let hsv = { h: 0, s: 0, v: 1 };
 
 /* ============ popover (one, shared by every trigger) ============ */
 
-/* Built once and reused: a palette per swatch would be nine copies of the same
-   DOM, and only one can ever be open. */
+/* Built once and reused: a palette per swatch would be a copy of the same DOM
+   for each, and only one can ever be open. */
 function buildPopover() {
   const el = document.createElement('div');
   el.className = 'color-popover';
@@ -101,9 +95,6 @@ function buildPopover() {
   el.setAttribute('aria-hidden', 'true');
   el.dataset.i18nAriaLabel = 'color.title';
 
-  /* data-i18n rather than t() at build time: setLanguage() re-applies across
-     the whole document, and this lives in <body>, so it re-translates itself
-     when the interface language changes. */
   el.innerHTML = `
     <div class="color-popover-head" data-i18n="color.title">カラーパレット</div>
 
@@ -190,9 +181,6 @@ function render() {
   });
 }
 
-/* Writes through to the hidden <input type="color">. The dispatched event is
-   the whole integration: ui-bind.js listens for 'input' on the same element, so
-   the store, the output pane and the OBS overlay all update from here. */
 function apply() {
   if (!activeInput) return;
   activeInput.value = hsvToHex(hsv);
@@ -299,8 +287,6 @@ function wirePopover() {
     apply();
   };
 
-  /* Pointer capture so a drag that leaves the square keeps tracking, the way
-     every other colour field behaves. */
   field.addEventListener('pointerdown', (event) => {
     event.preventDefault();
     field.setPointerCapture(event.pointerId);
@@ -381,7 +367,7 @@ export function initColorPickers() {
       open(input, trigger);
     });
 
-    /* The store is also written from elsewhere (a reset, an import), and
+    /* The store is also written from elsewhere (a reset), and
        ui-bind.js updates the input without dispatching — so follow the setting
        rather than the element to keep the swatch honest. */
     const key = input.dataset.bind;

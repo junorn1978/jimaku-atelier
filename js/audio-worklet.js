@@ -1,6 +1,6 @@
 /**
  * @file audio-worklet.js
- * @description Audio-thread half of audio-input.js. Passes the microphone
+ * @description Audio-thread half of audio-input.js. Passes the input
  * through to the recogniser's track, and on the way:
  *
  *  - can hold the output (silence to the recogniser, real audio queued) and
@@ -12,8 +12,9 @@
  *    extension, where 3 minutes of non-stop talk drifted from 0.23s to 1.89s
  *    behind with skipping only, and stayed at 0.13–0.21s with the speed-up);
  *  - detects pauses in what the recogniser is hearing, so speech.js can end a
- *    session where nobody is talking — judged on a denoised copy, so music in
- *    the background does not read as talking (see Denoiser);
+ *    session where nobody is talking (or, for a custom STT server, tell the
+ *    server) — judged on a denoised copy, so music in the background does not
+ *    read as talking (see Denoiser);
  *  - for a custom STT server (stt-custom.js), hands what the recogniser hears
  *    to the main thread as 16-bit PCM chunks (see tapBlock).
  *
@@ -113,8 +114,8 @@ class LevelTracker {
    processing is off too (see audio-input.js).
 
    RNNoise (Xiph, BSD-3; wasm build by Jitsi, Apache-2.0 — js/vendor/) works
-   on 10ms frames at 48kHz, in 16-bit sample scale. Other rates (Edge runs at
-   16kHz) are interpolated up: the detector needs a level, not fidelity. The
+   on 10ms frames at 48kHz, in 16-bit sample scale. Other rates are
+   interpolated up: the detector needs a level, not fidelity. The
    wasm is the bare emscripten build — its two imports are the heap-growth and
    big-memcpy helpers, and its exports are minified (names per the emscripten
    glue shipped with it). */
@@ -194,8 +195,7 @@ class InputProcessor extends AudioWorkletProcessor {
 
     /* Input and output each get their own state: the two differ by whatever
        is queued, and RNNoise carries history from frame to frame. Without the
-       wasm (not loaded, or turned off) the levels are read off the raw signal
-       as before. */
+       wasm (not loaded, or turned off) the levels are read off the raw signal. */
     this.inDenoise = this.outDenoise = null;
     if (rnnoise) {
       try {
@@ -208,8 +208,7 @@ class InputProcessor extends AudioWorkletProcessor {
     }
     if (this.inDenoise) this.port.postMessage({ type: 'denoise', on: true });
 
-    /* Level test: the detector's input level, raw and as judged, ~25 times a
-       second. */
+    /* Level test: the input level, raw and as judged, ~25 times a second. */
     this.reportEvery = reportLevel ? Math.round(0.04 / blockSec) : 0;
     this.sinceReport = 0;
     this.rawSquare   = 0;

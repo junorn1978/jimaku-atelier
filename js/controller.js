@@ -9,6 +9,8 @@
  *   - Stage results in per-target buffers and replay them in sequence order,
  *     respecting a minimum display time so fast successive responses don't
  *     flash past the viewer.
+ *   - Take translations a custom STT server returned itself straight into
+ *     those buffers, without a translation engine (deliverTranslations).
  *
  * Source subtitle text is updated directly by speech.js; this controller only
  * touches #display-target-1 and #display-target-2.
@@ -60,10 +62,10 @@ async function runTask(item) {
 
 let sequenceCounter = 0;
 
-/* Bumped on every resetController(). In-flight translations from a previous
-   session compare their captured epoch against this and drop themselves if
-   stale — otherwise old results would land in the freshly-cleared display
-   right after the user clicks Start. */
+/* Bumped whenever the target displays are cleared (resetController,
+   clearTargets). In-flight translations compare their captured epoch against
+   this and drop themselves if stale — otherwise old results would land in the
+   freshly-cleared display. */
 let sessionEpoch = 0;
 
 const TARGET_KEYS    = ['target1', 'target2'];
@@ -92,7 +94,6 @@ function clearTarget(key) {
   publishTargets(spans.target1?.textContent || '', spans.target2?.textContent || '');
 }
 
-/* Wipe a target slot's buffer when the user switches it to 'none'. */
 subscribe('target1LangId', (val) => { if (!val || val === 'none') clearTarget('target1'); });
 subscribe('target2LangId', (val) => { if (!val || val === 'none') clearTarget('target2'); });
 
@@ -152,7 +153,6 @@ function processBuffers() {
     if (buffer.length > 10) buffer.splice(0, buffer.length - 10);
     if (buffer.length === 0) return;
 
-    /* Hold current display until minDisplayTime elapses. */
     const cur = currentDisplays[key];
     if (cur && now - cur.startTime < cur.minDisplayTime * 1000) return;
 
@@ -193,9 +193,9 @@ async function route(text, previousText, sourceLangId, targetLangIds, sequenceId
     return translateTranslator(text, targetLangIds, sourceLangId);
   }
   if (mode === 'prompt') {
-    /* On-device Prompt API. It serialises with latest-wins preemption itself,
-       so we deliberately let it bypass the concurrency assumptions of the
-       queue — only the most recent request survives. */
+    /* On-device Prompt API. The queue may hand it several requests at once;
+       it aborts all but the latest itself (latest-wins), so only the most
+       recent survives. */
     return translatePrompt(text, targetLangIds, sourceLangId);
   }
   if (mode === 'link') {
@@ -211,9 +211,9 @@ function getTargetLangIds() {
 }
 
 function computeMinDisplayTime(text, sourceLangId) {
-  /* Local providers (gtx) update at speech cadence, so 0 = replace ASAP.
-     Custom backends may batch / be slower, so we hold each translation
-     long enough to be readable. */
+  /* The built-in engines (everything but link) update at speech cadence, so
+     0 = replace ASAP. Custom backends may batch / be slower, so we hold each
+     translation long enough to be readable. */
   if (settings.translationMode !== 'link') return 0;
   const rules = getLang(sourceLangId)?.displayTimeRules || [];
   return rules.find(r => text.length <= r.maxLength)?.time ?? 3;
@@ -221,7 +221,7 @@ function computeMinDisplayTime(text, sourceLangId) {
 
 /* ============ filter hook ============ */
 
-function applyTargetFilter(translations /*, targetLangIds */) {
+function applyTargetFilter(translations) {
   return translations.map(t => (t ? applyFilter(t) : t));
 }
 
@@ -261,15 +261,14 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
     if (!data) return;
     if (epoch !== sessionEpoch) return;
 
-    /* Backend may signal an emergency stop (budget cap etc.). */
-    /* The button toggles, so click it only while it means "stop". */
+    /* The backend may signal an emergency stop (budget cap etc.). The button
+       toggles, so click it only while it means "stop". */
     if (data.stop) {
       if (isRecording()) document.getElementById('btn-speech')?.click();
       return;
     }
 
-    data.sequenceId   = sequenceId;
-    data.translations = applyTargetFilter(data.translations, targetLangIds);
+    data.translations = applyTargetFilter(data.translations);
     bufferPush(data, minDisplayTime, sequenceId, targetLangIds);
   });
 }
@@ -292,8 +291,8 @@ export function deliverTranslations(translations, targetLangIds) {
 }
 
 /**
- * One-shot manual text translation. This powers the always-visible text
- * translation tool and deliberately does not touch subtitle displays or OBS.
+ * One-shot manual text translation. This powers the text translation tool and
+ * deliberately does not touch subtitle displays or OBS.
  */
 export async function translateManualText(text, targetLangId) {
   if (!text || !text.trim()) return null;
@@ -309,7 +308,7 @@ export async function translateManualText(text, targetLangId) {
     const data = await route(text.trim(), null, 'auto', targetLangIds, sequenceId);
     if (!data) return null;
 
-    const translations = applyTargetFilter(data.translations || [], targetLangIds);
+    const translations = applyTargetFilter(data.translations || []);
 
     return {
       sequenceId,
@@ -345,7 +344,7 @@ export function prepareTranslation() {
   }
 }
 
-/* On stop: drop pending work and clear display buffers. Called by speech.js. */
+/* On start: drop pending work and clear display buffers. Called by speech.js. */
 export function resetController() {
   sessionEpoch++;
   queue.forEach(item => item.reject(new Error('controller reset')));

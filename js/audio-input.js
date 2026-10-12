@@ -16,6 +16,9 @@
  *
  * Browser-side processing (echo cancellation, noise suppression, auto gain) is
  * off: the recogniser has its own front end and did no worse on the raw signal.
+ *
+ * Also holds the share of a browser tab's (or an app window's) audio, which
+ * recognition listens to instead of the microphone while it is on.
  */
 
 import { isEdge } from './env.js';
@@ -31,23 +34,17 @@ export const PAUSE_DROP_DB = 12;
 
 const PROCESSING_OFF = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
 
-/* A browser tab's audio instead of a microphone — or an application's, when a
-   window is picked instead of a tab. Shared through getDisplayMedia, which has
-   three consequences callers carry: it only opens from a click (so it cannot
-   be reopened on its own when it ends), the user picks the tab in the
-   browser's dialog every time, and the tab is only heard when its "share tab
-   audio" box is ticked.
-
-   So, as in the hamham extension, the share is opened and ended by a button of
-   its own next to the mic button (js/ui-mic.js), never by start, and held here
-   in between. While it is on, recognition listens to it instead of the picked
-   microphone; each run gets a clone and stops only that, so stop / start does
-   not ask again. */
 /* Thrown when the user shared a tab (or window) without its audio. */
 export class NoTabAudioError extends Error {
   constructor() { super('the shared surface has no audio'); this.name = 'NoTabAudioError'; }
 }
 
+/* A tab is shared through getDisplayMedia, which only opens from a click —
+   so it cannot be reopened on its own once it ends — puts up the browser's
+   picker each time, and brings no audio unless its "share tab audio" box is
+   ticked. Hence the share is opened by a button of its own rather than by
+   start, kept here across runs, and each run takes a clone and stops only
+   that, so stop / start does not ask again. */
 /** @type {MediaStream|null} the tab being shared, audio only */
 let tabShare = null;
 const tabShareListeners = new Set();
@@ -128,8 +125,9 @@ async function openTabStream() {
   return stream;
 }
 
-/* The picked device, or the default one when it is gone (fellBack). Permission
-   errors are not a missing device and go straight up. */
+/* The picked device, or the default one when it is gone (fellBack) — falling
+   back rather than refusing to start. Permission errors are not a missing
+   device and go straight up. */
 async function openStream(deviceId) {
   if (deviceId) {
     try {
@@ -166,7 +164,8 @@ function loadRnnoise() {
   return rnnoiseBytes;
 }
 
-/* The microphone through the worklet into a track of its own. On failure the
+/* The microphone (or the shared tab's clone) through the worklet into a track
+   of its own. On failure the
    context is closed; the caller stops the microphone. */
 async function buildGraph(stream, { reportLevel = false, tap = false } = {}) {
   const ctx = new AudioContext(tap    ? { sampleRate: STT_SAMPLE_RATE }
@@ -206,12 +205,10 @@ async function buildGraph(stream, { reportLevel = false, tap = false } = {}) {
  * @param {Function} [opts.onEnded]   the device went away (or the tab's share was ended from the browser)
  * @param {Function} [opts.onPcm]     a custom STT server's feed: (ArrayBuffer) of 16kHz mono
  *   16-bit PCM, ~100ms each. Given, the graph runs at 16kHz for it.
- * @returns {Promise<{ track: MediaStreamTrack, label: string, deviceId: string,
+ * @returns {Promise<{ track: MediaStreamTrack, label: string,
  *   tab: boolean, fellBack: boolean, hold: Function, release: Function, probe: Function, close: Function }>}
  */
 export async function openAudioInput({ deviceId = '', onPause, onShortPause, onSpeech, onGap, onLag, onDenoise, onProbe, onEnded, onPcm } = {}) {
-  /* A device that is gone (unplugged, renamed) falls back rather than refusing
-     to start; the settings dialog shows it as not connected. */
   const tab = hasTabShare();
   const { stream, fellBack } = tab
     ? { stream: new MediaStream(tabShare.getAudioTracks().map(t => t.clone())), fellBack: false }
@@ -244,7 +241,6 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
   return {
     track:    dest.stream.getAudioTracks()[0],
     label:    source.label,
-    deviceId: source.getSettings().deviceId || '',
     tab,
     fellBack,
     hold:     () => node.port.postMessage('hold'),

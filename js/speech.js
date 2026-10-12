@@ -10,6 +10,9 @@
  * around what Chrome's on-device (SODA) model actually does: the prefix hold in
  * updateSource(), the rule that a final is never rendered, and the startup
  * watchdog all encode its observed behaviour rather than anything general.
+ * Cloud recognition is run differently: we end and restart its sessions at the
+ * speaker's pauses rather than leaving that to the engine (see "session
+ * rotation").
  *
  * The one other engine, a user-run server (settings.sttEngine 'custom',
  * stt-custom.js, docs/custom-stt.html), is a branch beside it rather than behind
@@ -52,7 +55,7 @@ let usingLocal   = false;
    instead of us ending sessions at pauses. See configureRecognition. */
 let engineSegments = false;
 let input        = null;
-let inputHooks   = null;   // { onPause, onSpeech }, from setupRecognition
+let inputHooks   = null;   // audio-input callbacks plus restart(), from setupRecognition
 
 /* Decided per start from settings.sttEngine: this run sends the audio to a
    custom STT server instead of the recogniser. */
@@ -65,13 +68,9 @@ let customStt    = null;
    Recognition lifecycle events are reported relative to the moment start() was
    called, so one session reads as a single timeline.
 
-   It was added to time the on-device model's first result, and that question is
-   settled: a healthy model delivers it ~1ms after onsoundstart, which is the
-   figure the startup watchdog below is calibrated against.
-
-   What it is still here for: when the model dies mid-session, does it emit
-   *any* event at all? If nothing fires, onend never runs and autoRestart never
-   gets a chance. Unanswered — the failure has not been caught in a trace yet. */
+   Still open: when the on-device model dies mid-session, does it emit *any*
+   event at all? If nothing fires, onend never runs and autoRestart never gets
+   a chance — the failure has not been caught in a trace yet. */
 let sessionStart = 0;
 let resultCount  = 0;
 
@@ -169,8 +168,8 @@ function clearSource() {
    nothing new is recognised for a while, wipe every line.
 
    Timing starts at the final, not at any recognition event. An interim that
-   never finalises is still going to be flushed by the silence guard below, and
-   that flush redraws the source line; clearing on interims would blank the
+   never finalises is still going to be flushed — by the silence guard or a
+   session cut below — and that flush redraws the source line; clearing on interims would blank the
    display only for the same text to reappear a few seconds later. Waiting for
    the final means there is nothing left in flight to come back.
 
@@ -219,19 +218,19 @@ function filterSource(text, lang) {
   return applyFilter(normalizeRecognised(text, lang, usingLocal));
 }
 
-/* ============ Web Speech adapter ============ */
+/* ============ Web Speech recogniser ============ */
 
 async function decideProcessLocally(lang) {
   /* On-device is Chrome-only; everything else, Edge included, is a cloud
-     recogniser. The answer doubles as the continuous switch below, and the
-     processLocally property itself is only assigned on Chrome. */
+     recogniser. The answer also decides whether the 'engine' segment mode
+     applies (cloud only), and the processLocally property itself is only
+     assigned on Chrome. */
   if (!isChrome) return false;
   const ctor = window.SpeechRecognition;
   if (!ctor || typeof ctor.available !== 'function') return false;
   try {
-    /* No quality → the default 'command' floor, i.e. the broadest match: use
-       on-device whenever any installed model qualifies. (language-pack.js picks
-       the best floor to *install*; this only asks whether anything is there.) */
+    /* No quality → the 'command' model, the one language-pack.js installs
+       (quality is an exact match on Chrome 156; see language-pack.js). */
     const status = await ctor.available({ langs: [lang], processLocally: true });
     return status === 'available';
   } catch {
@@ -262,7 +261,7 @@ async function configureRecognition(rec, lang) {
      was mixed into the same input), per-utterance kept 476 characters against
      367 — and making our sessions shorter did not close that gap (370), so it
      is the mode, not the session length. The words lost at each engine-chosen
-     end are now covered: audio is held from onaudioend to the next session. */
+     end are covered: audio is held from onaudioend to the next session. */
   engineSegments          = !processLocally && settings.segmentMode === 'engine';
   rec.continuous          = !engineSegments;
   rec.maxAlternatives     = 1;
@@ -348,8 +347,8 @@ function setupRecognition() {
      microphone (see audio-worklet.js): after a drain it runs behind the
      speaker, and a pause in the room is then mid-word to the recogniser.
 
-     Parameters are the ones those tests ran with, except the drain settle,
-     widened after a live stream showed interims 500ms apart. */
+     Parameters are the ones those tests ran with, except where noted; the
+     drain settle was widened after a live stream showed interims 500ms apart. */
   /* SHORT_SEC in audio-worklet.js: onShortPause arrives this long into the quiet. */
   const SHORT_PAUSE_MS    = 150;
   const ROTATE_MIN_AGE_MS = 3000;    // at a pause, rotate once the session is this old
@@ -565,9 +564,6 @@ function setupRecognition() {
       else                 markSession('final mid-speech');
     }
 
-    /* Armed off the interim this event actually carried — reading it before the
-       parse loop above meant the previous round's leftover value decided it,
-       so nothing was armed until the second result of a session. */
     if (interimTranscript.trim()) resetSilenceTimer();
 
     /* Trace of every recognition event as it arrives, before any filtering. */
@@ -799,9 +795,9 @@ async function startSpeech(lang) {
   document.querySelector('.subtitle-display')?.classList.add('is-recording');
 
   /* Opening the microphone doubles as the permission prompt (and is what lets
-     the settings dialog list devices by name). Both recognisers are started on
-     this track, from the device picked in settings (or the shared tab, while
-     one is shared) — the on-device model hears it the same as the cloud one
+     the mic panel list devices by name). Both recognisers are started on
+     this track, from the device picked in the mic panel (or the shared tab,
+     while one is shared) — the on-device model hears it the same as the cloud one
      (checked in the hamham extension). */
   usingCustom = settings.sttEngine === 'custom';
   try {
