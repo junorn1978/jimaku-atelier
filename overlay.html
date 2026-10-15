@@ -81,6 +81,8 @@
       to   { opacity: 1; transform: translateY(0); }
     }
 
+    /* Hidden when empty, or the container's gap still reserves a row for it. */
+    #status-msg:empty { display: none; }
     #status-msg {
       color: #ffaa00;
       font-size: 14px;

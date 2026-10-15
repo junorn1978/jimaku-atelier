@@ -344,7 +344,11 @@ const OVERLAY_CSS = 'body { background-color: rgba(0,0,0,0); margin: 0 auto; ove
    arranges them everywhere. */
 const NEST_SCENE = 'RTL-Subtitles';
 
-const INPUT_SETTINGS = (url) => ({ url, width: 1280, height: 200, css: OVERLAY_CSS });
+/* Full 1080p canvas. The overlay clips at its own bottom edge, and it used to
+   be 1280x200: once two translations ran past two lines, the last one was cut
+   in half or pushed out of view entirely. The empty space below the text is
+   transparent; whoever runs OBS crops or positions the source as they like. */
+const INPUT_SETTINGS = (url) => ({ url, width: 1920, height: 1080, css: OVERLAY_CSS });
 
 export function triggerAutoSetup() {
   if (!settings.obsEnabled) {
