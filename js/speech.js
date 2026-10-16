@@ -286,6 +286,9 @@ function setupRecognition() {
      interim and onend's flush sends the same line a second time (seen on a
      live stream). Results from a session we have ended are ignored. */
   let aborting = false;
+  /* The error this session reported, if any — read by onend, which decides
+     how soon (and whether) to restart. */
+  let sessionError = '';
   const abortSession = () => {
     aborting = true;
     rec.abort();
@@ -536,6 +539,7 @@ function setupRecognition() {
   rec.onresult = (event) => {
     if (aborting) return;
     resultCount++;
+    failedSessions = 0;
     /* Traced for the first few results only: what matters is how long the
        model takes to say anything at all after onsoundstart. */
     if (resultCount <= 3) markSession(`onresult #${resultCount}`);
@@ -609,6 +613,8 @@ function setupRecognition() {
 
   rec.onend = () => {
     markSession('onend');
+    const error = sessionError;
+    sessionError = '';
     clearStartupTimer();
     cancelDrain();
     if (silenceTimer) clearTimeout(silenceTimer);
@@ -623,10 +629,26 @@ function setupRecognition() {
     rotating          = false;
     finalTranscript   = '';
     interimTranscript = '';
-    autoRestart();
+
+    if (isActive && FATAL_ERRORS.has(error)) {
+      markSession(`stopping — ${error} is not fixed by restarting`);
+      handleStop();
+      return;
+    }
+    /* Anything else means the service was reached — 'no-speech' is it having
+       listened, 'aborted' is us ending a running session — so the streak is
+       over. Left standing, it held every restart after a reconnect at the
+       longest delay until something was recognised, and a restart without a
+       hold loses what is said meanwhile. */
+    if (error && error !== 'aborted' && error !== 'no-speech' && resultCount === 0) failedSessions++;
+    else failedSessions = 0;
+    const delay = retryDelay();
+    if (delay) markSession(`restart in ${delay}ms — ${failedSessions} sessions in a row failed (${error})`);
+    autoRestart({ delay });
   };
 
   rec.onerror = (event) => {
+    sessionError = event.error;
     markSession(`onerror ${event.error}`);
     clearStartupTimer();
     if (silenceTimer) clearTimeout(silenceTimer);
@@ -649,9 +671,37 @@ function startRecognition() {
    where the first result's delay is decided; every second after. */
 const PROBE_WINDOWS = { fineSec: 3, fineMs: 250, ms: 1000 };
 
+/* ---- restart after errors ----
+
+   onend restarts at once, which is right after our own cuts and after a
+   session the engine ended normally. It is not right when every new session
+   dies on arrival: with the cloud service unreachable, each one fails with
+   'network' within milliseconds, and restarting at once ran the loop
+   thousands of times a second. So consecutive sessions that ended on an error
+   without returning anything back off. The first retry is still immediate: a
+   lone 'network' now and then (the service busy) should cost no more than
+   the restart itself. A result, or any session that ends some other way,
+   resets the count. */
+const RETRY_DELAYS_MS = [0, 250, 500, 1000, 2000, 4000];
+/* Errors no restart fixes — permission withdrawn, or a language the service
+   does not offer. These stop the run, as the stop button would. */
+const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'language-not-supported']);
+let failedSessions = 0;
+/* Pending restart, cleared on stop: with a delay of seconds, a stop and a new
+   start can fall inside it, and the old timer would then start() a second
+   time on the running recogniser — which throws, and the catch below retries
+   for good. */
+let restartTimer = null;
+
+function retryDelay() {
+  if (!failedSessions) return 0;
+  return RETRY_DELAYS_MS[Math.min(failedSessions, RETRY_DELAYS_MS.length) - 1];
+}
+
 function autoRestart(options = { delay: 0 }) {
   if (!isActive) return;
-  setTimeout(() => {
+  restartTimer = setTimeout(() => {
+    restartTimer = null;
     try {
       beginSession(`autoRestart delay=${options.delay}ms`);
       startRecognition();
@@ -787,7 +837,8 @@ async function handleStart() {
 }
 
 async function startSpeech(lang) {
-  previousText = '';
+  previousText   = '';
+  failedSessions = 0;
   cancelIdleClear();
   clearSource();
   resetController();
@@ -914,6 +965,7 @@ function onTabShareChanged(active) {
 function handleStop() {
   if (!isActive) return;
   isActive = false;
+  if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
   if (usingCustom) {
     customStt?.close();
     customStt = null;
