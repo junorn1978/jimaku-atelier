@@ -113,6 +113,11 @@ async function openTabStream() {
        plays. Tested with a media player on Chrome 155 and Edge, Windows,
        2026-10-09; browsers without it ignore the option. */
     windowAudio:        'window',
+    /* Ticks the audio box up front on the window and screen panes, where it
+       otherwise starts unticked (the tab pane ticks it already) — sharing
+       without audio is never what is wanted here. A hint (spec: MAY ignore);
+       Chrome 152+ per Chromium's picker, others ignore it. */
+    audioSelection:     'preferred',
   });
   /* The browser otherwise brings the shared tab to the front; the subtitles
      are what the user is looking at. Has to be called right after resolving. */
