@@ -270,6 +270,10 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
 
     data.translations = applyTargetFilter(data.translations);
     bufferPush(data, minDisplayTime, sequenceId, targetLangIds);
+  }).catch(() => {
+    /* Never rejects: speech.js fires and forgets, and a failed subtitle has
+       nobody to report to — the line is simply not shown. runTask has logged
+       the failure; a reset's rejection is just the queue being dropped. */
   });
 }
 
