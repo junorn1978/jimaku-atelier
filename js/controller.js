@@ -249,13 +249,19 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
        differ by an order of magnitude, and 'link' adds a server the user wrote
        themselves, so "which part is slow, and by how much" is not answerable
        from watching the subtitles — an impression is all there is otherwise.
-       Logged for failures too: a slow error is worth seeing. */
+       Logged for failures too: a slow error is worth seeing.
+       The raw output goes with it, before the filter, so a translation that
+       came back short (the Translator API drops the tail of long lines) can be
+       read against the source in the same log. */
     const startedAt = performance.now();
     const data = await route(text, previousText, sourceLangId, targetLangIds, sequenceId);
     if (isDebugEnabled()) console.debug(
       `[controller] #${sequenceId} ${settings.translationMode} ` +
       `${(performance.now() - startedAt).toFixed(0)}ms ` +
-      `${active.length} target(s), ${text.length} chars${data ? '' : ' (no result)'}`
+      `${active.length} target(s), ${text.length} chars${data ? '' : ' (no result)'}` +
+      targetLangIds.map((id, i) => (id && id !== 'none' && data?.translations
+        ? `\n  ${id} (${data.translations[i]?.length ?? 0} chars): ${data.translations[i] ?? ''}`
+        : '')).join('')
     );
 
     if (!data) return;

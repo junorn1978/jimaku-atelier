@@ -3,6 +3,12 @@
  * @description Browser environment detection shared across modules. Chrome and
  * Edge are distinguished because on-device speech features (processLocally and
  * offline language-pack install) are Chrome-only.
+ *
+ * Phones and tablets are not supported at all (js/main.js turns them away).
+ * They are told apart by the user agent alone: a browser set to request the
+ * desktop site, or one spoofing its UA, gets through, and that is left to the
+ * user who changed it. userAgentData.mobile is false on Android tablets, so
+ * "Android" in the UA string is what catches those.
  */
 
 const { isChrome, isEdge } = (() => {
@@ -14,4 +20,10 @@ const { isChrome, isEdge } = (() => {
   return { isChrome, isEdge };
 })();
 
-export { isChrome, isEdge };
+const isMobile = (() => {
+  if (typeof navigator === 'undefined') return false;
+  if (navigator.userAgentData?.mobile) return true;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+})();
+
+export { isChrome, isEdge, isMobile };

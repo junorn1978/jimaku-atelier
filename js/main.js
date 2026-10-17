@@ -27,12 +27,20 @@ import { initSettingsTabs } from './ui-tabs.js';
 import { initTour } from './tour.js';
 import { mountMicPanel } from './ui-mic.js';
 import { mountSecondWindowButton } from './second-window.js';
+import { isMobile } from './env.js';
 
 async function init() {
   /* First, before anything awaits: the page is cloaked while booting, but the
      window background is not, and a light-theme user would otherwise see it
      flash dark. */
   initTheme();
+
+  /* Phones and tablets stop here (see js/env.js), before anything asks for a
+     permission or starts a recogniser that only restarts in a loop there. */
+  if (isMobile) {
+    showUnsupported();
+    return;
+  }
 
   /* Language metadata is the only thing that has to be fetched before the UI
      can render; the gtx credentials are literals in translate-gtx.js. */
@@ -88,6 +96,36 @@ async function init() {
   initTour();
 
   if (isDebugEnabled()) console.debug('[main] init complete');
+}
+
+/* -------- unsupported device -------- */
+
+/* In all three interface languages at once rather than through i18n: a first
+   visit has no chosen language yet, and the notice needs no fetch to show. */
+const UNSUPPORTED_TEXT = [
+  ['ja',    'このツールはパソコン版の Chrome / Edge 専用です。スマートフォン・タブレットには対応していません。パソコンで次のアドレスを開いてください。'],
+  ['zh-TW', '本工具僅支援電腦版 Chrome / Edge，不支援手機與平板。請在電腦上開啟以下網址：'],
+  ['en',    'This tool runs only in Chrome or Edge on a computer. Phones and tablets are not supported. Open this address on a computer:'],
+];
+
+function showUnsupported() {
+  const card = document.createElement('div');
+  card.className = 'unsupported-card';
+  const title = document.createElement('h1');
+  title.textContent = document.title;
+  card.append(title);
+  for (const [lang, text] of UNSUPPORTED_TEXT) {
+    const p = document.createElement('p');
+    p.lang = lang;
+    p.textContent = text;
+    card.append(p);
+  }
+  const url = document.createElement('p');
+  url.className = 'unsupported-url';
+  url.textContent = location.origin + location.pathname;
+  card.append(url);
+  document.body.replaceChildren(card);
+  document.body.classList.add('is-unsupported');
 }
 
 /* -------- interface language switcher -------- */
