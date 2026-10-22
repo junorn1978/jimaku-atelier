@@ -1,0 +1,151 @@
+/* =========================================
+   字幕アトリエ — OBS window
+
+   obs-settings.html / js/obs-settings-page.js: connection, Auto Setup and the
+   scene link, in a window of their own. Loaded after styles.css and
+   tab-obs.css (connection status, help popover), and like them stays inside
+   @layer components.
+   ========================================= */
+
+@layer components {
+  /* A plain settings window: none of the app window's subtitle backdrop,
+     desktop minimum width or single-row grid. */
+  body.obs-settings-page {
+    min-width: 0;
+    overflow: auto;
+    display: block;
+    background: var(--color-bg);
+  }
+
+  .obs-window {
+    display: grid;
+    gap: var(--space-3);
+    max-width: 720px;
+    margin: 0 auto;
+    padding: var(--space-4);
+
+    .form-row-label {
+      color: var(--color-text-dim);
+      font-size: var(--text-md);
+      white-space: nowrap;
+    }
+  }
+
+  .obs-window-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .obs-window-title {
+    font-size: var(--text-lg);
+    font-weight: 600;
+  }
+
+  .obs-card {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    background: var(--color-surface-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+  }
+
+  /* Label, then the field taking the rest of the row. Labels share the form
+     rows' column so the fields line up under one another. */
+  .obs-field {
+    display: grid;
+    grid-template-columns: var(--label-col) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-2);
+
+    .text-input { min-width: 0; }
+  }
+
+  /* Nest option: toggle first, then its sentence, so the long label can wrap
+     without pushing the switch around. */
+  .obs-nest {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+
+    .form-row-label { white-space: normal; }
+  }
+
+  .obs-card-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .obs-auto-setup { anchor-name: --obs-auto-setup-anchor; }
+
+  /* Confirm bubble under the Auto Setup button, right edges aligned. */
+  .obs-confirm-popover {
+    position-anchor: --obs-auto-setup-anchor;
+    position-area: bottom span-left;
+    position-try-fallbacks: flip-block;
+    margin: var(--space-2) 0;
+    max-width: min(300px, 80vw);
+  }
+
+  .obs-confirm-text { margin: 0 0 var(--space-3); }
+
+  .obs-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+
+  /* --- scene link --- */
+  .obs-scene-body {
+    display: grid;
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+    padding-top: var(--space-2);
+    border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+  }
+
+  .obs-scene-head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+
+    .obs-inline-hint { flex: 1; }
+  }
+
+  .obs-scene-list {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Scene name on the left, its action on the right. A scene that does not
+     start reads as such at a glance: its name dims. */
+  .obs-scene-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+
+    & + & { border-top: 1px solid color-mix(in oklab, var(--color-border) 40%, transparent); }
+
+    .obs-scene-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* .select is full-width by default, which would leave the name none. */
+    .select {
+      flex: 0 0 auto;
+      width: 160px;
+    }
+
+    &[data-action="stop"] .obs-scene-name,
+    &[data-action="none"] .obs-scene-name { color: var(--color-text-dim); }
+  }
+}

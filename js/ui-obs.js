@@ -1,16 +1,21 @@
 /**
  * @file ui-obs.js
  * @description OBS UI: route picker, and per route its few settings and its one
- * action — WebSocket (enable toggle, URL/password, Auto Setup behind a confirm),
- * the subtitle window (key colour, open/close) and window capture (background
- * colour, enter capture mode). Step-by-step instructions live in a "?" popover.
+ * action — WebSocket (connection status, open the OBS window), the subtitle
+ * window (key colour, open/close) and window capture (background colour, enter
+ * capture mode). Step-by-step instructions live in a "?" popover.
  * Appended into its own tab panel (#tab-obs) as an `.obs-section`.
+ *
+ * WebSocket's settings — connection, Auto Setup, the scene link — are not
+ * here but in a window of their own (obs-settings.html,
+ * js/obs-settings-page.js): this window is often captured onto the stream,
+ * and those would put OBS's scene names and the password field on it.
  */
 
 import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
-import { triggerAutoSetup, onConnectionState } from './obs.js';
-import { wireSecretInputs } from './ui-secret-input.js';
+import { CHANNEL, perChannel } from './channel.js';
+import { wireConnStatus } from './ui-obs-status.js';
 import { openSubtitleWindow, closeSubtitleWindow, onSubtitleWindowState } from './subtitle-window.js';
 
 const MODES = ['websocket', 'window', 'capture'];
@@ -50,9 +55,6 @@ export function mountObsTab(container) {
             <li data-i18n="obs.help.step3"></li>
             <li data-i18n="obs.help.step4"></li>
           </ol>
-          <ul class="help-notes">
-            <li data-i18n="obs.help.nestNote"></li>
-          </ul>
         </div>
         <div class="obs-help" data-mode="window" hidden>
           <ol class="help-steps">
@@ -85,79 +87,27 @@ export function mountObsTab(container) {
       </div>
 
       <div class="obs-action">
-        <button type="button" class="btn primary" id="obs-auto-setup" data-mode="websocket"
-                data-i18n="obs.autoSetup">OBS に自動追加</button>
+        <button type="button" class="btn primary" id="obs-settings-open" data-mode="websocket"
+                data-i18n="obs.settings.open">OBS 連携ウィンドウを開く</button>
         <button type="button" class="btn primary" id="obs-window-toggle" data-mode="window" hidden
                 data-i18n="obs.window.open">字幕ウィンドウを開く</button>
         <button type="button" class="btn primary" id="obs-capture-enter" data-mode="capture" hidden
                 data-i18n="obs.capture.enter">キャプチャモードにする</button>
-      </div>
-
-      <!-- Auto Setup writes into the user's live OBS scene, so it asks first.
-           A small bubble on the button rather than a modal: it is a yes/no
-           about the thing just clicked. -->
-      <div class="help-popover obs-confirm-popover" id="popover-obs-confirm" popover>
-        <p class="obs-confirm-text" id="obs-confirm-text"></p>
-        <div class="obs-confirm-actions">
-          <button type="button" class="btn" id="obs-confirm-cancel" data-i18n="obs.autoSetup.cancel">キャンセル</button>
-          <button type="button" class="btn primary" id="obs-confirm-ok" data-i18n="obs.autoSetup.ok">追加する</button>
-        </div>
       </div>
     </div>
 
     <p class="obs-mode-desc" id="obs-mode-desc"></p>
 
     <div class="obs-body" id="obs-mode-websocket">
-      <div class="obs-ws-row">
-        <div class="form-row">
-          <span class="form-row-label" data-i18n="obs.enabled">WS 接続</span>
-          <label class="toggle">
-            <input type="checkbox" data-bind="obsEnabled">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-        </div>
-        <label class="obs-field obs-field-url">
-          <span class="form-row-label" data-i18n="obs.url">URL</span>
-          <input type="text" class="text-input" data-bind="obsUrl"
-                 placeholder="ws://127.0.0.1:4455"
-                 autocomplete="off" spellcheck="false" autocorrect="off">
-        </label>
-        <div class="obs-field obs-field-password">
-          <span class="form-row-label" data-i18n="obs.password">Password</span>
-          <div class="secret-input-wrap" data-secret-visible="false"
-                 data-secret-show="obs.password.show" data-secret-hide="obs.password.hide">
-            <input type="text" class="text-input secret-input" data-bind="obsPassword"
-                   autocomplete="off" spellcheck="false" autocorrect="off"
-                   autocapitalize="off" inputmode="text">
-            <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
-              <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                <path d="M1 1l22 22"/>
-              </svg>
-              <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-      <label class="obs-nest">
-        <span class="toggle">
-          <input type="checkbox" data-bind="obsNestSources">
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-        </span>
-        <span class="form-row-label" data-i18n="obs.nest">字幕ソースを専用シーン「RTL-Subtitles」にまとめる</span>
-      </label>
       <div class="obs-conn">
-        <p class="obs-conn-status" id="obs-conn-status" role="status" aria-live="polite" data-phase="disabled">
+        <p class="obs-conn-status" role="status" aria-live="polite" data-phase="disabled">
           <span class="obs-conn-dot" aria-hidden="true"></span>
           <span class="obs-conn-text"></span>
         </p>
-        <p class="obs-conn-hint" id="obs-conn-hint"></p>
+        <p class="obs-conn-hint"></p>
       </div>
+      <p class="obs-inline-hint" data-i18n="obs.settings.note"></p>
+      <p class="obs-inline-hint" id="obs-scene-link-on" data-i18n="obs.sceneLink.onNote" hidden></p>
     </div>
 
     <!-- The subtitle window's background is fixed green, not the background
@@ -194,10 +144,9 @@ export function mountObsTab(container) {
 
   container.appendChild(section);
 
-  wireSecretInputs(section);
-  wireConnStatus(section);
+  wireConnStatus(section.querySelector('#obs-mode-websocket'));
   wireModeSwitch(section);
-  wireAutoSetup(section);
+  wireObsWindow(section);
   wireHelpHint(section);
 
   /* After applyTo: the button carries a data-i18n default, and applyTo would
@@ -261,34 +210,33 @@ function wireHelpHint(container) {
   });
 }
 
-/* Auto Setup adds sources to whatever scene is live in OBS, so a click only
-   opens a confirm bubble; the bubble's own button does the work. The button
-   is disabled while the WebSocket toggle is off — there is nothing it could
-   reach. */
-function wireAutoSetup(container) {
-  const btn     = container.querySelector('#obs-auto-setup');
-  const confirm = container.querySelector('#popover-obs-confirm');
-  if (!btn || !confirm) return;
+/* The OBS window (obs-settings.html). Asked for with no URL first, as the
+   second window is (js/second-window.js): one already open is handed back as
+   it is rather than reloaded. Opened from the second window it carries ?ch=2,
+   so its Auto Setup makes that window's sources. The tab also says when the
+   scene link is on, since recognition then starts and stops by itself. */
+const OBS_WINDOW_NAME = perChannel('rtl-obs-settings');
 
-  const sync = () => { btn.disabled = !settings.obsEnabled; };
+function openObsWindow() {
+  const url = new URL('obs-settings.html', location.href);
+  if (CHANNEL === 2) url.searchParams.set('ch', '2');
+  const win = window.open('', OBS_WINDOW_NAME, 'popup,width=760,height=720');
+  if (!win) {
+    alert(t('obs.settings.blocked'));
+    return;
+  }
+  if (win.location.href === 'about:blank') win.location.href = url.href;
+  win.focus();
+}
+
+function wireObsWindow(container) {
+  container.querySelector('#obs-settings-open')?.addEventListener('click', openObsWindow);
+
+  const note = container.querySelector('#obs-scene-link-on');
+  if (!note) return;
+  const sync = () => { note.hidden = !settings.obsSceneLink; };
   sync();
-  subscribe('obsEnabled', sync);
-
-  /* The wording follows the nest option, read at the moment of asking. */
-  const text = container.querySelector('#obs-confirm-text');
-  btn.addEventListener('click', () => {
-    if (text) {
-      text.textContent = t(settings.obsNestSources ? 'obs.autoSetup.confirm.nested' : 'obs.autoSetup.confirm');
-    }
-    try { confirm.showPopover(); } catch { /* already open */ }
-  });
-  container.querySelector('#obs-confirm-cancel')?.addEventListener('click', () => {
-    confirm.hidePopover();
-  });
-  container.querySelector('#obs-confirm-ok')?.addEventListener('click', () => {
-    confirm.hidePopover();
-    triggerAutoSetup();
-  });
+  subscribe('obsSceneLink', sync);
 }
 
 /* One button that opens or closes the subtitle window, labelled for whichever
@@ -335,49 +283,3 @@ export function mountSubtitleWindowButton(btn) {
   onSubtitleWindowState((state) => { open = state; render(); });
   subscribe('uiLang', render);
 }
-
-/* Live connection status shown beside the WS toggle, so the user can tell
-   whether the link to OBS actually works without opening the console. */
-function wireConnStatus(container) {
-  const el   = container.querySelector('#obs-conn-status');
-  const text = container.querySelector('.obs-conn-text');
-  const hint = container.querySelector('#obs-conn-hint');
-  if (!el || !text || !hint) return;
-
-  let current = { phase: 'disabled', code: null };
-
-  const render = () => {
-    el.dataset.phase = current.phase;
-    text.textContent = connStatusText(current);
-
-    /* Port-check guidance only helps when we can't reach the server — not for
-       a wrong-password failure (4009), which has nothing to do with the port.
-       The element keeps its reserved height even when empty, so showing/hiding
-       the text never pushes the rest of the tab up or down. */
-    const showHint = current.phase === 'retrying' && current.code !== 4009;
-    hint.textContent = showHint ? t('obs.status.hint.checkPort') : '';
-  };
-
-  onConnectionState((state) => { current = state; render(); });
-  /* Re-render in the new UI language without waiting for a state change. */
-  subscribe('uiLang', render);
-}
-
-/* Map a connection state to a localized message. The close code lets us tell
-   "server unreachable" (1006) from "wrong password" (4009) etc. */
-function connStatusText({ phase, code }) {
-  if (phase === 'disabled')   return t('obs.status.disabled');
-  if (phase === 'connecting') return t('obs.status.connecting');
-  if (phase === 'connected')  return t('obs.status.connected');
-
-  /* phase === 'retrying' — show why it failed plus that it keeps retrying. */
-  return `${failReason(code)} ${t('obs.status.retrying.suffix')}`;
-}
-
-function failReason(code) {
-  if (code === 'badurl') return t('obs.status.failed.badurl');
-  if (code === 1006)     return t('obs.status.failed.unreachable');
-  if (code === 4009)     return t('obs.status.failed.auth');
-  return `${t('obs.status.failed.generic')}${code != null ? ` (${code})` : ''}`;
-}
-

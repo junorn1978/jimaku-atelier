@@ -15,6 +15,16 @@
  * up before there was a second window working as they are. Auto Setup names
  * the second window's sources apart (RTL-Subtitle-2-…), or it would rewrite
  * the first window's sources to point at its own subtitles.
+ *
+ * The OBS window (obs-settings.html) loads this module too, for its own
+ * connection: it reads the scene list and runs Auto Setup, but has no
+ * subtitles, so it never broadcasts — one empty update from it would blank
+ * every overlay. initObs({ subtitles: false }) is that mode.
+ *
+ * Every connection also subscribes to OBS's scene events (switches, list
+ * changes, renames — a handful an hour), for the scene link
+ * (js/obs-scene-link.js) in the app windows and the scene list in the OBS
+ * window.
  */
 
 import { isDebugEnabled } from './logger.js';
@@ -26,6 +36,10 @@ import { CHANNEL } from './channel.js';
 const DEFAULT_WS_URL    = 'ws://127.0.0.1:4455';
 const RECONNECT_DELAY_MS = 2000;
 const REQUEST_TIMEOUT_MS = 5000;
+
+/* EventSubscription.Scenes: CurrentProgramSceneChanged, SceneListChanged,
+   SceneNameChanged and the like. Nothing else is received. */
+const SCENE_EVENTS = 1 << 2;
 
 let socket          = null;
 let reconnectTimer  = null;
@@ -120,8 +134,9 @@ function sendRaw(payload) {
 }
 
 function sendIdentify(token = '') {
-  /* eventSubscriptions: 0 — we only send events, never receive them. */
-  const d = { rpcVersion: 1, eventSubscriptions: 0 };
+  /* Scene events only. Our own subtitle broadcasts are custom events, which
+     come back only to those subscribed to General — the overlays. */
+  const d = { rpcVersion: 1, eventSubscriptions: SCENE_EVENTS };
   if (token) d.authentication = token;
   sendRaw({ op: 1, d });
 }
@@ -180,6 +195,7 @@ function ensureConnection() {
       if (isDebugEnabled()) console.debug('[obs] authenticated');
       flushPending();
     }
+    else if (msg.op === 5) handleSceneEvent(msg.d?.eventType, msg.d?.eventData || {});
   };
 
   socket.onerror = () => {
@@ -279,7 +295,7 @@ export function publishTargets(t1, t2) {
   publish();
 }
 
-/* ============ request/response helper (for auto-setup) ============ */
+/* ============ request/response helper (auto-setup, scene list) ============ */
 
 function sendSingleRequest(requestType, requestData = {}) {
   return new Promise((resolve, reject) => {
@@ -287,41 +303,80 @@ function sendSingleRequest(requestType, requestData = {}) {
       reject(new Error('Socket not open'));
       return;
     }
+    /* The socket this request went out on: by the timeout it may be closed
+       and `socket` null or a newer one. */
+    const ws = socket;
     const requestId = `rtl-req-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
     const onMsg = (event) => {
       let msg;
       try { msg = JSON.parse(event.data); } catch { return; }
       if (msg.op === 7 && msg.d.requestId === requestId) {
-        socket.removeEventListener('message', onMsg);
+        ws.removeEventListener('message', onMsg);
         if (msg.d.requestStatus.result) resolve(msg.d.responseData);
         else reject(new Error(msg.d.requestStatus.comment || 'Request failed'));
       }
     };
-    socket.addEventListener('message', onMsg);
+    ws.addEventListener('message', onMsg);
     sendRaw({ op: 6, d: { requestType, requestId, requestData } });
 
     setTimeout(() => {
-      socket.removeEventListener('message', onMsg);
+      ws.removeEventListener('message', onMsg);
       reject(new Error(`Request ${requestType} timeout`));
     }, REQUEST_TIMEOUT_MS);
   });
 }
 
-/* ============ overlay URL generation ============ */
+/* ============ scene events ============ */
 
-function getBaseUrl() {
-  return window.location.href
-    .split('?')[0].split('#')[0]
-    .replace(/index\.html$/, '')
-    .replace(/\/$/, '');
+const sceneListeners = { programChanged: new Set(), listChanged: new Set(), renamed: new Set() };
+
+function emit(set, ...args) {
+  set.forEach(fn => {
+    try { fn(...args); } catch (err) { if (isDebugEnabled()) console.error('[obs] scene listener threw:', err); }
+  });
 }
+
+/* op 5. Only Scenes is subscribed, so nothing else arrives. */
+function handleSceneEvent(eventType, eventData) {
+  if (eventType === 'CurrentProgramSceneChanged') {
+    emit(sceneListeners.programChanged, eventData.sceneName);
+  } else if (eventType === 'SceneNameChanged') {
+    emit(sceneListeners.renamed, eventData.oldSceneName, eventData.sceneName);
+    emit(sceneListeners.listChanged);
+  } else if (eventType === 'SceneListChanged' || eventType === 'SceneCreated' || eventType === 'SceneRemoved') {
+    emit(sceneListeners.listChanged);
+  }
+}
+
+/** The program scene changed: fn(sceneName). A preview switch in studio mode
+ *  is not one. Connecting does not report the scene already live. */
+export function onProgramSceneChanged(fn) { sceneListeners.programChanged.add(fn); }
+
+/** A scene was added, removed or renamed. */
+export function onSceneListChanged(fn) { sceneListeners.listChanged.add(fn); }
+
+/** A scene was renamed: fn(oldName, newName). */
+export function onSceneRenamed(fn) { sceneListeners.renamed.add(fn); }
+
+/** Scene names in the order OBS lists them. GetSceneList counts sceneIndex
+ *  from the bottom of OBS's list, so it is reversed. */
+export async function fetchSceneNames() {
+  if (!authenticated) throw new Error('Not connected');
+  const { scenes = [] } = await sendSingleRequest('GetSceneList');
+  return scenes.map(s => s.sceneName).reverse();
+}
+
+/* ============ overlay URL generation ============ */
 
 export function getOverlayUrl(mode) {
   const url = (settings.obsUrl || '').trim() || DEFAULT_WS_URL;
   const pwd = (settings.obsPassword || '').trim();
   const modeParam = (mode && mode !== 'all') ? `&mode=${encodeURIComponent(mode)}` : '';
   const chParam   = CHANNEL === 2 ? '&ch=2' : '';
-  return `${getBaseUrl()}/overlay.html#url=${encodeURIComponent(url)}&pwd=${encodeURIComponent(pwd)}${modeParam}${chParam}`;
+  /* Next to whichever page is asking — the app or the OBS window — without
+     either's query or hash. */
+  const page = new URL('overlay.html', location.href).href;
+  return `${page}#url=${encodeURIComponent(url)}&pwd=${encodeURIComponent(pwd)}${modeParam}${chParam}`;
 }
 
 /* ============ auto-setup (creates OBS browser sources) ============ */
@@ -441,7 +496,9 @@ const STYLE_KEYS = [
   'subTarget2Color', 'subTarget2Stroke', 'subTarget2StrokeW', 'subTarget2Size',
 ];
 
-export function initObs() {
+/** subtitles: false for the OBS window, which connects but never broadcasts
+ *  (see the file header). */
+export function initObs({ subtitles = true } = {}) {
   /* Connection lifecycle driven by settings. */
   subscribe('obsEnabled', () => ensureConnection());
   subscribe('obsUrl',      () => { if (settings.obsEnabled) { safeClose(); ensureConnection(); } });
@@ -449,7 +506,7 @@ export function initObs() {
 
   /* Any style change → re-broadcast so overlay stays in sync without
      waiting for the next subtitle update. */
-  for (const k of STYLE_KEYS) {
+  if (subtitles) for (const k of STYLE_KEYS) {
     subscribe(k, () => { if (settings.obsEnabled && authenticated) publish(); });
   }
 

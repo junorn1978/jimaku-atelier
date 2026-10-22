@@ -218,6 +218,12 @@ const _defaults = Object.freeze({
   obsEnabled:         false,
   obsUrl:             'ws://127.0.0.1:4455',
   obsPassword:        '',
+  /* Scene link (js/obs-scene-link.js): switching OBS's program scene starts
+     or stops recognition. Shared, so a break scene stops the second window
+     too. Rules hold only scenes that are not 'start' — { name: 'stop' |
+     'none' } — so a scene added later starts; replaced whole, never mutated. */
+  obsSceneLink:       false,
+  obsSceneRules:      {},
 });
 
 /* Which stored object holds `key` for this window. */

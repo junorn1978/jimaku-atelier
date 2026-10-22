@@ -1,7 +1,9 @@
 /* =========================================
    字幕アトリエ — OBS tab
 
-   js/ui-obs.js: connection, scene setup and its help popovers.
+   js/ui-obs.js: route picker, each route's settings and its help popover.
+   The OBS window (obs-settings.html) loads this file too, for the connection
+   status and the help popover; its own layout is css/obs-settings.css.
 
    Split out of styles.css. Everything stays inside @layer components:
    styles.css declares the layer order and must load first, and a rule
@@ -28,43 +30,6 @@
     gap: var(--space-2);
   }
 
-  /* WebSocket: toggle, URL and password on one line; wraps when narrow. The
-     URL takes the spare width, the password a fixed one. */
-  .obs-ws-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: var(--space-4);
-    row-gap: var(--space-2);
-
-    .form-row {
-      grid-template-columns: max-content max-content;
-      padding: 0;
-    }
-  }
-
-  .obs-field {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    min-width: 0;
-  }
-  .obs-field-url      { flex: 1 1 220px; max-width: 360px; }
-  .obs-field-url .text-input { flex: 1; min-width: 0; }
-  .obs-field-password { flex: 0 1 220px; }
-  .obs-field-password .secret-input-wrap { flex: 1; min-width: 0; }
-
-  /* Nest option: toggle first, then its sentence, so the long label can wrap
-     without pushing the switch around. */
-  .obs-nest {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    cursor: pointer;
-
-    .form-row-label { white-space: normal; }
-  }
-
   /* Window / capture: label, the one value, and the caveat that matters most,
      on a single line. */
   .obs-setting-row {
@@ -82,7 +47,7 @@
     line-height: 1.4;
   }
 
-  /* --- OBS tab: live connection status beside the WS toggle --- */
+  /* --- live connection status (js/ui-obs-status.js) --- */
   /* Status line + hint share one fixed-height box that scrolls as a single
      unit, so neither (both can wrap to several lines) ever pushes the rest of
      the tab down. ~3 lines tall; anything beyond scrolls inside. */
@@ -253,7 +218,6 @@
   .obs-action {
     margin-left: auto;
     flex-shrink: 0;
-    anchor-name: --obs-action-anchor;
   }
 
   .obs-help-popover {
@@ -268,23 +232,6 @@
       padding-top: var(--space-3);
       border-top: 1px solid var(--color-border);
     }
-  }
-
-  /* Confirm bubble under the Auto Setup button, right edges aligned. */
-  .obs-confirm-popover {
-    position-anchor: --obs-action-anchor;
-    position-area: bottom span-left;
-    position-try-fallbacks: flip-block;
-    margin: var(--space-2) 0;
-    max-width: min(300px, 80vw);
-  }
-
-  .obs-confirm-text { margin: 0 0 var(--space-3); }
-
-  .obs-confirm-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
   }
 
   .obs-mode-desc {

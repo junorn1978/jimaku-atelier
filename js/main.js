@@ -18,9 +18,10 @@ import { mountFilterTab } from './ui-filter.js';
 import { mountObsTab, mountSubtitleWindowButton } from './ui-obs.js';
 import { mountManualTranslate } from './ui-manual-translate.js';
 import { mountSettingsDialog } from './ui-settings-dialog.js';
-import { initSpeech } from './speech.js';
+import { initSpeech, requestSpeechStart, stopSpeech } from './speech.js';
 import { initFilter } from './filter.js';
 import { initObs } from './obs.js';
+import { initSceneLink } from './obs-scene-link.js';
 import { initSubtitleWindow } from './subtitle-window.js';
 import { initLayoutToggles } from './ui-layout.js';
 import { initSettingsTabs } from './ui-tabs.js';
@@ -82,6 +83,9 @@ async function init() {
 
   /* Start/stop buttons, mic info, recognition lifecycle. */
   initSpeech();
+
+  /* OBS scene switches start and stop recognition, when the link is on. */
+  initSceneLink({ start: requestSpeechStart, stop: stopSpeech });
 
   /* Document-level interactions. */
   syncLangSwitcher();

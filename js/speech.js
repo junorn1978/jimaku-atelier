@@ -1005,3 +1005,7 @@ export function initSpeech() {
 }
 
 export function stopSpeech() { handleStop(); }
+
+/** Start as the button would; resolves once started, or once it could not be.
+ *  For the OBS scene link (js/obs-scene-link.js). */
+export function requestSpeechStart() { return handleStart(); }
