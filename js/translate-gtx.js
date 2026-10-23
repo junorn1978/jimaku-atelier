@@ -6,6 +6,13 @@
  * constants rather than anything the user owns, so they live here as literals —
  * see GTX below.
  *
+ * "gtx" is a borrowed name, not the endpoint: it is the usual nickname for
+ * Google's free translate_a/single?client=gtx, which this provider has never
+ * called — it has posted to translateHtml since the first commit. Kept because
+ * 'gtx' is a stored settings value (translationMode, shared with the second
+ * window) and the gtxCode field in language_config.json; renaming it would
+ * need a migration for nothing the user can see ("Google 翻訳" in the UI).
+ *
  * Public surface:
  *   translateGtx(text, targetLangIds, sourceLangId)
  *     → { translations: string[] }   (positionally aligned with targetLangIds)
