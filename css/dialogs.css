@@ -173,6 +173,16 @@
     gap: var(--space-4);
   }
 
+  /* A setting that only applies while the row above is on: indented under it,
+     and faded while its switch is disabled. */
+  .dialog-setting-row.is-sub {
+    margin-top: var(--space-3);
+    padding-left: var(--space-4);
+    transition: opacity 0.15s;
+
+    &:has(input:disabled) { opacity: 0.5; }
+  }
+
   .about-list {
     display: grid;
     gap: var(--space-2);

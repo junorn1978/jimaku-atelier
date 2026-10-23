@@ -21,7 +21,7 @@
  * "custom STT server".
  */
 
-import { isDebugEnabled } from './logger.js';
+import { isDebugEnabled, isProbeEnabled } from './logger.js';
 import { settings, subscribe } from './store.js';
 import { sendTranslationRequest, resetController, clearTargets, prepareTranslation, deliverTranslations } from './controller.js';
 import { applyFilter } from './filter.js';
@@ -456,6 +456,9 @@ function setupRecognition() {
       markSession(on ? 'pause detector: denoised' : `pause detector: raw (denoiser failed: ${error})`);
     },
     onProbe({ atMs, outDb, judgedDb, speech, heldMs, lagMs, skippedMs, droppedMs }) {
+      /* Switched off mid-session: the worklet runs on until the next session
+         starts without it, so the lines stop here. */
+      if (!isProbeEnabled()) return;
       const db = (v) => (v < -100 ? '—' : v.toFixed(0));
       markSession(`fed @${atMs}ms: out ${db(outDb)}dB detector ${db(judgedDb)}dB ${speech ? 'speech' : 'quiet'}`
         + (heldMs ? ` held ${heldMs}ms` : '') + (lagMs ? ` lag ${lagMs}ms` : '')
@@ -482,7 +485,7 @@ function setupRecognition() {
   rec.onaudiostart = () => {
     markSession('onaudiostart');
     input?.release();
-    if (isDebugEnabled()) input?.probe(PROBE_WINDOWS);
+    if (isProbeEnabled()) input?.probe(PROBE_WINDOWS);
   };
 
   /* Diagnostic-only lifecycle handlers: no behaviour, just the timeline. */

@@ -320,6 +320,8 @@
   "settings.offlinePack.desc": "實驗性質，不建議下載使用：開啟後會在「語言」分頁顯示 Chrome 離線辨識語言包的下載按鈕。本機模型仍在大幅變動，辨識結果與雲端不同，且相當占用資源。下載後即使關閉此開關，模型仍會留在瀏覽器中並優先用於辨識；若要還原，請至瀏覽器的 設定 → 無障礙設定 → 即時字幕，刪除所有離線語言。",
   "settings.debug.title":   "Debug log",
   "settings.debug.desc":    "在瀏覽器 console 輸出詳細紀錄。",
+  "settings.debugProbe.title": "音訊輸入詳細紀錄",
+  "settings.debugProbe.desc":  "每秒輸出數次送進辨識的音訊音量。紀錄量很大，請只在有聲音輸入卻沒有辨識結果時開啟。僅在 Debug log 開啟時有效。",
   "settings.reset.title":   "重設設定",
   "settings.reset.desc":    "將此瀏覽器儲存的設定還原為預設值，並重新載入應用程式。",
   "settings.reset.button":  "重設",

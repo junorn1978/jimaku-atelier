@@ -6,7 +6,7 @@
  */
 
 import { applyTo, t } from './i18n.js';
-import { isDebugEnabled, setDebugEnabled } from './logger.js';
+import { isDebugEnabled, setDebugEnabled, isProbeSettingOn, setProbeEnabled } from './logger.js';
 import { resetSettings } from './store.js';
 import { APP_VERSION } from './app-meta.js';
 import { isChrome } from './env.js';
@@ -112,6 +112,18 @@ export function mountSettingsDialog(container) {
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
         </label>
       </div>
+      <!-- Depends on the debug log, so it sits under it, indented, and is
+           disabled while that is off (js/logger.js). -->
+      <div class="dialog-setting-row is-sub">
+        <div>
+          <h3 data-i18n="settings.debugProbe.title">Audio input probe</h3>
+          <p data-i18n="settings.debugProbe.desc">Log the level of the audio fed to recognition.</p>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="settings-probe-toggle">
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
     </section>
 
     <section class="dialog-section">
@@ -151,9 +163,18 @@ export function mountSettingsDialog(container) {
   applyTo(container);
 
   const debugToggle = container.querySelector('#settings-debug-toggle');
+  const probeToggle = container.querySelector('#settings-probe-toggle');
   if (debugToggle) {
     debugToggle.checked = isDebugEnabled();
-    debugToggle.addEventListener('change', () => setDebugEnabled(debugToggle.checked));
+    debugToggle.addEventListener('change', () => {
+      setDebugEnabled(debugToggle.checked);
+      if (probeToggle) probeToggle.disabled = !debugToggle.checked;
+    });
+  }
+  if (probeToggle) {
+    probeToggle.checked  = isProbeSettingOn();
+    probeToggle.disabled = !isDebugEnabled();
+    probeToggle.addEventListener('change', () => setProbeEnabled(probeToggle.checked));
   }
 
   container.querySelector('#settings-reset-btn')?.addEventListener('click', () => {
