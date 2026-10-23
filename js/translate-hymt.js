@@ -46,9 +46,13 @@ const MODEL_ID = 'onnx-community/HY-MT1.5-1.8B-ONNX';
 /* Download size per variant, for the message that asks before downloading. */
 export const HYMT_SIZE = { q4f16: '1.2 GB', q4: '1.4 GB' };
 
-/* A subtitle line translates to a few dozen tokens; this only stops a
-   runaway generation. */
-const MAX_NEW_TOKENS = 256;
+/* Output budget per line, in tokens, from the source length in characters.
+   A guard against a generation that runs away (a repetition loop holding the
+   model for seconds), not a speed control: on live speech 2026-10-23 the
+   output never came near it — translations ran at most ~1.3× the source in
+   characters — and the remarks the model sometimes appends fit well inside. */
+const TOKENS_PER_CHAR = 2;
+const MIN_NEW_TOKENS  = 24;
 
 let lib       = null;   /* the Transformers.js module, once imported */
 let generator = null;   /* the loaded pipeline */
@@ -161,6 +165,10 @@ const CHINESE_TARGETS = {
   'yue-Hant-HK': '粤语',
 };
 
+/* The model card's templates, verbatim. Tried 2026-10-23: a clause telling
+   it not to add anything not in the source did not stop the remarks it
+   appends, and did not speed anything up, so the templates stay as the model
+   was trained on them. */
 function buildPrompt(text, targetLangId) {
   const zh = CHINESE_TARGETS[targetLangId];
   if (zh) return `将以下文本翻译为${zh}，注意只需要输出翻译后的结果，不要额外解释：\n\n${text}`;
@@ -172,7 +180,7 @@ function buildPrompt(text, targetLangId) {
 
 async function translateOne(text, targetLangId, stop) {
   const out = await generator([{ role: 'user', content: buildPrompt(text, targetLangId) }], {
-    max_new_tokens: MAX_NEW_TOKENS,
+    max_new_tokens: Math.max(MIN_NEW_TOKENS, text.length * TOKENS_PER_CHAR),
     do_sample: false,
     /* The model card's value. Greedy decoding without it can loop. */
     repetition_penalty: 1.05,
