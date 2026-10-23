@@ -43,6 +43,7 @@ import { isPromptSupported, getPromptAvailability,
          preparePromptSession, destroyPromptSession,
          isPromptLangSupported } from './translate-prompt.js';
 import { isTranslatorSupported, prepareTranslators } from './translate-translator.js';
+import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, HYMT_SIZE } from './translate-hymt.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
    the Style tab, which this tab absorbed. */
@@ -288,6 +289,7 @@ export function mountLanguagesTab(container) {
               <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
               <label id="engine-translator-label"><input type="radio" name="translationMode" value="translator" data-bind="translationMode"><span data-i18n="lang.engine.translator">ブラウザ翻訳</span></label>
               <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
+              <label id="engine-hymt-label"><input type="radio" name="translationMode" value="hymt" data-bind="translationMode"><span data-i18n="lang.engine.hymt">HY-MT</span></label>
             </div>
 
             <!-- Whatever the selected engine needs — a status line, the custom
@@ -297,6 +299,10 @@ export function mountLanguagesTab(container) {
             <div class="engine-inline">
               <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
               <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
+              <!-- HY-MT asks before its first download (over a gigabyte), so
+                   its row carries a button beside the status line. -->
+              <p class="manual-status" id="engine-hymt-status" role="status" aria-live="polite" hidden></p>
+              <button type="button" class="btn" id="engine-hymt-download" data-i18n="lang.engine.hymt.download" hidden>ダウンロード</button>
               <!-- While the translation server is on, the picker beside has
                    nothing selected; this says where the lines go instead.
                    Picking an engine turns the server off. -->
@@ -429,6 +435,7 @@ export function mountLanguagesTab(container) {
   markCloudOnlySources(container);
   setupTranslatorEngine(container);
   setupPromptEngine(container);
+  setupHymtEngine(container);
 }
 
 /* The advanced popover's two switches are views of existing settings rather
@@ -763,6 +770,87 @@ function setupPromptEngine(container) {
        while the page is still mounting. */
     if (settings.translationMode === 'prompt') scheduleWarmUp();
   }).catch(() => disable('lang.engine.prompt.unavailable', true));
+}
+
+/* In-browser HY-MT engine (js/translate-hymt.js). WebGPU only: without it the
+   radio stays disabled. Picking it loads the model from the browser's cache
+   when it is there (a few seconds); the first download is over a gigabyte, so
+   that waits for the button beside the status line instead of starting on
+   the pick. Picking another engine releases the model and its GPU memory. */
+function setupHymtEngine(container) {
+  const label  = container.querySelector('#engine-hymt-label');
+  const radio  = label?.querySelector('input[value="hymt"]');
+  const status = container.querySelector('#engine-hymt-status');
+  const button = container.querySelector('#engine-hymt-download');
+  if (!label || !radio || !status || !button) return;
+
+  /* Kept as a key plus its {s} value so a UI language switch can re-render. */
+  let messageKey = null;
+  let slot = '';
+  const render = () => {
+    status.hidden = !messageKey;
+    status.textContent = messageKey ? t(messageKey).replace('{s}', slot) : '';
+  };
+  const setMessage = (key, value = '') => { messageKey = key; slot = value; render(); };
+  subscribe('uiLang', render);
+
+  let dtype = null;
+
+  /* Bumped on every pick and every switch away, so a load or cache check that
+     finishes after the user has moved on stays out of the row. */
+  let generation = 0;
+
+  const load = async (mine) => {
+    button.hidden = true;
+    setMessage('lang.engine.hymt.preparing');
+    const result = await loadHymt(dtype, (loaded, total) => {
+      if (mine === generation) setMessage('lang.engine.hymt.downloading', `${Math.floor(loaded / total * 100)}%`);
+    });
+    if (mine !== generation) return;
+    if (result.ok) { setMessage('lang.engine.hymt.ready'); return; }
+    if (result.reason === 'cancelled') return;
+    setMessage('lang.engine.hymt.failed');
+    button.hidden = false;
+  };
+
+  const activate = async () => {
+    const mine = ++generation;
+    const cached = await isHymtDownloaded(dtype);
+    if (mine !== generation) return;
+    if (cached) { load(mine); return; }
+    setMessage('lang.engine.hymt.needDownload', HYMT_SIZE[dtype]);
+    button.hidden = false;
+  };
+
+  const deactivate = () => {
+    generation++;
+    button.hidden = true;
+    setMessage(null);
+    unloadHymt();
+  };
+
+  /* The click is the consent to download: it is only offered once the cache
+     has been checked and found empty, or after a failed attempt. */
+  button.addEventListener('click', () => load(generation));
+
+  /* Disabled until the WebGPU check resolves, without stranding a restored
+     selection: it only falls back once the engine is known to be unusable. */
+  radio.disabled = true;
+  label.classList.add('is-disabled');
+
+  getHymtSupport().then((support) => {
+    if (!support.ok) {
+      label.title = t('lang.engine.hymt.unsupported');
+      setMessage('lang.engine.hymt.unsupported');
+      if (settings.translationMode === 'hymt') settings.translationMode = 'gtx';
+      return;
+    }
+    dtype = support.dtype;
+    radio.disabled = false;
+    label.classList.remove('is-disabled');
+    subscribe('translationMode', (mode) => (mode === 'hymt' ? activate() : deactivate()));
+    if (settings.translationMode === 'hymt') activate();
+  });
 }
 
 /* Off by default, behind the experimental switch in the settings dialog

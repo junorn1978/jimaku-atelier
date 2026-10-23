@@ -4,7 +4,7 @@
  *
  * Responsibilities:
  *   - Limit concurrent translation requests (MAX_CONCURRENT).
- *   - Route each request to gtx / translator / prompt / link based on
+ *   - Route each request to gtx / translator / prompt / hymt / link based on
  *     settings.translationMode.
  *   - Stage results in per-target buffers and replay them in sequence order,
  *     respecting a minimum display time so fast successive responses don't
@@ -23,6 +23,7 @@ import { translateGtx } from './translate-gtx.js';
 import { translateLink, primeLocalAccess } from './translate-link.js';
 import { translatePrompt } from './translate-prompt.js';
 import { translateTranslator } from './translate-translator.js';
+import { translateHymt } from './translate-hymt.js';
 import { applyFilter } from './filter.js';
 import { publishTargets } from './obs.js';
 
@@ -197,6 +198,11 @@ async function route(text, previousText, sourceLangId, targetLangIds, sequenceId
        it aborts all but the latest itself (latest-wins), so only the most
        recent survives. */
     return translatePrompt(text, targetLangIds, sourceLangId);
+  }
+  if (mode === 'hymt') {
+    /* In-browser HY-MT on WebGPU. Latest-wins like the Prompt API engine:
+       a newer request interrupts the one in flight. */
+    return translateHymt(text, targetLangIds);
   }
   if (mode === 'link') {
     const url = settings.customTranslateUrl;

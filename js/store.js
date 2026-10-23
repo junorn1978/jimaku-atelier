@@ -148,7 +148,9 @@ const _defaults = Object.freeze({
   obsNestSources:     true,
 
   // --- Translation engine ---
-  translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'link'
+  /* 'gtx' is Google translate-pa translateHtml, not translate_a/single —
+     a historical name kept because it is stored; see translate-gtx.js. */
+  translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'hymt' | 'link'
   customTranslateUrl: '',
   /* The Prompt API engine is archived rather than deleted: measured on Chrome
      150 it costs ~800ms per line per target and its output is unreliable
