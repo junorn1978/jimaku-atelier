@@ -2,9 +2,9 @@
    字幕アトリエ — toolbar
 
    The toolbar along the bottom of the control card: start/stop, the
-   microphone button and its panel (device, level test), the subtitle-window
-   button and the background-click lock. js/speech.js, js/ui-mic.js,
-   js/ui-obs.js.
+   microphone button and its panel (device, level test), the interface-
+   language menu, the subtitle-window button and the background-click lock.
+   js/speech.js, js/ui-mic.js, js/main.js, js/ui-obs.js.
 
    Split out of styles.css. Everything stays inside @layer components:
    styles.css declares the layer order and must load first, and a rule
@@ -188,6 +188,66 @@
     &[aria-pressed="true"] {
       background: var(--color-accent-soft);
       color: var(--color-accent-hover);
+    }
+  }
+
+  /* --- interface language (global actions; js/main.js) ---
+     An .icon-btn that also names the current language, small and after the
+     globe like a keyboard-input indicator, so the glyph stays the same size
+     as its neighbours'. Its menu opens upward like the mic panel. */
+  .lang-btn {
+    anchor-name: --lang-btn;
+    width: auto;
+    padding-inline: 7px;
+    grid-auto-flow: column;
+    gap: 4px;
+
+    .lang-btn-current {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    &:has(+ .lang-menu:popover-open) {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+  }
+
+  .lang-menu {
+    position-anchor: --lang-btn;
+    position-area: top span-left;
+    inset: auto;
+    margin: 0 0 calc(var(--space-2) + var(--space-3));
+    padding: var(--space-1);
+    display: none;
+    min-width: 150px;
+    background: var(--color-surface-1);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-popover);
+
+    &:popover-open { display: grid; }
+
+    button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      font-size: var(--text-md);
+      text-align: left;
+
+      &:hover { background: var(--fill-1); }
+
+      /* checkmark on the active language */
+      &[aria-checked="true"]::after {
+        content: "✓";
+        color: var(--color-accent-hover);
+      }
     }
   }
 

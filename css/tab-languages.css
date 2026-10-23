@@ -2,8 +2,8 @@
    字幕アトリエ — Languages tab
 
    js/ui-languages.js: the per-line matrix, the display settings beside it,
-   the offline pack and the translation engine, plus the interface-language
-   menu and signature that sit in the same tab.
+   the offline pack and the translation engine, plus the signature that sits
+   in the same tab.
 
    Split out of styles.css. Everything stays inside @layer components:
    styles.css declares the layer order and must load first, and a rule
@@ -11,62 +11,6 @@
    ========================================= */
 
 @layer components {
-  /* --- interface language (Languages tab, beside the signature; js/main.js) ---
-     An icon button that also shows the current language, opening a small menu
-     upward — the panel sits at the bottom of the window. */
-  .lang-btn {
-    anchor-name: --lang-btn;
-    width: auto;
-    padding-inline: 6px;
-    display: inline-flex;
-    gap: 4px;
-    font-size: var(--text-sm);
-    font-weight: 600;
-
-    svg { width: 16px; height: 16px; }
-
-    &:has(+ .lang-menu:popover-open) {
-      background: var(--color-accent-soft);
-      color: var(--color-accent-hover);
-    }
-  }
-
-  .lang-menu {
-    position-anchor: --lang-btn;
-    position-area: top span-left;
-    inset: auto;
-    margin: 0 0 calc(var(--space-2) + var(--space-3));
-    padding: var(--space-1);
-    display: none;
-    min-width: 150px;
-    background: var(--color-surface-1);
-    color: var(--color-text);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-popover);
-
-    &:popover-open { display: grid; }
-
-    button {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
-      padding: 6px 10px;
-      border-radius: var(--radius-md);
-      font-size: var(--text-md);
-      text-align: left;
-
-      &:hover { background: var(--fill-1); }
-
-      /* checkmark on the active language */
-      &[aria-checked="true"]::after {
-        content: "✓";
-        color: var(--color-accent-hover);
-      }
-    }
-  }
-
   .style-align-control {
     justify-self: start;
   }

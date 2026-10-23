@@ -146,105 +146,107 @@
         <p class="toolbar-status" id="toolbar-status"></p>
 
         <div class="toolbar-actions">
-          <!-- The setup controls share one inset track: the microphone, then
-               the settings tabs. -->
+          <!-- The setup controls, as two inset capsules: the audio input
+               (microphone, tab audio), then the settings tabs. Two capsules
+               rather than one track with a divider in it: the first opens
+               panels and starts shares, the second switches the body. -->
           <div class="settings-nav">
-            <!-- Microphone button and its panel (js/ui-mic.js). In the same
-                 track as the tabs: it is set up once per session, like what
-                 the tabs hold, and as a pill of its own it stood taller than
-                 the tabs beside it. Not a tab itself — it opens a popover —
-                 so it sits outside the tablist, behind a separator. Hidden
-                 with the tabs while the panel is collapsed: switching the
-                 input mid-stream should not be one stray click away.
-                 data-alert puts a dot on it. Labelled "settings" rather than
-                 just "microphone": an icon alone read as a mute toggle. The
-                 tooltip names the device in use. -->
-            <button type="button" class="mic-btn" id="mic-btn" popovertarget="mic-panel">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <rect x="9" y="2" width="6" height="12" rx="3"/>
-                <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
-                <path d="M12 18v4"/>
-              </svg>
-              <span data-i18n="settings.mic.button">マイク設定</span>
-            </button>
+            <div class="settings-nav-group">
+              <!-- Microphone button and its panel (js/ui-mic.js). A capsule
+                   of the same material as the tabs: it is set up once per
+                   session, like what the tabs hold, and as a pill of its own
+                   it stood taller than the tabs beside it. Not a tab itself —
+                   it opens a popover — so it sits outside the tablist. Hidden
+                   with the tabs while the panel is collapsed: switching the
+                   input mid-stream should not be one stray click away.
+                   data-alert puts a dot on it. Labelled "settings" rather than
+                   just "microphone": an icon alone read as a mute toggle. The
+                   tooltip names the device in use. -->
+              <button type="button" class="mic-btn" id="mic-btn" popovertarget="mic-panel">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="9" y="2" width="6" height="12" rx="3"/>
+                  <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+                  <path d="M12 18v4"/>
+                </svg>
+                <span data-i18n="settings.mic.button">マイク設定</span>
+              </button>
 
-            <div class="mic-panel" id="mic-panel" popover>
-              <div class="mic-panel-row mic-device">
-                <h3 data-i18n="settings.mic.title">マイク</h3>
-                <select class="select mic-select" data-i18n-aria-label="settings.mic.title" aria-label="マイク"></select>
-              </div>
-
-              <!-- data-state (idle | running | done) decides which part shows. -->
-              <div class="mic-test">
-                <div class="mic-test-head">
-                  <button type="button" class="btn mic-test-btn" data-i18n="settings.mic.test.button">音量テスト</button>
-                  <p class="mic-test-hint" data-i18n="settings.mic.test.hint">説明</p>
-                  <p class="mic-test-step" aria-live="polite"></p>
+              <div class="mic-panel" id="mic-panel" popover>
+                <div class="mic-panel-row mic-device">
+                  <h3 data-i18n="settings.mic.title">マイク</h3>
+                  <select class="select mic-select" data-i18n-aria-label="settings.mic.title" aria-label="マイク"></select>
                 </div>
-                <div class="level-bar mic-test-live"><div class="level-fill"></div></div>
-                <div class="mic-test-result">
-                  <div class="mic-test-bars">
-                    <div class="mic-test-row mic-test-voice">
-                      <span data-i18n="settings.mic.test.voice">話し声</span>
-                      <div class="level-bar"><div class="level-fill"></div></div>
-                      <span class="level-value"></span>
-                    </div>
-                    <div class="mic-test-row mic-test-bg">
-                      <span data-i18n="settings.mic.test.background">背景音</span>
-                      <div class="level-bar"><div class="level-fill"></div><div class="level-mark"></div></div>
-                      <span class="level-value"></span>
-                    </div>
-                    <p class="mic-test-gap"></p>
+
+                <!-- data-state (idle | running | done) decides which part shows. -->
+                <div class="mic-test">
+                  <div class="mic-test-head">
+                    <button type="button" class="btn mic-test-btn" data-i18n="settings.mic.test.button">音量テスト</button>
+                    <p class="mic-test-hint" data-i18n="settings.mic.test.hint">説明</p>
+                    <p class="mic-test-step" aria-live="polite"></p>
                   </div>
-                  <p class="mic-test-verdict" aria-live="polite"></p>
-                  <button type="button" class="btn mic-test-switch" hidden
-                          data-i18n="settings.segment.switch">切り替える</button>
+                  <div class="level-bar mic-test-live"><div class="level-fill"></div></div>
+                  <div class="mic-test-result">
+                    <div class="mic-test-bars">
+                      <div class="mic-test-row mic-test-voice">
+                        <span data-i18n="settings.mic.test.voice">話し声</span>
+                        <div class="level-bar"><div class="level-fill"></div></div>
+                        <span class="level-value"></span>
+                      </div>
+                      <div class="mic-test-row mic-test-bg">
+                        <span data-i18n="settings.mic.test.background">背景音</span>
+                        <div class="level-bar"><div class="level-fill"></div><div class="level-mark"></div></div>
+                        <span class="level-value"></span>
+                      </div>
+                      <p class="mic-test-gap"></p>
+                    </div>
+                    <p class="mic-test-verdict" aria-live="polite"></p>
+                    <button type="button" class="btn mic-test-switch" hidden
+                            data-i18n="settings.segment.switch">切り替える</button>
+                  </div>
+                </div>
+
+                <!-- Cloud recognition only; see speech.js (engineSegments). -->
+                <div class="mic-panel-row mic-segment">
+                  <div>
+                    <h3 data-i18n="settings.segment.title">文の区切り</h3>
+                    <p data-i18n="settings.segment.desc">説明</p>
+                  </div>
+                  <div class="seg-switch" role="group" data-i18n-aria-label="settings.segment.title" aria-label="文の区切り">
+                    <label><input type="radio" name="segmentMode" value="auto" data-bind="segmentMode"><span data-i18n="settings.segment.auto">自動</span></label>
+                    <label><input type="radio" name="segmentMode" value="engine" data-bind="segmentMode"><span data-i18n="settings.segment.engine">エンジン</span></label>
+                  </div>
+                </div>
+
+                <!-- Opens the second window (js/second-window.js): another input,
+                     recognised and put out on its own. Removed in the second
+                     window itself, which cannot open a third. -->
+                <div class="mic-panel-row mic-second">
+                  <div>
+                    <h3 data-i18n="settings.second.title">2つ目の窓</h3>
+                    <p data-i18n="settings.second.desc">説明</p>
+                  </div>
+                  <button type="button" class="btn" id="second-window-btn" data-i18n="settings.second.open">開く</button>
                 </div>
               </div>
 
-              <!-- Cloud recognition only; see speech.js (engineSegments). -->
-              <div class="mic-panel-row mic-segment">
-                <div>
-                  <h3 data-i18n="settings.segment.title">文の区切り</h3>
-                  <p data-i18n="settings.segment.desc">説明</p>
-                </div>
-                <div class="seg-switch" role="group" data-i18n-aria-label="settings.segment.title" aria-label="文の区切り">
-                  <label><input type="radio" name="segmentMode" value="auto" data-bind="segmentMode"><span data-i18n="settings.segment.auto">自動</span></label>
-                  <label><input type="radio" name="segmentMode" value="engine" data-bind="segmentMode"><span data-i18n="settings.segment.engine">エンジン</span></label>
-                </div>
-              </div>
-
-              <!-- Opens the second window (js/second-window.js): another input,
-                   recognised and put out on its own. Removed in the second
-                   window itself, which cannot open a third. -->
-              <div class="mic-panel-row mic-second">
-                <div>
-                  <h3 data-i18n="settings.second.title">2つ目の窓</h3>
-                  <p data-i18n="settings.second.desc">説明</p>
-                </div>
-                <button type="button" class="btn" id="second-window-btn" data-i18n="settings.second.open">開く</button>
-              </div>
+              <!-- Shares a tab's (or window's) audio, or ends the share
+                   (js/ui-mic.js, js/audio-input.js). A button of its own rather
+                   than an entry in the device list, as in the hamham extension:
+                   the share is opened and ended here, recognition listens to it
+                   whenever it is on, and the mic list is disabled meanwhile.
+                   After the panel, not before it: .mic-btn's open style looks
+                   for the panel right after it. Text, title and aria-pressed
+                   are set from JS. -->
+              <button type="button" class="tab-audio-btn" id="tab-audio-btn" aria-pressed="false" hidden>
+                <!-- speaker icon -->
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M11 5 6 9H2v6h4l5 4z"/>
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+                  <path d="M19 5a10 10 0 0 1 0 14"/>
+                </svg>
+                <span class="tab-audio-label"></span>
+              </button>
             </div>
-
-            <!-- Shares a tab's (or window's) audio, or ends the share
-                 (js/ui-mic.js, js/audio-input.js). A button of its own rather
-                 than an entry in the device list, as in the hamham extension:
-                 the share is opened and ended here, recognition listens to it
-                 whenever it is on, and the mic list is disabled meanwhile.
-                 After the panel, not before it: .mic-btn's open style looks
-                 for the panel right after it. Text, title and aria-pressed
-                 are set from JS. -->
-            <button type="button" class="tab-audio-btn" id="tab-audio-btn" aria-pressed="false" hidden>
-              <!-- speaker icon -->
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M11 5 6 9H2v6h4l5 4z"/>
-                <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
-                <path d="M19 5a10 10 0 0 1 0 14"/>
-              </svg>
-              <span class="tab-audio-label"></span>
-            </button>
-
-            <span class="settings-nav-sep" aria-hidden="true"></span>
 
             <!-- Settings are split across three tabs. Each tab panel is filled by
                  its own module (js/ui-languages.js, js/ui-filter.js,
@@ -302,6 +304,31 @@
               <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
             </svg>
           </button>
+
+          <!-- Interface language (wired in js/main.js). Among the global
+               actions rather than the setup capsules: it is detected from the
+               browser (js/store.js), rarely touched again, and belongs to the
+               whole app rather than to a tab. Kept while the panel is
+               collapsed, like its neighbours, so the icons beside it never
+               shift. It used to sit beside the signature at the bottom of the
+               Languages tab, out of reach from the other tabs. The globe is the way in that needs no reading, for someone who
+               has landed in a language they cannot read; the menu items are
+               each language's own name for the same reason. -->
+          <button type="button" class="icon-btn lang-btn" id="lang-btn" popovertarget="lang-menu"
+                  data-i18n-title="aria.interfaceLanguage" title="表示言語">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M2 12h20"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span class="lang-btn-current">JP</span>
+          </button>
+          <div class="lang-menu" id="lang-menu" popover role="menu"
+               data-i18n-aria-label="aria.interfaceLanguage" aria-label="表示言語">
+            <button type="button" role="menuitemradio" data-lang="ja" data-short="JP" lang="ja">日本語</button>
+            <button type="button" role="menuitemradio" data-lang="zh-TW" data-short="中" lang="zh-TW">繁體中文</button>
+            <button type="button" role="menuitemradio" data-lang="en" data-short="EN" lang="en">English</button>
+          </div>
 
           <!-- The only entry to the walkthrough (js/tour.js). It sits in the
                toolbar rather than beside the version signature in the Languages

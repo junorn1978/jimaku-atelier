@@ -327,22 +327,10 @@
       align-items: center;
       gap: var(--space-2);
 
-      /* thin divider between the setup track and the global actions; it goes
-         with the track when .panel-collapsed hides it */
-      > .settings-nav {
-        position: relative;
-        margin-right: var(--space-2);
-
-        &::after {
-          content: "";
-          position: absolute;
-          right: -9px;
-          top: 15%;
-          height: 70%;
-          width: 1px;
-          background: var(--color-border);
-        }
-      }
+      /* Extra room between the setup capsules and the global actions. Space
+         rather than a divider: the capsules already read as their own group,
+         and the room goes with them when .panel-collapsed hides them. */
+      > .settings-nav { margin-right: var(--space-2); }
     }
   }
 
@@ -473,37 +461,31 @@
 
     &.is-arming { transform: scale(0.995); }
 
-    /* The microphone button and the tab picker share the same inset track as
-       the .seg-switch controls in the tab bodies, so every segmented control
-       in the card is one material. */
+    /* Two capsules side by side: the audio input (microphone, tab audio) and
+       the tab picker. Each is the same inset track as the .seg-switch
+       controls in the tab bodies, so every segmented control in the card is
+       one material; the gap between them, not a divider inside one track,
+       says that one opens panels and the other switches the body. */
     .settings-nav {
       display: flex;
       align-items: center;
-      gap: 2px;
-      padding: 3px;
-      background: var(--fill-inset);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-full);
+      gap: var(--space-2);
 
+      .settings-nav-group,
       .settings-tabs {
         display: flex;
         align-items: center;
         gap: 2px;
-      }
-
-      /* Between the microphone and the tabs: it opens a panel, they switch
-         one, so they are kept visibly apart inside the one track. */
-      .settings-nav-sep {
-        width: 1px;
-        height: 1.1em;
-        margin-inline: 4px;
-        background: var(--color-border-strong);
+        padding: 3px;
+        background: var(--fill-inset);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-full);
       }
 
       /* The active tab is a raised material chip, matching the segmented
          switches beside it. No animation on switching — tabs are flipped
          dozens of times a day. The microphone and tab-audio buttons wear the same chip so
-         the track reads as one row of equals. */
+         the two capsules read as one row of equals. */
       .tab-btn,
       .mic-btn,
       .tab-audio-btn {
