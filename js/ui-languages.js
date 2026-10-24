@@ -305,6 +305,15 @@ export function mountLanguagesTab(container) {
               <option value="hymt" id="engine-hymt-option" data-i18n="lang.engine.hymt">AI 翻訳（GPU）</option>
               <option value="link" hidden disabled data-i18n="lang.advanced.link">翻訳サーバー</option>
             </select>
+            <!-- Stands in for the picker while the recognition server
+                 translates (lang.advanced): no engine is used then, not even
+                 the translation server, so there is nothing to pick. A second
+                 select rather than an option of the first, which is bound to
+                 translationMode and would be set back to the engine. -->
+            <select class="select engine-select" id="engine-stt-select" disabled hidden
+                    data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
+              <option data-i18n="lang.engine.stt.active">音声認識サーバーの翻訳を使用中</option>
+            </select>
 
             <!-- Whatever the selected engine needs — a status line, the custom
                  URL row, or nothing — beside the picker, in the space the row
@@ -385,6 +394,13 @@ export function mountLanguagesTab(container) {
                     </svg>
                   </button>
                 </div>
+                <label class="advanced-option">
+                  <span data-i18n="lang.advanced.stt.useTranslations">サーバーが返した翻訳を使う</span>
+                  <span class="toggle toggle-compact">
+                    <input type="checkbox" data-bind="useSttTranslations">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  </span>
+                </label>
                 <div class="advanced-foot">
                   <p class="stt-status" id="stt-status" role="status" aria-live="polite" data-phase="idle">
                     <span class="stt-status-dot" aria-hidden="true"></span>
@@ -395,7 +411,10 @@ export function mountLanguagesTab(container) {
                 </div>
               </section>
 
-              <section class="advanced-section">
+              <!-- Inert while the recognition server translates: nothing is
+                   sent here then, so it shows as off without being switched
+                   off, and is back as it was once that ends. -->
+              <section class="advanced-section" id="adv-link-section">
                 <div class="advanced-head">
                   <h4 class="advanced-title" data-i18n="lang.advanced.link">翻訳サーバー</h4>
                   <label class="toggle">
@@ -481,11 +500,14 @@ function setupAdvanced(container) {
   const btnDot     = btn?.querySelector('.stt-status-dot');
   const sttToggle  = container.querySelector('#adv-stt-toggle');
   const linkToggle = container.querySelector('#adv-link-toggle');
+  const linkPart   = container.querySelector('#adv-link-section');
   const note       = container.querySelector('#engine-link-note');
+  const sttPicker  = container.querySelector('#engine-stt-select');
+  const section    = container.querySelector('.lang-engine');
   const picker     = container.querySelector('#engine-select');
   const status     = container.querySelector('#stt-status');
   const text       = status?.querySelector('.stt-status-text');
-  if (!btn || !btnDot || !sttToggle || !linkToggle || !note || !picker || !status || !text) return;
+  if (!btn || !btnDot || !sttToggle || !linkToggle || !linkPart || !note || !sttPicker || !section || !picker || !status || !text) return;
 
   /* The engine to go back to when the translation server is switched off:
      whatever was picked before it was switched on, else Google. */
@@ -495,12 +517,17 @@ function setupAdvanced(container) {
   const sync = () => {
     const stt  = settings.sttEngine === 'custom';
     const link = settings.translationMode === 'link';
+    const sttTranslates = stt && settings.useSttTranslations;
     sttToggle.checked  = stt;
-    linkToggle.checked = link;
+    linkToggle.checked = link && !sttTranslates;
+    linkPart.inert     = sttTranslates;
     btn.dataset.active = String(stt || link);
     btnDot.hidden = !stt;
     btnDot.dataset.phase = sttState.phase;
-    note.hidden = !link;
+    note.hidden      = !link || sttTranslates;
+    picker.hidden    = sttTranslates;
+    sttPicker.hidden = !sttTranslates;
+    section.dataset.sttTranslates = String(sttTranslates);
     picker.classList.toggle('is-overridden', link);
   };
 
@@ -520,6 +547,7 @@ function setupAdvanced(container) {
   });
   subscribe('translationMode', (mode) => { if (mode !== 'link') lastEngine = mode; sync(); });
   subscribe('sttEngine', sync);
+  subscribe('useSttTranslations', sync);
   onSttState((state) => { sttState = state; renderStatus(); });
   subscribe('uiLang', renderStatus);
 }

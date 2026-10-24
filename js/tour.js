@@ -76,7 +76,8 @@ const STEPS = [
   },
   {
     key: 'engine',
-    target: () => $('#engine-select'),
+    /* The stand-in while the recognition server translates (ui-languages.js). */
+    target: () => $('#engine-select:not([hidden])') ?? $('#engine-stt-select'),
     place: 'top',
     before: inLanguages,
   },

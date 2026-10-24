@@ -2,7 +2,16 @@
 
 One sentence = the audio between two `pause` messages from the client (capped
 at MAX_SEC, for speakers who never pause). Each one is transcribed whole and
-returned as a final; there are no partials. Translation is left to the app.
+returned as a final; there are no partials. Translation is left to the app,
+unless --translate is given: then the server translates each sentence itself
+into the app's targetLangs, through the same Google endpoint the app's
+"Google 翻訳" engine uses (js/translate-gtx.js), and sends the translations
+with the final — a stand-in for a server with a translation model of its own.
+The app sends no targetLangs when "use the server's translations" is off, and
+then none are returned. When it is on, the app has no fallback: a sentence
+whose translation failed is shown without one.
+
+    python whisper_server.py --translate
 
 With --detect, each sentence's language is picked from the listed ones (plus
 the app's recognition language) instead of always being the app's, and the
@@ -25,10 +34,12 @@ server and enter ws://127.0.0.1:9000
 
 import argparse
 import asyncio
+import html
 import json
 import os
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 
@@ -54,6 +65,26 @@ MIN_SEC = 0.3         # shorter than this is a click or a breath, not speech
 SILENT_DBFS = -50     # quieter than this throughout: nothing to transcribe
 NO_SPEECH_PROB = 0.6  # Whisper's own "this was not speech" above this: drop it
 
+# Chrome's public translate-pa credentials, as in js/translate-gtx.js.
+GTX_ENDPOINT = "https://translate-pa.googleapis.com/v1/translateHtml"
+GTX_API_KEY = "AIzaSyATBXajvzQLTDHEQbcpq0Ihe0vWDHmO520"
+GTX_CLIENT = "te_lib"
+GTX_TIMEOUT = 10
+
+
+def translate_gtx(text: str, sl: str, tl: str) -> str:
+    """One sentence into one language. Blocking; run it in a thread."""
+    body = json.dumps([[[text], sl, tl], GTX_CLIENT]).encode()
+    req = urllib.request.Request(GTX_ENDPOINT, data=body, headers={
+        "Content-Type": "application/json+protobuf",
+        "X-Goog-API-Key": GTX_API_KEY,
+    })
+    with urllib.request.urlopen(req, timeout=GTX_TIMEOUT) as resp:
+        data = json.load(resp)
+    if isinstance(data, list) and data and isinstance(data[0], list):
+        return html.unescape("".join(s for s in data[0] if isinstance(s, str)))
+    return ""
+
 
 def whisper_lang(code: str) -> str | None:
     """The app sends translation codes (ja, en, zh-TW, yue...); Whisper wants ISO 639-1."""
@@ -65,12 +96,14 @@ def whisper_lang(code: str) -> str | None:
 
 
 class Session:
-    def __init__(self, ws, model: WhisperModel, detect: list[str]):
+    def __init__(self, ws, model: WhisperModel, detect: list[str], translate: bool):
         self.ws = ws
         self.model = model
         self.detect = detect
+        self.translate = translate
         self.source = ""  # the app's recognition language, as it sent it (e.g. zh-TW)
         self.lang = None  # the same, as Whisper names it (zh)
+        self.targets = []  # the app's targetLangs: what to translate into, in order
         self.buf = bytearray()
         self.lock = asyncio.Lock()  # one sentence at a time, in order
 
@@ -85,19 +118,42 @@ class Session:
         audio = np.frombuffer(pcm, dtype="<i2").astype(np.float32) / 32768
         if 20 * np.log10(np.sqrt(np.mean(audio**2)) + 1e-9) < SILENT_DBFS:
             return
+        # The translation is under the lock too, so finals go out in order.
         async with self.lock:
             started = time.perf_counter()
             lang, text = await asyncio.to_thread(self.transcribe, audio)
             ms = (time.perf_counter() - started) * 1000
-        print(f"{len(audio) / SAMPLE_RATE:4.1f}s audio, {ms:4.0f}ms, {lang}: {text}")
-        if not text:
-            return
-        reply = {"type": "final", "text": text}
-        if self.detect:
+            print(f"{len(audio) / SAMPLE_RATE:4.1f}s audio, {ms:4.0f}ms, {lang}: {text}")
+            if not text:
+                return
+            reply = {"type": "final", "text": text}
             # Back in the app's terms: its own language as it named it, anything
             # else as Whisper does (the app matches "zh" to a Chinese it uses).
-            reply["lang"] = self.source if lang == self.lang else lang
-        await self.ws.send(json.dumps(reply, ensure_ascii=False))
+            source = self.source if lang == self.lang else lang
+            if self.detect:
+                reply["lang"] = source
+            if self.translate and self.targets:
+                translations = await self.translate_all(text, source)
+                if translations is not None:
+                    reply["translations"] = translations
+            await self.ws.send(json.dumps(reply, ensure_ascii=False))
+
+    async def translate_all(self, text: str, source: str) -> list[str] | None:
+        """Every target at once, in targetLangs order. None if any failed: the
+        final goes without translations, and the app shows none for it."""
+        targets = list(self.targets)
+        started = time.perf_counter()
+        try:
+            results = await asyncio.gather(*(
+                asyncio.to_thread(translate_gtx, text, source or "auto", tl) for tl in targets
+            ))
+        except Exception as err:
+            print(f"  translate failed: {err}")
+            return None
+        ms = (time.perf_counter() - started) * 1000
+        for tl, result in zip(targets, results):
+            print(f"  {ms:4.0f}ms, {tl}: {result}")
+        return results
 
     def pick_language(self, audio) -> str | None:
         """The likeliest of the allowed languages. Restricting the choice is what
@@ -131,6 +187,7 @@ class Session:
             if kind == "config":
                 self.source = msg.get("sourceLang", "")
                 self.lang = whisper_lang(self.source)
+                self.targets = [t for t in msg.get("targetLangs", []) if isinstance(t, str)]
                 print("config:", msg)
             elif kind == "pause":
                 self.cut()
@@ -147,6 +204,8 @@ async def main():
     parser.add_argument("--compute-type", default="default")
     parser.add_argument("--detect", default="",
                         help="languages to detect between, as Whisper names them: ja,en,zh,yue,ko...")
+    parser.add_argument("--translate", action="store_true",
+                        help="translate each sentence with Google and send it with the final")
     args = parser.parse_args()
     detect = [code.strip() for code in args.detect.split(",") if code.strip()]
 
@@ -155,7 +214,7 @@ async def main():
 
     async def handle(ws):
         print("client connected")
-        await Session(ws, model, detect).run()
+        await Session(ws, model, detect, args.translate).run()
         print("client disconnected")
 
     async with serve(handle, args.host, args.port, max_size=None):

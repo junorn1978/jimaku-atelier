@@ -34,6 +34,7 @@ const CH2_STORAGE_KEY = 'rtl-settings-v1-ch2';
    for both, changed from either. */
 const PER_CHANNEL = new Set([
   'micDeviceId', 'micDeviceLabel', 'segmentMode', 'sttEngine', 'customSttUrl',
+  'useSttTranslations',
   'sourceLangId', 'target1LangId', 'target2LangId',
   'subAlign', 'subBg', 'subOverflow', 'subShowSource', 'subSourceSingleLine', 'subClearIdleSec',
   'subSourceColor', 'subSourceStroke', 'subSourceStrokeW', 'subSourceSize',
@@ -128,6 +129,10 @@ const _defaults = Object.freeze({
      reached over WebSocket at customSttUrl (docs/custom-stt.html). */
   sttEngine:          'webspeech', // 'webspeech' | 'custom'
   customSttUrl:       '',
+  /* Whether the server translates, in place of the translation engine. On, a
+     sentence it returns no translations for has none shown. Off, it is sent
+     no targetLangs, and any it returns anyway are ignored. */
+  useSttTranslations: true,
 
   // --- Language selection ---
   sourceLangId:       '',

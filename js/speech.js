@@ -732,14 +732,17 @@ let sttTargets = [];
 
 /* What the server is told (docs/custom-stt.html): the translation code, as the
    custom URL engine sends it, plus the full id. The slots are kept as sent, to
-   align a final's translations against. */
+   align a final's translations against. With the server's translations
+   switched off it is asked for none. */
 function sttConfig() {
   const code = (id) => getLang(id)?.gtxCode ?? id;
   sttTargets = [settings.target1LangId, settings.target2LangId];
   return {
     sourceLang:   code(sttLang),
     sourceLocale: sttLang,
-    targetLangs:  sttTargets.filter(id => id && id !== 'none').map(code),
+    targetLangs:  settings.useSttTranslations
+      ? sttTargets.filter(id => id && id !== 'none').map(code)
+      : [],
   };
 }
 
@@ -784,8 +787,10 @@ function onSttFinal(raw, translations, langCode) {
   const text = filterSource(cleanTranscript(raw), lang);
   if (text) {
     if (isDebugEnabled()) console.info('[speech] stt final →', text, langCode ? `(${langCode} → ${lang})` : '', translations ?? '');
-    if (translations) deliverTranslations(translations, sttTargets);
-    else              sendTranslationRequest(text, previousText, lang);
+    /* With the server's translations on, the engine is not a fallback: a
+       final without them leaves the translation lines empty. */
+    if (settings.useSttTranslations) deliverTranslations(translations ?? [], sttTargets);
+    else                             sendTranslationRequest(text, previousText, lang);
     previousText = text;
     updateSource(text);
   } else {
@@ -794,8 +799,8 @@ function onSttFinal(raw, translations, langCode) {
   armIdleClear();
 }
 
-/* Translation slots changed mid-run: the server is told, so the translations
-   it returns follow them. */
+/* Translation slots, or whether the server translates at all, changed
+   mid-run: the server is told, so the translations it returns follow them. */
 function onTargetsChanged() {
   if (isActive && usingCustom) customStt?.configure(sttConfig());
 }
@@ -999,6 +1004,7 @@ export function initSpeech() {
   subscribe('customSttUrl', updateButtons);
   subscribe('target1LangId', onTargetsChanged);
   subscribe('target2LangId', onTargetsChanged);
+  subscribe('useSttTranslations', onTargetsChanged);
   subscribe('micDeviceId', onDeviceChanged);
   onTabShareChange(onTabShareChanged);
   subscribe('segmentMode', onSegmentModeChanged);

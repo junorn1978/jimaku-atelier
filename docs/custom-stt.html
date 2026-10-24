@@ -292,7 +292,7 @@
         <ul>
           <li>選んだマイクの音声を 16kHz・モノラル・16bit PCM にして送り続ける</li>
           <li>話者の「間」を検出して知らせる（使うかどうかはサーバー次第）</li>
-          <li>返ってきた認識結果を原文の字幕に出し、翻訳して翻訳字幕に出す（翻訳もサーバーが返せば、それをそのまま使う）</li>
+          <li>返ってきた認識結果を原文の字幕に出し、翻訳して翻訳字幕に出す（「サーバーが返した翻訳を使う」がオンなら、サーバーの翻訳をそのまま使う）</li>
         </ul>
       </div>
       <div class="role">
@@ -362,7 +362,7 @@
           <tbody>
             <tr><td><code>sourceLang</code></td><td>認識する言語。翻訳用の言語コード（<code>ja</code>、<code>en</code>、<code>zh-TW</code> など。翻訳サーバーの <code>/translate</code> と同じもの）</td></tr>
             <tr><td><code>sourceLocale</code></td><td>同じ言語の地域付きの ID（<code>ja-JP</code>、<code>en-US</code>、<code>zh-HK</code>、<code>yue-Hant-HK</code> など）。香港の書き言葉と広東語の区別などはこちらで</td></tr>
-            <tr><td><code>targetLangs</code></td><td>翻訳先。翻訳しない枠は含まれないので 0〜2 個。順番が <code>final.translations</code> の順番になる</td></tr>
+            <tr><td><code>targetLangs</code></td><td>翻訳先。翻訳しない枠は含まれないので 0〜2 個。順番が <code>final.translations</code> の順番になる。「サーバーが返した翻訳を使う」をオフにしていると常に空</td></tr>
             <tr><td><code>sampleRate</code> ／ <code>format</code></td><td>音声の形式。現行は常に <code>16000</code> ／ <code>pcm_s16le</code></td></tr>
           </tbody>
         </table>
@@ -456,9 +456,10 @@
           <tbody>
             <tr><td><code>text</code></td><td>確定した文（必須）</td></tr>
             <tr><td><code>translations</code></td><td>
-              任意。<strong>付けない</strong>と、字幕アトリエが選んでいる翻訳エンジン（Google 翻訳、ブラウザ翻訳、翻訳サーバー）で翻訳します。
-              <strong>付ける</strong>と翻訳エンジンは使わず、それをそのまま翻訳字幕に出します。
+              任意。字幕アトリエの「サーバーが返した翻訳を使う」がオンのときは、これがそのまま翻訳字幕になり、翻訳エンジンは使いません。
+              <strong>付けなかった文には翻訳字幕が出ません</strong>（翻訳エンジンでの代わりの翻訳はしません）。
               順番は直前の <code>config</code> の <code>targetLangs</code> と同じにしてください。
+              オフのときは <code>targetLangs</code> が空で届き、付けても無視され、字幕アトリエが選んでいる翻訳エンジン（Google 翻訳、ブラウザ翻訳、翻訳サーバー）で翻訳します。
             </td></tr>
             <tr><td><code>lang</code></td><td>
               任意。この文の言語で、サーバーが文ごとに言語を判定する場合に付けます。
@@ -526,7 +527,7 @@
         <thead><tr><th>ファイル</th><th>内容</th></tr></thead>
         <tbody>
           <tr><td><code>echo_server.py</code></td><td>モデルなし。受け取った音声の長さを返すだけで、接続の確認用です。<code>--translate</code> で仮の翻訳も返します。</td></tr>
-          <tr><td><code>whisper_server.py</code></td><td>faster-whisper を使う最小のサーバー。<code>pause</code> ごとに 1 文として認識します。</td></tr>
+          <tr><td><code>whisper_server.py</code></td><td>faster-whisper を使う最小のサーバー。<code>pause</code> ごとに 1 文として認識します。<code>--translate</code> を付けると、サーバー側で Google 翻訳して <code>translations</code> も返します（翻訳モデルを持つサーバーの代わり）。</td></tr>
           <tr><td><code>soniox_server.py</code></td><td>クラウドの Soniox に音声を中継するサーバー。文の区切りは Soniox が決めるので <code>pause</code> は使いません。API キーはこのサーバー側に置きます。</td></tr>
         </tbody>
       </table>
@@ -539,6 +540,10 @@ python whisper_server.py --model large-v3-turbo --device cuda --compute-type int
     <p>
       <code>--detect ja,en,zh</code> のように付けると、文ごとにその中から言語を判定して <code>final.lang</code> を返します。
       候補を絞ると、「はい」「OK」のような短い文でも判定を外しにくくなります。
+    </p>
+    <p>
+      <code>--translate</code> を付けると、認識した文をサーバーが <code>targetLangs</code> の各言語に翻訳し、<code>final</code> に添えて返します。
+      字幕アトリエで「サーバーが返した翻訳を使う」をオフにすると <code>targetLangs</code> が空になり、翻訳は返さなくなります。
     </p>
     <pre><code>pip install websockets
 $env:SONIOX_API_KEY = "..."   # PowerShell

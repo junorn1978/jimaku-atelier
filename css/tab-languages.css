@@ -405,6 +405,12 @@
      is how the server is turned off from here. */
   .lang-engine .engine-select.is-overridden { opacity: 0.55; }
 
+  /* The recognition server translating: the stand-in picker, and nothing of
+     the engine's beside it — its status, downloads and options are moot. */
+  .lang-engine .engine-select:disabled { opacity: 0.55; cursor: not-allowed; }
+  .lang-engine[data-stt-translates="true"] .engine-inline { display: none; }
+  .advanced-section[inert] { opacity: 0.55; }
+
   /* --- advanced: servers of the user's own --- */
 
   /* At the row's far end, beside the signature, wherever the engine's own
@@ -513,6 +519,15 @@
   .advanced-desc {
     margin: 0;
     color: var(--color-text-dim);
+  }
+
+  .advanced-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    cursor: pointer;
   }
 
   .advanced-foot {

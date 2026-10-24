@@ -295,6 +295,8 @@ export async function sendTranslationRequest(text, previousText, sourceLangId) {
  * translation engine. `translations` follows the active slots of
  * `targetLangIds` — the snapshot sent to the server — the way the custom URL
  * engine's answer does; slots switched since are dropped by bufferPush.
+ * Called with none too, which empties the lines rather than leaving the
+ * previous sentence's translation under this one.
  */
 export function deliverTranslations(translations, targetLangIds) {
   const aligned = new Array(targetLangIds.length).fill('');
