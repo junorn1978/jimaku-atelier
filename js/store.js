@@ -152,6 +152,10 @@ const _defaults = Object.freeze({
      a historical name kept because it is stored; see translate-gtx.js. */
   translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'hymt' | 'link'
   customTranslateUrl: '',
+  /* Terms the HY-MT engine is told how to translate, through the model's own
+     terminology template (js/translate-hymt.js). Each term applies only
+     when translating into its own language. */
+  hymtGlossary:       [],        // [{ source: 'スバル', target: '大空昴', lang: 'zh-TW' }]
   /* The Prompt API engine is archived rather than deleted: measured on Chrome
      150 it costs ~800ms per line per target and its output is unreliable
      outside en/ja/es/de/fr. It only joins the engine picker when this is on,

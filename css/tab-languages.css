@@ -440,6 +440,49 @@
     max-width: none;
   }
 
+  /* HY-MT options: for now only the glossary (the replacement tab's source →
+     target rows), in a popover that opens upward over the preview like the
+     advanced one beside it. Only the glossary list scrolls once it outgrows
+     the popover. */
+  .hymt-options-btn { anchor-name: --hymt-options-anchor; }
+
+  .hymt-options-popover {
+    position-anchor: --hymt-options-anchor;
+    position-area: top span-right;
+    position-try-fallbacks: flip-inline;
+    margin: var(--space-2) 0;
+    width: min(520px, 90vw);
+    max-width: none;
+    max-height: min(480px, 70vh);
+
+    &:popover-open {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .hymt-glossary {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    /* The replacement tab's lists fill a panel of fixed height, so they take
+       flex-basis 0 (tab-filter.css). Here the height comes from the content,
+       and basis 0 collapsed the list to nothing: rows were added but never
+       seen. As specific as that rule, so the load order cannot bring it back. */
+    .filter-list-wrap { flex: 1 1 auto; }
+    .filter-list-wrap .filter-list { flex: 0 1 auto; }
+
+    /* Source → target, then the language the term is for. The picker fills
+       its column: .select-compact's fixed 150px ran past it and under the
+       delete button. */
+    .filter-row-lang { grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) 9.5em 28px; }
+    .filter-lang {
+      width: 100%;
+      padding-block: 3px;
+      font-size: var(--text-sm);
+    }
+  }
+
   .advanced-section {
     display: flex;
     flex-direction: column;

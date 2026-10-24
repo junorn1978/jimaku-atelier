@@ -109,15 +109,7 @@ export function mountFilterTab(container) {
   const listEl = section.querySelector('#filter-rules-list');
   const addBtn = section.querySelector('#filter-add-rule');
 
-  renderRules(listEl);
-
-  addBtn.addEventListener('click', () => {
-    const rules = [...(settings.filterRules || []), { source: '', target: '' }];
-    settings.filterRules = rules;
-    renderRules(listEl);
-    /* Move focus to the new row's source input for fast entry. */
-    listEl.lastElementChild?.querySelector('.filter-source')?.focus();
-  });
+  wirePairList(listEl, addBtn, FILTER_LIST);
 
   /* --- blacklist --- */
   const blEl     = section.querySelector('#blacklist-list');
@@ -221,27 +213,61 @@ function renderBlacklist(listEl) {
   applyTo(listEl);
 }
 
-function renderRules(listEl) {
-  const rules = settings.filterRules || [];
+/* The replacement rules' list. The HY-MT glossary (ui-languages.js) is the
+   same source → target list over another setting, with its own wording. */
+const FILTER_LIST = {
+  key:      'filterRules',
+  empty:    'filter.empty',
+  sourcePh: 'filter.source.ph',
+  targetPh: 'filter.target.ph',
+};
+
+/**
+ * Render a list of { source, target } pairs held in settings[list.key], and
+ * make the add button append an empty row to it. With `langOptions` (the
+ * <option>s of a language picker) each row also carries a `lang`, picked at
+ * the end of the row; a new row starts on `defaultLang()`.
+ * @param {HTMLElement} listEl
+ * @param {HTMLElement} addBtn
+ * @param {{key: string, empty: string, sourcePh: string, targetPh: string,
+ *          langOptions?: string, defaultLang?: () => string}} list
+ */
+export function wirePairList(listEl, addBtn, list) {
+  renderRules(listEl, list);
+  addBtn.addEventListener('click', () => {
+    const row = list.langOptions
+      ? { source: '', target: '', lang: list.defaultLang?.() ?? '' }
+      : { source: '', target: '' };
+    settings[list.key] = [...(settings[list.key] || []), row];
+    renderRules(listEl, list);
+    /* Move focus to the new row's source input for fast entry. */
+    listEl.lastElementChild?.querySelector('.filter-source')?.focus();
+  });
+}
+
+function renderRules(listEl, list) {
+  const rules = settings[list.key] || [];
 
   /* Empty state: tell the user what lives here instead of showing a void. */
   if (rules.length === 0) {
-    listEl.innerHTML = `<p class="filter-empty" data-i18n="filter.empty"></p>`;
+    listEl.innerHTML = `<p class="filter-empty" data-i18n="${list.empty}"></p>`;
     applyTo(listEl);
     return;
   }
 
   listEl.innerHTML = rules.map((rule, i) => `
-    <div class="filter-row" data-index="${i}">
+    <div class="filter-row${list.langOptions ? ' filter-row-lang' : ''}" data-index="${i}">
       <input class="text-input filter-source"
              type="text" value="${escapeAttr(rule.source ?? '')}"
-             data-i18n-placeholder="filter.source.ph"
+             data-i18n-placeholder="${list.sourcePh}"
              autocomplete="off" spellcheck="false" autocorrect="off">
       <span class="filter-arrow" aria-hidden="true">→</span>
       <input class="text-input filter-target"
              type="text" value="${escapeAttr(rule.target ?? '')}"
-             data-i18n-placeholder="filter.target.ph"
+             data-i18n-placeholder="${list.targetPh}"
              autocomplete="off" spellcheck="false" autocorrect="off">
+      ${list.langOptions ? `<select class="select select-compact filter-lang"
+              data-i18n-aria-label="filter.lang" aria-label="Language">${list.langOptions}</select>` : ''}
       <button type="button" class="icon-btn filter-delete"
               data-i18n-title="filter.delete" title="削除" aria-label="Delete">
         ${TRASH_SVG}
@@ -254,14 +280,18 @@ function renderRules(listEl) {
     const idx = Number(row.dataset.index);
     const src = row.querySelector('.filter-source');
     const tgt = row.querySelector('.filter-target');
+    const lang = row.querySelector('.filter-lang');
     const del = row.querySelector('.filter-delete');
 
-    src.addEventListener('input', () => commitRule(idx, 'source', src.value));
-    tgt.addEventListener('input', () => commitRule(idx, 'target', tgt.value));
+    src.addEventListener('input', () => commitRule(list.key, idx, 'source', src.value));
+    tgt.addEventListener('input', () => commitRule(list.key, idx, 'target', tgt.value));
+    if (lang) {
+      lang.value = rules[idx].lang ?? '';
+      lang.addEventListener('change', () => commitRule(list.key, idx, 'lang', lang.value));
+    }
     del.addEventListener('click', () => {
-      const next = (settings.filterRules || []).filter((_, i) => i !== idx);
-      settings.filterRules = next;
-      renderRules(listEl);
+      settings[list.key] = (settings[list.key] || []).filter((_, i) => i !== idx);
+      renderRules(listEl, list);
     });
   });
 
@@ -269,11 +299,11 @@ function renderRules(listEl) {
   applyTo(listEl);
 }
 
-function commitRule(idx, field, value) {
-  const rules = [...(settings.filterRules || [])];
+function commitRule(key, idx, field, value) {
+  const rules = [...(settings[key] || [])];
   if (!rules[idx]) return;
   rules[idx] = { ...rules[idx], [field]: value };
-  settings.filterRules = rules;
+  settings[key] = rules;
   /* No re-render — the user's typing input already shows the value. */
 }
 

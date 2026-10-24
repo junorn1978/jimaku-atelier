@@ -39,6 +39,7 @@
 
 import { isDebugEnabled } from './logger.js';
 import { getLang } from './languages.js';
+import { settings } from './store.js';
 
 const TRANSFORMERS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1/dist/transformers.min.js';
 const MODEL_ID = 'onnx-community/HY-MT1.5-1.8B-ONNX';
@@ -182,12 +183,48 @@ const CHINESE_TARGETS = {
 /* The model card's templates, verbatim. Tried 2026-10-23: a clause telling
    it not to add anything not in the source did not stop the remarks it
    appends, and did not speed anything up, so the templates stay as the model
-   was trained on them. */
+   was trained on them.
+
+   With glossary terms that occur in the line, the card's terminology
+   template instead: the term pairs above the instruction, the source on the
+   line right after it. Only terms found in the line go in, so every other
+   line's prompt stays as it was. The card gives this template in Chinese
+   only. For a non-Chinese target the same shape is written in English, after
+   the card's own rule of English instructions when no Chinese is involved:
+   the Chinese template with "English" as the target was tried 2026-10-24 and
+   every line with a term in it came out in Simplified Chinese.
+
+   The card's context template (the previous line above an instruction not
+   to translate it) was tried 2026-10-24 on live ja→zh-TW and dropped: about
+   6 lines in 16 came out as the previous line's content — short fillers like
+   「それであの」 most of all — one printed the instruction itself, and the
+   longer output pushed lines to 0.8–1.6s. */
 function buildPrompt(text, targetLangId) {
   const zh = CHINESE_TARGETS[targetLangId];
+  const name = zh || getLang(targetLangId)?.promptName || targetLangId;
+  const terms = matchTerms(text, targetLangId);
+  if (terms.length && zh) {
+    const pairs = terms.map(({ source, target }) => `${source} 翻译成 ${target}`).join('\n');
+    return `参考下面的翻译：\n${pairs}\n\n将以下文本翻译为${zh}，注意只需要输出翻译后的结果，不要额外解释：\n${text}`;
+  }
+  if (terms.length) {
+    const pairs = terms.map(({ source, target }) => `${source} is translated as ${target}`).join('\n');
+    return `Refer to the following translations:\n${pairs}\n\nTranslate the following segment into ${name}, without additional explanation.\n\n${text}`;
+  }
   if (zh) return `将以下文本翻译为${zh}，注意只需要输出翻译后的结果，不要额外解释：\n\n${text}`;
-  const name = getLang(targetLangId)?.promptName || targetLangId;
   return `Translate the following segment into ${name}, without additional explanation.\n\n${text}`;
+}
+
+/* Glossary entries for this target language whose source occurs in the line,
+   ignoring case. Entries with either side left blank, or no language picked,
+   are still being filled in and are skipped. */
+function matchTerms(text, targetLangId) {
+  const rules = Array.isArray(settings.hymtGlossary) ? settings.hymtGlossary : [];
+  const haystack = text.toLowerCase();
+  return rules
+    .filter(r => r?.lang === targetLangId)
+    .map(r => ({ source: String(r.source ?? '').trim(), target: String(r.target ?? '').trim() }))
+    .filter(r => r.source && r.target && haystack.includes(r.source.toLowerCase()));
 }
 
 /* ---------------------------------------------------------------- translate */

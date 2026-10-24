@@ -46,6 +46,7 @@ import { isTranslatorSupported, prepareTranslators,
          pendingTranslatorDownloads, downloadTranslator } from './translate-translator.js';
 import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, deleteHymt,
          HYMT_SIZE } from './translate-hymt.js';
+import { wirePairList } from './ui-filter.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
    the Style tab, which this tab absorbed. */
@@ -319,6 +320,21 @@ export function mountLanguagesTab(container) {
                    its row carries a button beside the status line. -->
               <p class="manual-status" id="engine-hymt-status" role="status" aria-live="polite" hidden></p>
               <button type="button" class="btn" id="engine-hymt-download" data-i18n="lang.engine.hymt.download" hidden>ダウンロード</button>
+              <!-- The options only mean something to a loaded model, so they
+                   show with the delete button rather than on the pick. -->
+              <button type="button" class="btn hymt-options-btn" id="engine-hymt-options"
+                      popovertarget="popover-hymt-options"
+                      data-i18n="lang.engine.hymt.options" hidden>AI 翻訳オプション</button>
+              <div class="help-popover hymt-options-popover" id="popover-hymt-options" popover>
+                <section class="advanced-section hymt-glossary">
+                  <h4 class="advanced-title" data-i18n="lang.engine.hymt.glossary.title">用語の訳し方</h4>
+                  <p class="advanced-desc" data-i18n="lang.engine.hymt.glossary.desc"></p>
+                  <div class="filter-list-wrap">
+                    <div class="filter-list" id="hymt-glossary-list"></div>
+                    <button type="button" class="btn filter-add" id="hymt-glossary-add" data-i18n="filter.add">+ 追加</button>
+                  </div>
+                </section>
+              </div>
               <button type="button" class="btn" id="engine-hymt-delete" data-i18n="lang.engine.hymt.delete" hidden>モデルを削除</button>
               <!-- While the translation server is on, the picker beside has
                    nothing selected; this says where the lines go instead.
@@ -843,7 +859,24 @@ function setupHymtEngine(container) {
   const status = container.querySelector('#engine-hymt-status');
   const downloadBtn = container.querySelector('#engine-hymt-download');
   const deleteBtn   = container.querySelector('#engine-hymt-delete');
-  if (!option || !status || !downloadBtn || !deleteBtn) return;
+  const optionsBtn  = container.querySelector('#engine-hymt-options');
+  const options     = container.querySelector('#popover-hymt-options');
+  if (!option || !status || !downloadBtn || !deleteBtn || !optionsBtn || !options) return;
+
+  /* Each term is for one target language — the same name is written one way
+     in Chinese and another in English, and both in one prompt would leave
+     the model to guess. The picker offers the target pickers' languages; a
+     new row starts on the first line's target (or the second's). */
+  wirePairList(options.querySelector('#hymt-glossary-list'), options.querySelector('#hymt-glossary-add'), {
+    key:      'hymtGlossary',
+    empty:    'lang.engine.hymt.glossary.empty',
+    sourcePh: 'lang.engine.hymt.glossary.source.ph',
+    targetPh: 'lang.engine.hymt.glossary.target.ph',
+    langOptions:
+      `<option value="" data-i18n="lang.choose">言語を選択</option>` +
+      getAllLanguages().map(l => `<option value="${l.id}" data-i18n="lang.name.${l.id}">${escapeAttr(l.label)}</option>`).join(''),
+    defaultLang: () => [settings.target1LangId, settings.target2LangId].find(id => id && id !== 'none') ?? '',
+  });
 
   /* Kept as a key plus its {s} value so a UI language switch can re-render. */
   let messageKey = null;
@@ -855,11 +888,13 @@ function setupHymtEngine(container) {
   const setMessage = (key, value = '') => { messageKey = key; slot = value; render(); };
   subscribe('uiLang', render);
 
-  /* At most one of the two buttons shows: download while the model is not in
-     the cache, delete once it is loaded from there. */
+  /* Download while the model is not in the cache; the options and delete
+     once it is loaded from there. */
   const showButton = (which) => {
     downloadBtn.hidden = which !== 'download';
     deleteBtn.hidden   = which !== 'delete';
+    optionsBtn.hidden  = which !== 'delete';
+    if (optionsBtn.hidden && options.matches(':popover-open')) options.hidePopover();
   };
 
   let dtype = null;
