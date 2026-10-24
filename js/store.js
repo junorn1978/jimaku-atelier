@@ -235,6 +235,11 @@ const _defaults = Object.freeze({
      'none' } — so a scene added later starts; replaced whole, never mutated. */
   obsSceneLink:       false,
   obsSceneRules:      {},
+  /* The same link's colour side: { sceneName: presetId } from
+     js/subtitle-presets.js. A scene not listed leaves the colours as they
+     are. Shared like the rules, so both app windows switch to the preset;
+     replaced whole, never mutated. */
+  obsScenePresets:    {},
 });
 
 /* Which stored object holds `key` for this window. */

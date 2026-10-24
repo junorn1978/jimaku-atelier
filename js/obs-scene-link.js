@@ -5,6 +5,13 @@
  * say from the game to the chat scene). A scene with no rule starts, a scene
  * added later included; settings.obsSceneRules holds only the others.
  *
+ * Each scene can also switch the subtitle colours to a preset
+ * (js/subtitle-presets.js) — a cute set for the chat scene, a high-contrast
+ * one for the game. That is a second, independent rule: a scene that does
+ * nothing to recognition can still change colour. A scene with no preset
+ * leaves the colours alone, so the link never undoes a colour picked by hand
+ * unless a scene was told to.
+ *
  * Only a switch acts. Connecting to OBS does not look at the scene already
  * live, so opening the app never starts listening by itself. Studio mode's
  * preview switches are not program switches and do nothing.
@@ -26,6 +33,7 @@
 import { isDebugEnabled } from './logger.js';
 import { settings } from './store.js';
 import { onProgramSceneChanged, onSceneRenamed } from './obs.js';
+import { applyPreset } from './subtitle-presets.js';
 
 export const SCENE_ACTIONS = ['start', 'stop', 'none'];
 const DEFAULT_ACTION = 'start';
@@ -42,15 +50,30 @@ export function setSceneAction(sceneName, action) {
   settings.obsSceneRules = rules;
 }
 
+/** The preset id a scene switches to, or '' to leave the colours alone. */
+export function scenePreset(sceneName) {
+  return settings.obsScenePresets?.[sceneName] || '';
+}
+
+export function setScenePreset(sceneName, presetId) {
+  const presets = { ...settings.obsScenePresets };
+  if (!presetId) delete presets[sceneName];
+  else presets[sceneName] = presetId;
+  settings.obsScenePresets = presets;
+}
+
 /* Both app windows (and an open OBS window, which does not call this) see the
    same rename; whichever stores first moves the rule, and the others find
    nothing under the old name. */
 function moveRule(oldName, newName) {
-  const rules = settings.obsSceneRules || {};
-  if (!oldName || !newName || !(oldName in rules)) return;
-  const next = { ...rules, [newName]: rules[oldName] };
-  delete next[oldName];
-  settings.obsSceneRules = next;
+  if (!oldName || !newName) return;
+  for (const key of ['obsSceneRules', 'obsScenePresets']) {
+    const rules = settings[key] || {};
+    if (!(oldName in rules)) continue;
+    const next = { ...rules, [newName]: rules[oldName] };
+    delete next[oldName];
+    settings[key] = next;
+  }
 }
 
 /**
@@ -84,7 +107,11 @@ export function initSceneLink({ start, stop }) {
   onProgramSceneChanged((sceneName) => {
     if (!settings.obsSceneLink || !sceneName) return;
     const action = sceneAction(sceneName);
-    if (isDebugEnabled()) console.debug(`[obs-scene-link] ${sceneName} → ${action}`);
+    const preset = scenePreset(sceneName);
+    if (isDebugEnabled()) console.debug(`[obs-scene-link] ${sceneName} → ${action}, colours ${preset || 'unchanged'}`);
+    /* Colours first and at once: they take no time, and a scene that starts
+       recognition should not show its first line in the previous scene's. */
+    if (preset) applyPreset(preset);
     if (action === 'none') return;
     wanted = action;
     follow();

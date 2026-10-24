@@ -76,7 +76,9 @@ function bindNumeric(el, key) {
     settings[key] = Number(el.value);
     updateSliderOutput(el);
   });
-  subscribe(key, (val) => syncNumeric(el, val));
+  /* The readout follows too: the store is also written from elsewhere (a
+     colour preset sets the outline widths), not only by dragging. */
+  subscribe(key, (val) => { syncNumeric(el, val); updateSliderOutput(el); });
   updateSliderOutput(el);
 }
 

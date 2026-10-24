@@ -23,7 +23,8 @@ import { wireConnStatus } from './ui-obs-status.js';
 import {
   initObs, triggerAutoSetup, onConnectionState, onSceneListChanged, fetchSceneNames,
 } from './obs.js';
-import { SCENE_ACTIONS, sceneAction, setSceneAction } from './obs-scene-link.js';
+import { SCENE_ACTIONS, sceneAction, setSceneAction, scenePreset, setScenePreset } from './obs-scene-link.js';
+import { PRESETS } from './subtitle-presets.js';
 
 async function init() {
   initTheme();
@@ -144,6 +145,7 @@ function wireSceneList() {
   subscribe('obsSceneLink', syncEnabled);
   /* A rule changed: redraw the rows from the list already fetched. */
   subscribe('obsSceneRules', renderRows);
+  subscribe('obsScenePresets', renderRows);
   subscribe('uiLang', () => { setStatus(statusKey); renderRows(); });
 
   syncEnabled();
@@ -172,7 +174,18 @@ function buildRow(sceneName) {
     setSceneAction(sceneName, select.value);
   });
 
-  row.append(name, select);
+  /* Colours: "unchanged" first, as the default for every scene. */
+  const preset = scenePreset(sceneName);
+  const colours = document.createElement('select');
+  colours.className = 'select';
+  colours.setAttribute('aria-label', `${sceneName} — ${t('obs.sceneLink.preset')}`);
+  colours.add(new Option(t('obs.sceneLink.preset.keep'), '', false, !preset));
+  for (const p of PRESETS) {
+    colours.add(new Option(t(`style.preset.${p.id}`), p.id, false, p.id === preset));
+  }
+  colours.addEventListener('change', () => setScenePreset(sceneName, colours.value));
+
+  row.append(name, select, colours);
   return row;
 }
 

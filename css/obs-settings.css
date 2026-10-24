@@ -121,8 +121,8 @@
     list-style: none;
   }
 
-  /* Scene name on the left, its action on the right. A scene that does not
-     start reads as such at a glance: its name dims. */
+  /* Scene name on the left, then its action and its colours. A scene that
+     does not start reads as such at a glance: its name dims. */
   .obs-scene-row {
     display: flex;
     align-items: center;
@@ -142,7 +142,7 @@
     /* .select is full-width by default, which would leave the name none. */
     .select {
       flex: 0 0 auto;
-      width: 160px;
+      width: 140px;
     }
 
     &[data-action="stop"] .obs-scene-name,

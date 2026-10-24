@@ -47,6 +47,7 @@ import { isTranslatorSupported, prepareTranslators,
 import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, deleteHymt,
          HYMT_SIZE } from './translate-hymt.js';
 import { wirePairList } from './ui-filter.js';
+import { presetItemsHtml, wireSubtitlePresets } from './subtitle-presets.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
    the Style tab, which this tab absorbed. */
@@ -110,11 +111,26 @@ export function mountLanguagesTab(container) {
                language column by its own width on every row. The two halves
                are in different grid cells, so they are tied with for/id. -->
           <span><label for="lang-show-source" class="lang-show-source-label" data-i18n="style.showSource">原文を表示</label></span>
-          <span>
+          <!-- The colour preset menu (js/subtitle-presets.js) shares the
+               corner with the toggle: the row has no other room, and the
+               select column below is wide enough for both. It opens upward
+               over the output pane, where the result shows. -->
+          <span class="lang-matrix-corner">
             <label class="toggle toggle-compact">
               <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
             </label>
+            <button type="button" class="btn sub-preset-btn" popovertarget="sub-preset-menu"
+                    data-i18n-title="style.preset.title" title="字幕の配色">
+              <span data-i18n="style.preset">配色</span>
+              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+            </button>
+            <div class="sub-preset-menu" id="sub-preset-menu" popover role="menu"
+                 data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
+              <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
+              <div class="sub-preset-grid">${presetItemsHtml()}
+              </div>
+            </div>
           </span>
           <span data-i18n="style.textColor">文字色</span>
           <span data-i18n="style.strokeColor">縁取り色</span>
@@ -482,6 +498,7 @@ export function mountLanguagesTab(container) {
 
   wireExampleButtons(container);
   wireSecretInputs(container);
+  wireSubtitlePresets(container.querySelector('#sub-preset-menu'));
   setupAdvanced(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);
