@@ -152,6 +152,20 @@ export async function unloadHymt() {
   catch (err) { if (isDebugEnabled()) console.warn('[hymt] dispose failed:', err); }
 }
 
+/** Release the model, then remove every file of it from the browser's cache
+ *  (all variants, config and tokenizer), so the space comes back without the
+ *  user clearing the whole site's data. Other cached files are left alone. */
+export async function deleteHymt() {
+  await unloadHymt();
+  if (!('caches' in self)) return;
+  for (const name of await caches.keys()) {
+    const cache = await caches.open(name);
+    for (const req of await cache.keys()) {
+      if (req.url.includes(MODEL_ID)) await cache.delete(req);
+    }
+  }
+}
+
 /* ---------------------------------------------------------------- prompt */
 
 /* HY-MT's own templates: the Chinese one when Chinese is involved, the English

@@ -42,8 +42,10 @@ import { onSttState } from './stt-custom.js';
 import { isPromptSupported, getPromptAvailability,
          preparePromptSession, destroyPromptSession,
          isPromptLangSupported } from './translate-prompt.js';
-import { isTranslatorSupported, prepareTranslators } from './translate-translator.js';
-import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, HYMT_SIZE } from './translate-hymt.js';
+import { isTranslatorSupported, prepareTranslators,
+         pendingTranslatorDownloads, downloadTranslator } from './translate-translator.js';
+import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, deleteHymt,
+         HYMT_SIZE } from './translate-hymt.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
    the Style tab, which this tab absorbed. */
@@ -285,12 +287,23 @@ export function mountLanguagesTab(container) {
         <section class="panel-col lang-engine">
           <div class="col-head">
             <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
-            <div class="seg-switch" role="group">
-              <label><input type="radio" name="translationMode" value="gtx"  data-bind="translationMode"><span data-i18n="lang.engine.gtx">Google 翻訳</span></label>
-              <label id="engine-translator-label"><input type="radio" name="translationMode" value="translator" data-bind="translationMode"><span data-i18n="lang.engine.translator">ブラウザ翻訳</span></label>
-              <label id="engine-prompt-label"><input type="radio" name="translationMode" value="prompt" data-bind="translationMode"><span data-i18n="lang.engine.prompt">ブラウザ AI</span></label>
-              <label id="engine-hymt-label"><input type="radio" name="translationMode" value="hymt" data-bind="translationMode"><span data-i18n="lang.engine.hymt">HY-MT</span></label>
-            </div>
+            <!-- A pop-up button rather than a segmented switch: with three
+                 engines and a fourth behind a setting, of uneven name lengths,
+                 picked once and then left, the switch only took the width the
+                 status line and its buttons beside it need. An engine that
+                 cannot run is a disabled option; the status line says why.
+                 The last option is never offered: it only names the
+                 translation server (lang.advanced) while that is on, so the
+                 picker shows what is actually translating. Picking an engine
+                 from here turns the server off, as before. -->
+            <select class="select engine-select" id="engine-select" data-bind="translationMode"
+                    data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
+              <option value="gtx" data-i18n="lang.engine.gtx">Google 翻訳</option>
+              <option value="translator" id="engine-translator-option" data-i18n="lang.engine.translator">ブラウザ翻訳</option>
+              <option value="prompt" id="engine-prompt-option" data-i18n="lang.engine.prompt">ブラウザ AI</option>
+              <option value="hymt" id="engine-hymt-option" data-i18n="lang.engine.hymt">AI 翻訳（GPU）</option>
+              <option value="link" hidden disabled data-i18n="lang.advanced.link">翻訳サーバー</option>
+            </select>
 
             <!-- Whatever the selected engine needs — a status line, the custom
                  URL row, or nothing — beside the picker, in the space the row
@@ -298,11 +311,15 @@ export function mountLanguagesTab(container) {
                  it underneath instead of squeezing it. -->
             <div class="engine-inline">
               <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
+              <!-- Downloads are the user's to start, so a missing model is
+                   offered here instead of fetched on the pick. -->
+              <button type="button" class="btn" id="engine-translator-download" data-i18n="lang.engine.translator.download" hidden>ダウンロード</button>
               <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
               <!-- HY-MT asks before its first download (over a gigabyte), so
                    its row carries a button beside the status line. -->
               <p class="manual-status" id="engine-hymt-status" role="status" aria-live="polite" hidden></p>
               <button type="button" class="btn" id="engine-hymt-download" data-i18n="lang.engine.hymt.download" hidden>ダウンロード</button>
+              <button type="button" class="btn" id="engine-hymt-delete" data-i18n="lang.engine.hymt.delete" hidden>モデルを削除</button>
               <!-- While the translation server is on, the picker beside has
                    nothing selected; this says where the lines go instead.
                    Picking an engine turns the server off. -->
@@ -449,7 +466,7 @@ function setupAdvanced(container) {
   const sttToggle  = container.querySelector('#adv-stt-toggle');
   const linkToggle = container.querySelector('#adv-link-toggle');
   const note       = container.querySelector('#engine-link-note');
-  const picker     = container.querySelector('.lang-engine .seg-switch');
+  const picker     = container.querySelector('#engine-select');
   const status     = container.querySelector('#stt-status');
   const text       = status?.querySelector('.stt-status-text');
   if (!btn || !btnDot || !sttToggle || !linkToggle || !note || !picker || !status || !text) return;
@@ -509,16 +526,16 @@ async function markCloudOnlySources(container) {
   }
 }
 
-/* Built-in Translator API engine. Unlike the Prompt API we do download models
-   here — they are per language pair and downloading on demand is the intended
-   flow — but create() only downloads while a user gesture is live. So the
-   warm-up runs exactly on the gestures that can trigger it: picking this
-   engine, and changing a source/target language while it is picked. */
+/* Built-in Translator API engine. Models are per language pair, so picking the
+   engine or changing a language can need one. Picking is not consent to
+   download, though: a missing model is offered with a download button, and
+   only that click (whose gesture create() needs anyway) starts it. Pairs
+   already downloaded are warmed up straight away. */
 function setupTranslatorEngine(container) {
-  const label  = container.querySelector('#engine-translator-label');
-  const radio  = label?.querySelector('input[value="translator"]');
-  const status = container.querySelector('#engine-translator-status');
-  if (!label || !radio || !status) return;
+  const option      = container.querySelector('#engine-translator-option');
+  const status      = container.querySelector('#engine-translator-status');
+  const downloadBtn = container.querySelector('#engine-translator-download');
+  if (!option || !status || !downloadBtn) return;
 
   /* Keep the message as a key (+ percentage) so a UI language switch can
      re-render it without redoing the work that produced it. */
@@ -529,17 +546,23 @@ function setupTranslatorEngine(container) {
     if (!messageKey) { status.hidden = true; status.textContent = ''; return; }
     const suffix = percent == null ? '' : ` ${percent}%`;
     status.hidden = false;
-    status.textContent = [].concat(messageKey).map(k => t(k)).join(' ') + suffix;
+    status.textContent = [].concat(messageKey).map(k => t(k)).join(' ')
+      .replace('{lang}', vars.lang ? t(`lang.name.${vars.lang}`) : '')
+      .replace('{n}', String(vars.n ?? '')) + suffix;
   };
 
-  const setMessage = (key, pct = null) => { messageKey = key; percent = pct; render(); };
+  /* `vars`: {lang} is a language id, named in the UI language; {n} a count. */
+  let vars = {};
+  const setMessage = (key, pct = null, v = {}) => { messageKey = key; percent = pct; vars = v; render(); };
   subscribe('uiLang', render);
 
   if (!isTranslatorSupported()) {
-    radio.disabled = true;
-    label.classList.add('is-disabled');
-    setMessage('lang.engine.translator.unsupported');
-    label.title = t('lang.engine.translator.unsupported');
+    /* Said on the disabled option itself, not in the status line: the menu
+       is where the engine is looked for, and a standing line about an engine
+       nobody picked would only be noise beside the one in use. */
+    option.disabled = true;
+    option.dataset.i18n = 'lang.engine.translator.unsupportedOption';
+    option.textContent = t(option.dataset.i18n);
     if (settings.translationMode === 'translator') settings.translationMode = 'gtx';
     return;
   }
@@ -551,66 +574,109 @@ function setupTranslatorEngine(container) {
     unsupported: 'lang.engine.translator.unsupported',
   };
 
-  /* Only one warm-up runs at a time; a language change during a download is
-     remembered and re-run afterwards rather than dropped. */
-  let warming = false;
+  const selection = () => [settings.sourceLangId, [settings.target1LangId, settings.target2LangId]];
+  const stillPicked = () => settings.translationMode === 'translator';
+
+  /* Targets whose model is still to be downloaded, first in line first. One
+     click downloads one (see pendingTranslatorDownloads for why); the row
+     names the next one and how many are left, as the HamHam extension's
+     "次へ (N)" did. */
+  let queue = [];
+  /* Only one check or download at a time; a language change meanwhile is
+     remembered and checked again afterwards rather than dropped. */
+  let busy = false;
   let restart = false;
+  /* Set when a click downloaded something, so the ready line says so once. */
+  let downloadedAny = false;
 
-  const warmUp = async () => {
-    if (settings.translationMode !== 'translator') return;
-    if (warming) { restart = true; return; }
-    warming = true;
+  const offerNext = () => {
+    setMessage(queue.length > 1
+      ? ['lang.engine.translator.needDownload', 'lang.engine.translator.remaining']
+      : 'lang.engine.translator.needDownload', null, { lang: queue[0], n: queue.length });
+    downloadBtn.hidden = false;
+  };
 
-    /* A download only reports progress once it actually starts; if the models
-       are already there the user just sees "preparing" blink past. */
-    let downloaded = false;
-    setMessage('lang.engine.translator.preparing');
+  /* Without consent: works out the queue, offers its head, or — with nothing
+     to download — warms up the installed pairs, which needs no gesture. */
+  const check = async () => {
+    if (!stillPicked()) return;
+    if (busy) { restart = true; return; }
+    busy = true;
+    try {
+      queue = await pendingTranslatorDownloads(...selection());
+      if (!stillPicked()) return;
+      if (queue.length) { offerNext(); return; }
+
+      downloadBtn.hidden = true;
+      setMessage('lang.engine.translator.preparing');
+      const result = await prepareTranslators(...selection());
+      if (!stillPicked()) { setMessage(null); return; }
+      /* Once ready, the line keeps a standing caveat instead of going blank:
+         on unpunctuated Japanese the model drops the tail of long lines. */
+      if (result.ok) {
+        setMessage(downloadedAny
+          ? ['lang.engine.translator.ready', 'lang.engine.translator.note']
+          : 'lang.engine.translator.note');
+        downloadedAny = false;
+      } else {
+        setMessage(REASON_KEYS[result.reason] ?? REASON_KEYS.failed);
+      }
+    } finally {
+      busy = false;
+    }
+    if (restart) { restart = false; await check(); }
+  };
+
+  /* The consent: downloads the head of the queue, then checks again, which
+     offers the next one or finishes. Nothing is awaited before the download
+     starts, so the click's activation is still live when create() needs it. */
+  downloadBtn.addEventListener('click', async () => {
+    if (busy || !queue.length) return;
+    const target = queue[0];
+    busy = true;
+    downloadBtn.disabled = true;
+    setMessage('lang.engine.translator.downloading', 0, { lang: target });
 
     /* The download carries on if another engine is picked meanwhile (it is
        still worth having), but its progress and outcome must not reappear
        beside that engine's own row. */
-    const stillPicked = () => settings.translationMode === 'translator';
-
+    let result;
     try {
-      const result = await prepareTranslators(
-        settings.sourceLangId,
-        [settings.target1LangId, settings.target2LangId],
-        (loaded) => {
-          downloaded = true;
-          if (stillPicked()) setMessage('lang.engine.translator.downloading', Math.floor(loaded * 100));
-        },
-      );
-      if (!stillPicked()) setMessage(null);
-      /* Once ready, the line keeps a standing caveat instead of going blank:
-         on unpunctuated Japanese the model drops the tail of long lines. */
-      else if (result.ok) setMessage(downloaded
-        ? ['lang.engine.translator.ready', 'lang.engine.translator.note']
-        : 'lang.engine.translator.note');
-      else                setMessage(REASON_KEYS[result.reason] ?? REASON_KEYS.failed);
+      result = await downloadTranslator(settings.sourceLangId, target, (loaded) => {
+        if (stillPicked()) setMessage('lang.engine.translator.downloading', Math.floor(loaded * 100), { lang: target });
+      });
     } finally {
-      warming = false;
+      busy = false;
+      downloadBtn.disabled = false;
     }
 
-    /* The selection changed mid-download. The gesture is long gone, so this
-       only completes silently when the new pair is already downloaded — the
-       user is told to re-pick the engine otherwise. */
-    if (restart) { restart = false; await warmUp(); }
-  };
+    if (!stillPicked()) { setMessage(null); downloadBtn.hidden = true; return; }
+    if (!result.ok) {
+      setMessage(REASON_KEYS[result.reason] ?? REASON_KEYS.failed);
+      /* An unsupported pair stays unsupported; anything else can be retried
+         with the same button. */
+      downloadBtn.hidden = result.reason === 'unavailable';
+      return;
+    }
+    downloadedAny = true;
+    restart = false;
+    await check();
+  });
 
   subscribe('translationMode', (mode) => {
-    if (mode === 'translator') warmUp();
-    else setMessage(null);
+    if (mode === 'translator') check();
+    else { setMessage(null); downloadBtn.hidden = true; }
   });
-  ['sourceLangId', 'target1LangId', 'target2LangId'].forEach(key => subscribe(key, warmUp));
+  ['sourceLangId', 'target1LangId', 'target2LangId'].forEach(key => subscribe(key, () => check()));
 
-  /* Restored from a previous session: the models may already be downloaded, in
-     which case create() needs no gesture and this simply succeeds. */
-  if (settings.translationMode === 'translator') warmUp();
+  /* Restored from a previous session: pairs already downloaded warm up with no
+     gesture; anything missing is offered, as on a pick. */
+  if (settings.translationMode === 'translator') check();
 }
 
 /* Chrome Prompt API engine: usable only when the model reports 'available'.
    We never download it — that is the browser's job — so any other state is
-   surfaced as "unavailable": the radio is disabled, and if it was the selected
+   surfaced as "unavailable": the option is disabled, and if it was the selected
    engine we fall back to gtx.
 
    Selecting this engine warms the model up, because the first inference costs
@@ -620,10 +686,9 @@ function setupTranslatorEngine(container) {
    else, and switching away at any later point aborts or releases whatever the
    warm-up has reached. */
 function setupPromptEngine(container) {
-  const label  = container.querySelector('#engine-prompt-label');
-  const radio  = label?.querySelector('input[value="prompt"]');
+  const option = container.querySelector('#engine-prompt-option');
   const status = container.querySelector('#engine-prompt-status');
-  if (!label || !radio || !status) return;
+  if (!option || !status) return;
 
   /* Availability changes asynchronously, while the UI language can change at
      any time. Keep the message key so the current state can be translated
@@ -643,17 +708,15 @@ function setupPromptEngine(container) {
   const renderMessage = () => {
     const key = shownKey();
     /* A hidden engine must not leave its status line behind — the availability
-       check runs regardless of visibility, so it can produce a message for a
-       radio nobody can see. */
-    status.hidden = !key || label.hidden;
-    if (!key) { status.textContent = ''; label.removeAttribute('title'); return; }
+       check runs regardless of visibility, so it can produce a message for an
+       option nobody can see. */
+    status.hidden = !key || option.hidden;
+    if (!key) { status.textContent = ''; return; }
     /* The countdown belongs inside the sentence, not tacked onto its end:
        Japanese wants "あと 5 秒" mid-string, English "Preparing in 5s". So the
        message owns a {s} placeholder and we substitute; on every other message
        (which carries no value) the replace is a no-op. */
-    const message = t(key).replace('{s}', value);
-    label.title = message;
-    status.textContent = message;
+    status.textContent = t(key).replace('{s}', value);
   };
 
   const setMessage = (key, slot = '') => {
@@ -666,18 +729,16 @@ function setupPromptEngine(container) {
   ['sourceLangId', 'target1LangId', 'target2LangId'].forEach(key => subscribe(key, renderMessage));
 
   /* `fallback` is only set once we KNOW the engine is unusable; during the
-     async "checking" phase we just disable the radio without stranding a valid
-     prompt selection. */
+     async "checking" phase we just disable the option without stranding a
+     valid prompt selection. */
   const disable = (msgKey, fallback) => {
-    radio.disabled = true;
-    label.classList.add('is-disabled');
+    option.disabled = true;
     setMessage(msgKey);
     if (fallback && settings.translationMode === 'prompt') settings.translationMode = 'gtx';
   };
 
   const enable = () => {
-    radio.disabled = false;
-    label.classList.remove('is-disabled');
+    option.disabled = false;
     setMessage(null);
   };
 
@@ -735,11 +796,10 @@ function setupPromptEngine(container) {
   /* --- archived engine: only joins the picker when explicitly enabled ----- */
 
   /* Hidden rather than disabled: in this picker "disabled" already means "your
-     browser or device can't run this", so a permanently greyed-out radio would
-     be indistinguishable from a real failure. Hiding it also frees the width —
-     the segmented switch just shows three options instead of four. */
+     browser or device can't run this", so a permanently greyed-out option
+     would be indistinguishable from a real failure. */
   const syncVisibility = (on) => {
-    label.hidden = !on;
+    option.hidden = !on;
     if (on) { setMessage(currentMessageKey, value); return; }
     cancelWarmUp();
     if (settings.translationMode === 'prompt') settings.translationMode = 'gtx';
@@ -750,7 +810,7 @@ function setupPromptEngine(container) {
   syncVisibility(settings.enableBrowserAI);
 
   subscribe('translationMode', (mode) => {
-    if (radio.disabled) return;
+    if (option.disabled) return;
     if (mode === 'prompt') scheduleWarmUp();
     else { cancelWarmUp(); setMessage(null); }
   });
@@ -773,16 +833,17 @@ function setupPromptEngine(container) {
 }
 
 /* In-browser HY-MT engine (js/translate-hymt.js). WebGPU only: without it the
-   radio stays disabled. Picking it loads the model from the browser's cache
+   option stays disabled. Picking it loads the model from the browser's cache
    when it is there (a few seconds); the first download is over a gigabyte, so
    that waits for the button beside the status line instead of starting on
-   the pick. Picking another engine releases the model and its GPU memory. */
+   the pick. Picking another engine releases the model and its GPU memory;
+   the delete button beside a loaded model also removes it from the cache. */
 function setupHymtEngine(container) {
-  const label  = container.querySelector('#engine-hymt-label');
-  const radio  = label?.querySelector('input[value="hymt"]');
+  const option = container.querySelector('#engine-hymt-option');
   const status = container.querySelector('#engine-hymt-status');
-  const button = container.querySelector('#engine-hymt-download');
-  if (!label || !radio || !status || !button) return;
+  const downloadBtn = container.querySelector('#engine-hymt-download');
+  const deleteBtn   = container.querySelector('#engine-hymt-delete');
+  if (!option || !status || !downloadBtn || !deleteBtn) return;
 
   /* Kept as a key plus its {s} value so a UI language switch can re-render. */
   let messageKey = null;
@@ -794,60 +855,83 @@ function setupHymtEngine(container) {
   const setMessage = (key, value = '') => { messageKey = key; slot = value; render(); };
   subscribe('uiLang', render);
 
+  /* At most one of the two buttons shows: download while the model is not in
+     the cache, delete once it is loaded from there. */
+  const showButton = (which) => {
+    downloadBtn.hidden = which !== 'download';
+    deleteBtn.hidden   = which !== 'delete';
+  };
+
   let dtype = null;
 
-  /* Bumped on every pick and every switch away, so a load or cache check that
-     finishes after the user has moved on stays out of the row. */
+  /* Bumped on every pick, every switch away and every delete, so a load or
+     cache check that finishes after the user has moved on stays out of the
+     row. */
   let generation = 0;
 
+  const offerDownload = () => {
+    setMessage('lang.engine.hymt.needDownload', HYMT_SIZE[dtype]);
+    showButton('download');
+  };
+
   const load = async (mine) => {
-    button.hidden = true;
+    showButton(null);
     setMessage('lang.engine.hymt.preparing');
     const result = await loadHymt(dtype, (loaded, total) => {
       if (mine === generation) setMessage('lang.engine.hymt.downloading', `${Math.floor(loaded / total * 100)}%`);
     });
     if (mine !== generation) return;
-    if (result.ok) { setMessage('lang.engine.hymt.ready'); return; }
+    if (result.ok) { setMessage('lang.engine.hymt.ready'); showButton('delete'); return; }
     if (result.reason === 'cancelled') return;
     setMessage('lang.engine.hymt.failed');
-    button.hidden = false;
+    showButton('download');
   };
 
   const activate = async () => {
     const mine = ++generation;
     const cached = await isHymtDownloaded(dtype);
     if (mine !== generation) return;
-    if (cached) { load(mine); return; }
-    setMessage('lang.engine.hymt.needDownload', HYMT_SIZE[dtype]);
-    button.hidden = false;
+    if (cached) load(mine);
+    else offerDownload();
   };
 
   const deactivate = () => {
     generation++;
-    button.hidden = true;
+    showButton(null);
     setMessage(null);
     unloadHymt();
   };
 
   /* The click is the consent to download: it is only offered once the cache
      has been checked and found empty, or after a failed attempt. */
-  button.addEventListener('click', () => load(generation));
+  downloadBtn.addEventListener('click', () => load(generation));
+
+  /* Deleting keeps the engine picked and goes back to offering the download,
+     so getting the model again is the same one click as the first time. */
+  deleteBtn.addEventListener('click', async () => {
+    if (!confirm(t('lang.engine.hymt.deleteConfirm').replace('{s}', HYMT_SIZE[dtype]))) return;
+    generation++;
+    showButton(null);
+    setMessage('lang.engine.hymt.deleting');
+    await deleteHymt();
+    if (settings.translationMode === 'hymt') offerDownload();
+    else setMessage(null);
+  });
 
   /* Disabled until the WebGPU check resolves, without stranding a restored
      selection: it only falls back once the engine is known to be unusable. */
-  radio.disabled = true;
-  label.classList.add('is-disabled');
+  option.disabled = true;
 
   getHymtSupport().then((support) => {
     if (!support.ok) {
-      label.title = t('lang.engine.hymt.unsupported');
-      setMessage('lang.engine.hymt.unsupported');
+      /* On the option itself, like the Translator engine's (see there). */
+      option.dataset.i18n = 'lang.engine.hymt.unsupported';
+      option.textContent = t(option.dataset.i18n);
       if (settings.translationMode === 'hymt') settings.translationMode = 'gtx';
       return;
     }
     dtype = support.dtype;
-    radio.disabled = false;
-    label.classList.remove('is-disabled');
+    option.disabled = false;
     subscribe('translationMode', (mode) => (mode === 'hymt' ? activate() : deactivate()));
     if (settings.translationMode === 'hymt') activate();
   });

@@ -76,7 +76,7 @@ const STEPS = [
   },
   {
     key: 'engine',
-    target: () => $('.lang-engine .seg-switch'),
+    target: () => $('#engine-select'),
     place: 'top',
     before: inLanguages,
   },

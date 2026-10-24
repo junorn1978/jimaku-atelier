@@ -30,6 +30,11 @@
     min-width: 0;
 
     &:not(:has(> :not([hidden]))) { display: none; }
+
+    /* The status line gives way, a button beside it does not: squeezed, the
+       button's label broke onto a second line inside the pill. */
+    > .manual-status { flex: 1 1 auto; min-width: 0; }
+    > .btn { flex-shrink: 0; white-space: nowrap; }
   }
 
   /* Name and version, quiet enough to read as a mark on the work rather than a
@@ -290,12 +295,11 @@
     gap: var(--space-2);
     min-height: 0;
 
-    /* segmented control hugs its content (Apple-style) instead of being
-       stretched to the column width; with four engines it wraps onto a second
-       row rather than overflowing the column */
-    .seg-switch {
-      flex-wrap: wrap;
-      max-width: 100%;
+    /* The engine pop-up hugs its longest name instead of taking the column's
+       width, which belongs to the status line and buttons beside it. */
+    .engine-select {
+      width: auto;
+      flex-shrink: 0;
     }
   }
 
@@ -396,10 +400,10 @@
     }
   }
 
-  /* Picker dimmed while the translation server overrides it: nothing in it is
-     selected, and the note beside it says why. Still clickable — picking an
-     engine is how the server is turned off from here. */
-  .lang-engine .seg-switch.is-overridden { opacity: 0.55; }
+  /* Picker dimmed while the translation server overrides it: it names the
+     server, and the note beside it says why. Still usable — picking an engine
+     is how the server is turned off from here. */
+  .lang-engine .engine-select.is-overridden { opacity: 0.55; }
 
   /* --- advanced: servers of the user's own --- */
 

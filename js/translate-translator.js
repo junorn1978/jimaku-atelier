@@ -11,12 +11,12 @@
  *     only the pairs that are no longer selected get destroyed.
  *   - create() downloads the model on first use and REQUIRES user activation
  *     to do so. Subtitle translation runs long after any click, so the pool is
- *     warmed up from ui-languages.js at the moments a gesture is available —
- *     picking the engine, or changing a source/target language. If a pair is
- *     still missing when a subtitle arrives, create() rejects with
- *     NotAllowedError and the UI asks the user to press the engine button.
- *   - Unlike the Prompt API engine we DO trigger downloads: per-pair models are
- *     small and downloading them on demand is the API's intended flow.
+ *     warmed up from ui-languages.js. A download is only ever started by the
+ *     user pressing its download button: picking the engine or a language
+ *     first asks pendingTranslatorDownloads(), and offers the button instead
+ *     of downloading — one pair per click, see there. If a pair is still
+ *     missing when a subtitle arrives, create() rejects with NotAllowedError
+ *     and nothing is downloaded.
  *   - Errors propagate to the controller, matching the gtx contract.
  *
  * Notes / limits:
@@ -60,15 +60,31 @@ const pairKey = (src, tgt) => `${src}→${tgt}`;
 function getTranslator(src, tgt, onProgress) {
   const key = pairKey(src, tgt);
   const cached = _pool.get(key);
-  if (cached) return cached;
+  if (cached) {
+    if (isDebugEnabled()) console.debug(`[translator] ${key}: joining the create() already in flight`);
+    return cached;
+  }
+
+  const t0 = performance.now();
+  const since = () => `${(performance.now() - t0).toFixed(0)}ms`;
+  if (isDebugEnabled()) {
+    console.debug(`[translator] ${key}: create() — user activation ${navigator.userActivation?.isActive ? 'live' : 'NOT live'}`);
+  }
 
   const created = Translator.create({
     sourceLanguage: src,
     targetLanguage: tgt,
     monitor(m) {
-      m.addEventListener('downloadprogress', (e) => onProgress?.(key, e.loaded));
+      m.addEventListener('downloadprogress', (e) => {
+        if (isDebugEnabled()) console.debug(`[translator] ${key}: downloadprogress ${(e.loaded * 100).toFixed(1)}% at ${since()}`);
+        onProgress?.(key, e.loaded);
+      });
     },
+  }).then((tr) => {
+    if (isDebugEnabled()) console.debug(`[translator] ${key}: create() resolved after ${since()}`);
+    return tr;
   }).catch((err) => {
+    if (isDebugEnabled()) console.warn(`[translator] ${key}: create() rejected after ${since()}:`, err?.name, err?.message);
     /* Never cache a failure — the next warm-up (with a fresh user gesture, or
        after the model finishes downloading) must be able to retry. */
     _pool.delete(key);
@@ -100,6 +116,11 @@ async function detectSourceCode(text) {
   if (!isDetectorSupported()) {
     throw new Error('[translator] language detection unavailable');
   }
+  /* Created inside the manual translate click, which would let a missing
+     detector model download unasked; only an installed one is used. */
+  if (!_detector && await LanguageDetector.availability?.() !== 'available') {
+    throw new Error('[translator] language detection model not downloaded');
+  }
   _detector ??= LanguageDetector.create().catch((err) => { _detector = null; throw err; });
   const detector = await _detector;
   const [best] = await detector.detect(text);
@@ -122,10 +143,72 @@ async function resolveSourceCode(sourceLangId, text) {
 
 /* ---------------------------------------------------------------- warm-up */
 
+/* The (src, [tgt…]) pairs a selection asks for, minus empty slots, targets
+   the API has no code for, and targets equal to the source. */
+function selectedPairs(sourceLangId, targetLangIds) {
+  const src = codeOf(sourceLangId);
+  const pairs = (targetLangIds || [])
+    .filter(id => id && id !== 'none')
+    .map(codeOf)
+    .filter(tgt => tgt && tgt !== src);
+  return { src, pairs };
+}
+
+/**
+ * The selected targets whose model still has to be downloaded, in slot order —
+ * the download queue the engine row works through, one click per entry.
+ * One per click because create() consumes the click's user activation when it
+ * starts a download (Writing Assistance APIs, "create an AI model object"):
+ * two started from one click leave the second refused with NotAllowedError.
+ * The API also reports unsupported pairs as 'downloadable' (see the notes at
+ * the top), so an entry can still end in 'unavailable' once it is attempted.
+ * @returns {Promise<string[]>}  target language ids
+ */
+export async function pendingTranslatorDownloads(sourceLangId, targetLangIds) {
+  if (!isTranslatorSupported()) return [];
+  const src = codeOf(sourceLangId);
+  if (!src) return [];
+  const targets = (targetLangIds || [])
+    .filter(id => id && id !== 'none')
+    .filter(id => codeOf(id) && codeOf(id) !== src)
+    .filter((id, i, all) => all.findIndex(o => codeOf(o) === codeOf(id)) === i);
+  try {
+    const states = await Promise.all(targets.map(id =>
+      Translator.availability({ sourceLanguage: src, targetLanguage: codeOf(id) })));
+    if (isDebugEnabled()) {
+      console.debug('[translator] availability', targets.map((id, i) => `${src}→${codeOf(id)}: ${states[i]}`).join(', '));
+    }
+    return targets.filter((_id, i) => states[i] === 'downloadable' || states[i] === 'downloading');
+  } catch (err) {
+    if (isDebugEnabled()) console.warn('[translator] availability() failed:', err?.name, err?.message);
+    return [];
+  }
+}
+
+/**
+ * Download one target's model. Call from the click that offered it: that
+ * click's activation is what create() spends on the download.
+ * @param {(loaded: number) => void} [onProgress] 0–1
+ * @returns {Promise<{ok: boolean, reason?: 'unavailable'|'blocked'|'failed'}>}
+ */
+export async function downloadTranslator(sourceLangId, targetLangId, onProgress) {
+  const src = codeOf(sourceLangId);
+  const tgt = codeOf(targetLangId);
+  try {
+    await getTranslator(src, tgt, (_key, loaded) => onProgress?.(loaded));
+    return { ok: true };
+  } catch (err) {
+    if (err?.name === 'NotSupportedError') return { ok: false, reason: 'unavailable' };
+    if (err?.name === 'NotAllowedError')   return { ok: false, reason: 'blocked' };
+    return { ok: false, reason: 'failed' };
+  }
+}
+
 /**
  * Create (and if needed download) the translators for the current language
- * selection. MUST be called from a user gesture — that is what allows the
- * model download.
+ * selection. ui-languages.js calls it once pendingTranslatorDownloads() is
+ * empty, so in practice it downloads nothing; downloads go one per click
+ * through downloadTranslator().
  *
  * @param {string} sourceLangId
  * @param {string[]} targetLangIds
@@ -135,11 +218,7 @@ async function resolveSourceCode(sourceLangId, text) {
 export async function prepareTranslators(sourceLangId, targetLangIds, onProgress) {
   if (!isTranslatorSupported()) return { ok: false, reason: 'unsupported' };
 
-  const src = codeOf(sourceLangId);
-  const pairs = (targetLangIds || [])
-    .filter(id => id && id !== 'none')
-    .map(codeOf)
-    .filter(tgt => tgt && tgt !== src);
+  const { src, pairs } = selectedPairs(sourceLangId, targetLangIds);
 
   /* Drop instances for pairs that are no longer selected. With no source
      language the set is empty, which releases everything. */
@@ -149,10 +228,12 @@ export async function prepareTranslators(sourceLangId, targetLangIds, onProgress
      warm up, and nothing is wrong either. */
   if (!src || pairs.length === 0) return { ok: true };
 
+  if (isDebugEnabled()) console.debug(`[translator] prepare ${pairs.map(tgt => pairKey(src, tgt)).join(', ')}`);
   try {
     await Promise.all(pairs.map(tgt =>
       getTranslator(src, tgt, (_key, loaded) => onProgress?.(loaded))
     ));
+    if (isDebugEnabled()) console.debug('[translator] prepare done');
     return { ok: true };
   } catch (err) {
     if (isDebugEnabled()) console.warn('[translator] prepare failed:', err?.name, err?.message);
@@ -196,6 +277,14 @@ export async function translateTranslator(text, targetLangIds, sourceLangId) {
     /* Same language on both ends: the API would reject the pair, and echoing
        the source is what the user asked to see anyway. */
     if (tgt === src) return text;
+
+    /* A pair the warm-up never made. The manual translate click carries a
+       gesture, so create() could download its model there — unasked. Only
+       an installed model is used; downloads go through the engine row. */
+    if (!_pool.has(pairKey(src, tgt)) &&
+        await Translator.availability({ sourceLanguage: src, targetLanguage: tgt }) !== 'available') {
+      throw new Error(`[translator] model not downloaded: ${src}→${tgt}`);
+    }
 
     const translator = await getTranslator(src, tgt);
     return translator.translate(text);
