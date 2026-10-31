@@ -520,7 +520,7 @@
     <h2>サンプル</h2>
     <p>
       リポジトリの <a href="https://github.com/junorn1978/jimaku-atelier/tree/main/docs/custom-stt-sample"><code>docs/custom-stt-sample/</code></a>
-      に、動かせるサーバーが 3 つあります。
+      に、動かせるサーバーが 4 つあります。
     </p>
     <div class="table-wrap">
       <table>
@@ -528,6 +528,7 @@
         <tbody>
           <tr><td><code>echo_server.py</code></td><td>モデルなし。受け取った音声の長さを返すだけで、接続の確認用です。<code>--translate</code> で仮の翻訳も返します。</td></tr>
           <tr><td><code>whisper_server.py</code></td><td>faster-whisper を使う最小のサーバー。<code>pause</code> ごとに 1 文として認識します。<code>--translate</code> を付けると、サーバー側で Google 翻訳して <code>translations</code> も返します（翻訳モデルを持つサーバーの代わり）。</td></tr>
+          <tr><td><code>haas_server.py</code></td><td>日本語専用の Haas-ja-v1.0 を sherpa-onnx で動かすサーバー。CPU でも動き、NVIDIA の GPU があれば速くなります。文の区切りは whisper_server.py と同じく <code>pause</code> ごとです。</td></tr>
           <tr><td><code>soniox_server.py</code></td><td>クラウドの Soniox に音声を中継するサーバー。文の区切りは Soniox が決めるので <code>pause</code> は使いません。API キーはこのサーバー側に置きます。</td></tr>
         </tbody>
       </table>
@@ -544,6 +545,21 @@ python whisper_server.py --model large-v3-turbo --device cuda --compute-type int
     <p>
       <code>--translate</code> を付けると、認識した文をサーバーが <code>targetLangs</code> の各言語に翻訳し、<code>final</code> に添えて返します。
       字幕アトリエで「サーバーが返した翻訳を使う」をオフにすると <code>targetLangs</code> が空になり、翻訳は返さなくなります。
+    </p>
+    <pre><code>pip install websockets sherpa-onnx numpy
+
+# モデルは Hugging Face の oboroge0/Haas-ja-v1.0-onnx-quantized（CPU 向け）
+# または oboroge0/Haas-ja-v1.0-onnx（GPU 向け）を 1 つのフォルダに置く
+python haas_server.py --model-dir Haas-ja-v1.0-onnx-quantized
+python haas_server.py --model-dir Haas-ja-v1.0-onnx --provider cuda</code></pre>
+    <p>
+      公式の Haas-ja-v1.0 は Linux と NVIDIA の GPU が必要なので、有志が ONNX に変換したものを使います（非公式）。
+      <code>--provider cuda</code> には sherpa-onnx の CUDA 版が必要で、手順は haas_server.py の冒頭にあります。
+      GPU では量子化していない版を使ってください。量子化版は GPU ではほとんど速くならない一方、量子化していない版は VRAM を約 3 GB 使います。
+    </p>
+    <p>
+      制限：日本語以外の音声は、でたらめなカタカナになります。GPU は NVIDIA のみで、AMD や Intel の GPU では CPU で動きます（10 秒の音声に約 1.2 秒）。
+      公式モデルのカスタム語彙は使えず、「えー」「あの」などのフィラーはほとんど出力されません。
     </p>
     <pre><code>pip install websockets
 $env:SONIOX_API_KEY = "..."   # PowerShell
