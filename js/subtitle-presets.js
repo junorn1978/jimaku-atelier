@@ -65,7 +65,7 @@ export const PRESETS = [
   { id: 'bubbleSticker',  outline: 'bubble', rimW: 4,
     src: cloud('#FF4FA3', '#FFFFFF', 1, '#FA5151'), t1: cloud('#38BDF8', '#FFFFFF', 1, '#28C1DF'), t2: cloud('#CD9AFD', '#FFFFFF', 1, '#CD9AFD') },
   { id: 'bubbleLavender', outline: 'bubble', rimW: 7,
-    src: cloud('#1A1A1A', '#8A80C8', 11, '#C8337A'), t1: cloud('#1A1A1A', '#A99BE8', 11, '#C8337A'), t2: cloud('#1A1A1A', '#F2A7C9', 11, '#C8337A') },
+    src: cloud('#1A1A1A', '#C1B6FF', 11, '#C8337A'), t1: cloud('#1A1A1A', '#B4CBFF', 11, '#C8337A'), t2: cloud('#1A1A1A', '#F2A7C9', 11, '#C8337A') },
   { id: 'bubbleCandy',    outline: 'bubble', rimW: 3,
     src: cloud('#FFFFFF', '#FF7FB0', 6, '#FFFFFF'), t1: cloud('#FFFFFF', '#B58CFF', 6, '#FFFFFF'), t2: cloud('#FFFFFF', '#FF9E6B', 6, '#FFFFFF') },
   { id: 'bubbleSoda',     outline: 'bubble', rimW: 8,
