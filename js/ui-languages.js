@@ -56,6 +56,9 @@ const SIZE_MIN   = 14;
 const SIZE_MAX   = 48;
 const STROKE_MIN = 0;
 const STROKE_MAX = 10;
+/* The cloud styles' cloud and rim (js/subtitle-cloud.js) scale with the font
+   size, so their steps are finer and go further than the plain outline's. */
+const BUBBLE_MAX = 15;
 
 /**
  * The four appearance cells of one subtitle line, in the matrix's column order.
@@ -69,17 +72,30 @@ function styleCells(prefix) {
             <button type="button" class="color-swatch" data-color-trigger></button>
             <output class="color-value"></output>
           </span>
-          <span class="color-cell">
-            <input type="color" class="visually-hidden" data-bind="${key('Stroke')}" list="palette-text">
-            <button type="button" class="color-swatch" data-color-trigger></button>
-            <output class="color-value"></output>
+          <span class="outline-colors">
+            <span class="color-cell">
+              <input type="color" class="visually-hidden" data-bind="${key('Stroke')}" list="palette-text">
+              <button type="button" class="color-swatch" data-color-trigger></button>
+              <output class="color-value"></output>
+            </span>
+            <span class="color-cell outline-cloud-only">
+              <input type="color" class="visually-hidden" data-bind="${key('Rim')}" list="palette-text">
+              <button type="button" class="color-swatch" data-color-trigger></button>
+              <output class="color-value"></output>
+            </span>
           </span>
           <div class="slider-group">
             <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${key('Size')}">
             <output class="slider-value"></output>
           </div>
-          <div class="slider-group">
+          <!-- One width per style; only the one in use shows, and a hidden
+               grid item takes no cell, so the column is the same either way. -->
+          <div class="slider-group outline-stroke-only">
             <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${key('StrokeW')}">
+            <output class="slider-value"></output>
+          </div>
+          <div class="slider-group outline-cloud-only">
+            <input type="range" min="${STROKE_MIN}" max="${BUBBLE_MAX}" data-bind="${key('BubbleW')}">
             <output class="slider-value"></output>
           </div>`;
 }
@@ -197,9 +213,18 @@ export function mountLanguagesTab(container) {
             </label>
           </span>
           <span data-i18n="style.textColor">文字色</span>
-          <span data-i18n="style.strokeColor">縁取り色</span>
+          <!-- Under a cloud outline (js/subtitle-cloud.js) the outline
+               colour fills the cloud, a rim colour joins it in the same cell,
+               and the width sizes the cloud: the two headers say so. -->
+          <span>
+            <span class="outline-stroke-only" data-i18n="style.strokeColor">縁取り色</span>
+            <span class="outline-cloud-only" data-i18n="style.bubbleColors">バブル / 外枠</span>
+          </span>
           <span data-i18n="style.fontSize">サイズ</span>
-          <span data-i18n="style.strokeWidth">縁取り幅</span>
+          <span>
+            <span class="outline-stroke-only" data-i18n="style.strokeWidth">縁取り幅</span>
+            <span class="outline-cloud-only" data-i18n="style.bubbleSize">バブル</span>
+          </span>
         </div>
 
         <div class="lang-matrix-row">
@@ -515,6 +540,25 @@ export function mountLanguagesTab(container) {
         </button>
         <div class="sub-preset-menu" id="sub-preset-menu" popover
              data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
+          <!-- The outline setting itself, and the switch between the two lists
+               of sets below (js/subtitle-presets.js). Beside it, under the
+               cloud styles, the rim width: one value for all three lines, so it
+               belongs to the style rather than to a row of the matrix. -->
+          <div class="sub-outline-bar">
+            <div class="seg-switch sub-outline-switch" role="group"
+                 data-i18n-aria-label="style.outline" aria-label="縁取りの種類">
+              <label><input type="radio" name="subOutline" value="stroke" data-bind="subOutline"><span data-i18n="style.outline.stroke">縁取り</span></label>
+              <label><input type="radio" name="subOutline" value="bubble" data-bind="subOutline"><span data-i18n="style.outline.bubble">バブル</span></label>
+              <label><input type="radio" name="subOutline" value="gooey" data-bind="subOutline"><span data-i18n="style.outline.gooey">もこもこ</span></label>
+            </div>
+            <label class="sub-rim-width outline-cloud-only">
+              <span data-i18n="style.rimWidth">外枠</span>
+              <span class="slider-group">
+                <input type="range" min="0" max="${BUBBLE_MAX}" data-bind="subRimW">
+                <output class="slider-value"></output>
+              </span>
+            </label>
+          </div>
           <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
           <div class="sub-preset-grid"></div>
           <span class="sub-preset-head" data-i18n="style.preset.custom.head">マイテーマ</span>

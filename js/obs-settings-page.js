@@ -24,7 +24,8 @@ import {
   initObs, triggerAutoSetup, onConnectionState, onSceneListChanged, fetchSceneNames,
 } from './obs.js';
 import { SCENE_ACTIONS, sceneAction, setSceneAction, scenePreset, setScenePreset } from './obs-scene-link.js';
-import { PRESETS, CUSTOM_SLOTS, presetName } from './subtitle-presets.js';
+import { PRESETS, CUSTOM_SLOTS, presetName, outlineOf } from './subtitle-presets.js';
+import { CLOUD_OUTLINES } from './subtitle-cloud.js';
 
 async function init() {
   initTheme();
@@ -182,8 +183,18 @@ function buildRow(sceneName) {
   colours.add(new Option(t('obs.sceneLink.preset.keep'), '', false, !preset));
   /* The user's own slots too. An empty one can be picked ahead of filling
      it; until then switching to the scene leaves the colours alone. */
-  for (const id of [...PRESETS.map(p => p.id), ...CUSTOM_SLOTS]) {
+  for (const id of [...PRESETS.filter(p => outlineOf(p) === 'stroke').map(p => p.id), ...CUSTOM_SLOTS]) {
     colours.add(new Option(presetName(id), id, false, id === preset));
+  }
+  /* Each cloud style's sets under its own heading: their names are only
+     colours. */
+  for (const outline of CLOUD_OUTLINES) {
+    const group = document.createElement('optgroup');
+    group.label = t(`style.outline.${outline}`);
+    for (const p of PRESETS.filter(p => outlineOf(p) === outline)) {
+      group.append(new Option(presetName(p.id), p.id, false, p.id === preset));
+    }
+    if (group.children.length) colours.append(group);
   }
   colours.addEventListener('change', () => setScenePreset(sceneName, colours.value));
 

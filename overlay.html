@@ -76,6 +76,27 @@
       word-break: break-word;
     }
 
+    /* Cloud outlines (js/subtitle-cloud.js), as in css/subtitle-display.css.
+       The lines here shrink to their text, and the filter region is a share
+       of the box, so each line pads itself sideways to hold the cloud. */
+    body:not([data-outline="stroke"]) {
+      --sub-line-height: 1.55;
+      --sub-clip-1line: calc(var(--sub-line-height) * 1em);
+      --sub-clip-2line: calc(var(--sub-line-height) * 2em);
+
+      .text-line { padding-inline: 0.7em; }
+    }
+    body[data-outline="bubble"] {
+      #source   { filter: url(#sub-bubble-source); }
+      #target-1 { filter: url(#sub-bubble-target1); }
+      #target-2 { filter: url(#sub-bubble-target2); }
+    }
+    body[data-outline="gooey"] {
+      #source   { filter: url(#sub-gooey-source); }
+      #target-1 { filter: url(#sub-gooey-target1); }
+      #target-2 { filter: url(#sub-gooey-target2); }
+    }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -90,7 +111,7 @@
     }
   </style>
 </head>
-<body>
+<body data-outline="stroke">
   <div class="subtitle-container" id="container">
     <div id="source"   class="text-line"></div>
     <div id="target-1" class="text-line"></div>
@@ -104,6 +125,9 @@
        above it in the document. -->
   <script type="module">
     import { keepTailVisible, setupCinemaScroll } from './js/subtitle-render.js';
+    import { installCloudFilters, updateCloudFilters, isCloudOutline } from './js/subtitle-cloud.js';
+
+    installCloudFilters();
 
     /* Hash params: #url=...&pwd=...&mode=all|source|target1|target2&ch=2 */
     const hashParams  = new URLSearchParams(location.hash.replace(/^#/, ''));
@@ -163,10 +187,21 @@
       return sha256Base64(secret + challenge);
     }
 
-    function applyStyle(el, style) {
+    /* cloud: a filter draws the outline (js/subtitle-cloud.js), so the
+       stroke is taken off and the filters fed this line's numbers. */
+    function applyStyle(el, line, style, cloud, rimWidth) {
       if (!style) return;
       if (style.color) el.style.color = style.color;
-      if (style.strokeSize && style.strokeColor) {
+      if (cloud) {
+        el.style.webkitTextStroke = '0';
+        updateCloudFilters(line, {
+          size:  parseFloat(style.fontSize),
+          width: Number(style.bubbleSize),
+          rimWidth: Number(rimWidth),
+          cloud: style.strokeColor,
+          rim:   style.rimColor,
+        });
+      } else if (style.strokeSize && style.strokeColor) {
         el.style.webkitTextStroke = `${style.strokeSize} ${style.strokeColor}`;
       }
       if (style.fontSize) el.style.fontSize = style.fontSize;
@@ -262,9 +297,12 @@
           updateText(t1El,     data.target1);
           updateText(t2El,     data.target2);
 
-          applyStyle(sourceEl, data.styles?.source);
-          applyStyle(t1El,     data.styles?.target1);
-          applyStyle(t2El,     data.styles?.target2);
+          /* An app older than the cloud outlines sends no outline: plain. */
+          const cloud = isCloudOutline(data.outline);
+          document.body.dataset.outline = cloud ? data.outline : 'stroke';
+          applyStyle(sourceEl, 'source',  data.styles?.source,  cloud, data.rimWidth);
+          applyStyle(t1El,     'target1', data.styles?.target1, cloud, data.rimWidth);
+          applyStyle(t2El,     'target2', data.styles?.target2, cloud, data.rimWidth);
 
           /* In single-line mode keep the latest line of the source in view. */
           keepTailVisible(sourceEl);

@@ -12,6 +12,7 @@
  */
 
 import { keepTailVisible, setupCinemaScroll } from './subtitle-render.js';
+import { installCloudFilters, syncCloudFromVars } from './subtitle-cloud.js';
 import { CHANNEL_NAME, GEOMETRY_KEY } from './subtitle-window-protocol.js';
 
 const root    = document.documentElement;
@@ -23,6 +24,8 @@ const lines = {
 };
 
 const channel = new BroadcastChannel(CHANNEL_NAME);
+
+installCloudFilters();
 
 /* ============ drawing ============ */
 
@@ -36,6 +39,9 @@ function applyState({ lang, vars, attrs, lines: text }) {
   for (const [name, value] of Object.entries(vars || {})) {
     root.style.setProperty(name, value);
   }
+  /* The cloud filters' numbers are attributes, not properties, so they are
+     worked out here from the same --sub-* values the app window used. */
+  if (vars) syncCloudFromVars(root.style);
 
   const overflowBefore = display.dataset.subOverflow;
   for (const [name, value] of Object.entries(attrs || {})) {

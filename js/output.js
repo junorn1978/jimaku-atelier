@@ -12,6 +12,7 @@
 
 import { settings, subscribe } from './store.js';
 import { setupCinemaScroll } from './subtitle-render.js';
+import { installCloudFilters, syncCloudFromVars, isCloudOutline } from './subtitle-cloud.js';
 
 const root = document.documentElement;
 const px = (v) => `${Number(v) || 0}px`;
@@ -21,20 +22,27 @@ const id = (v) => v;
 const _cssVarMap = {
   subAlign:          ['--sub-align',           id],
   subBg:             ['--sub-bg',              id],
+  subRimW:           ['--sub-rim-w',           id],
 
   subSourceColor:    ['--sub-source-color',    id],
   subSourceStroke:   ['--sub-source-stroke',   id],
   subSourceStrokeW:  ['--sub-source-stroke-w', px],
+  subSourceRim:      ['--sub-source-rim',      id],
+  subSourceBubbleW:  ['--sub-source-bubble-w',  px],
   subSourceSize:     ['--sub-source-size',     px],
 
   subTarget1Color:   ['--sub-target1-color',    id],
   subTarget1Stroke:  ['--sub-target1-stroke',   id],
   subTarget1StrokeW: ['--sub-target1-stroke-w', px],
+  subTarget1Rim:     ['--sub-target1-rim',      id],
+  subTarget1BubbleW: ['--sub-target1-bubble-w', px],
   subTarget1Size:    ['--sub-target1-size',     px],
 
   subTarget2Color:   ['--sub-target2-color',    id],
   subTarget2Stroke:  ['--sub-target2-stroke',   id],
   subTarget2StrokeW: ['--sub-target2-stroke-w', px],
+  subTarget2Rim:     ['--sub-target2-rim',      id],
+  subTarget2BubbleW: ['--sub-target2-bubble-w', px],
   subTarget2Size:    ['--sub-target2-size',     px],
 };
 
@@ -43,6 +51,20 @@ function applyVar(key, value) {
   if (!entry) return;
   const [cssVar, fmt] = entry;
   root.style.setProperty(cssVar, fmt(value));
+}
+
+/* The keys the cloud filters are drawn from (js/subtitle-cloud.js reads
+   them back off the root's custom properties). */
+const CLOUD_KEYS = ['subRimW', ...['Source', 'Target1', 'Target2']
+  .flatMap(line => ['Stroke', 'BubbleW', 'Size', 'Rim'].map(part => `sub${line}${part}`))];
+
+/* On the display for css/subtitle-display.css (and the subtitle window, which
+   mirrors it), and on the root for the panel, whose colour and width columns
+   change their meaning with it. */
+function applyOutline(value) {
+  const outline = isCloudOutline(value) ? value : 'stroke';
+  document.querySelector('.subtitle-display')?.setAttribute('data-sub-outline', outline);
+  root.dataset.subOutline = outline;
 }
 
 function applyOverflow(value) {
@@ -73,6 +95,9 @@ const isShrink = () => settings.subOverflow === 'shrink';
 export function initOutputBinding() {
   /* Initial sync from store. */
   for (const key of Object.keys(_cssVarMap)) applyVar(key, settings[key]);
+  installCloudFilters();
+  syncCloudFromVars(root.style);
+  applyOutline(settings.subOutline);
   applyOverflow(settings.subOverflow);
   applyShowSource(settings.subShowSource);
   applySourceSingleLine(settings.subSourceSingleLine);
@@ -83,6 +108,8 @@ export function initOutputBinding() {
   for (const key of Object.keys(_cssVarMap)) {
     subscribe(key, (val) => applyVar(key, val));
   }
+  for (const key of CLOUD_KEYS) subscribe(key, () => syncCloudFromVars(root.style));
+  subscribe('subOutline', applyOutline);
   subscribe('subOverflow', applyOverflow);
   subscribe('subShowSource', applyShowSource);
   subscribe('subSourceSingleLine', applySourceSingleLine);

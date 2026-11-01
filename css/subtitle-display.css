@@ -150,6 +150,37 @@
      stale placeholder text. */
   .subtitle-display.is-recording .subtitle-line:empty::before { content: none; }
 
+  /* Cloud outlines (js/subtitle-cloud.js): the plain stroke gives way to
+     each line's filter, which draws the cloud in the outline colour and the
+     rim around it — one filter per style, chosen below. Placeholders included — they are styled to be judged
+     against, and -webkit-text-stroke does not reach ::before on its own.
+
+     The cloud swells past the glyphs top and bottom, so the lines are spaced
+     further apart; at the default width neighbouring rows of cloud just meet.
+     The clip heights are redeclared alongside: they are worked out where they
+     are declared, on the root, and would keep the old line height. */
+  [data-sub-outline="bubble"],
+  [data-sub-outline="gooey"] {
+    --sub-line-height: 1.55;
+    --sub-clip-1line: calc(var(--sub-line-height) * 1em);
+    --sub-clip-2line: calc(var(--sub-line-height) * 2em);
+
+    .subtitle-line,
+    .subtitle-line:empty::before { -webkit-text-stroke: 0; }
+  }
+
+  [data-sub-outline="bubble"] {
+    .source   { filter: url(#sub-bubble-source); }
+    .target-1 { filter: url(#sub-bubble-target1); }
+    .target-2 { filter: url(#sub-bubble-target2); }
+  }
+
+  [data-sub-outline="gooey"] {
+    .source   { filter: url(#sub-gooey-source); }
+    .target-1 { filter: url(#sub-gooey-target1); }
+    .target-2 { filter: url(#sub-gooey-target2); }
+  }
+
   /* subtitle overflow strategies, driven by [data-sub-overflow] on .subtitle-display.
      Mirrors overlay.html so the two output paths agree; the clip heights
      themselves come from css/subtitle-core.css, which both sides load. */

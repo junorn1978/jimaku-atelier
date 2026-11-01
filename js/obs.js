@@ -29,6 +29,7 @@
 
 import { isDebugEnabled } from './logger.js';
 import { settings, subscribe } from './store.js';
+import { isCloudOutline } from './subtitle-cloud.js';
 import { t } from './i18n.js';
 import { decorateSource } from './source-decoration.js';
 import { CHANNEL } from './channel.js';
@@ -230,6 +231,8 @@ function getStyleFor(key) {
     strokeColor: settings[`sub${cap}Stroke`],
     fontSize:    `${settings[`sub${cap}Size`]}px`,
     strokeSize:  `${settings[`sub${cap}StrokeW`]}px`,
+    rimColor:    settings[`sub${cap}Rim`],
+    bubbleSize:  settings[`sub${cap}BubbleW`],
   };
 }
 
@@ -258,6 +261,8 @@ function publish() {
           overflow:   settings.subOverflow,
           showSource: settings.subShowSource !== false,
           sourceSingleLine: settings.subSourceSingleLine === true,
+          outline:    isCloudOutline(settings.subOutline) ? settings.subOutline : 'stroke',
+          rimWidth:   settings.subRimW,
           styles: {
             source:  getStyleFor('source'),
             target1: getStyleFor('target1'),
@@ -490,7 +495,9 @@ async function executeAutoSetup() {
 
 const STYLE_KEYS = [
   'subAlign', 'subOverflow', 'subShowSource', 'subSourceSingleLine',
-  'subSourcePrefix', 'subSourceSuffix',
+  'subSourcePrefix', 'subSourceSuffix', 'subOutline',
+  'subSourceRim', 'subTarget1Rim', 'subTarget2Rim', 'subRimW',
+  'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor',  'subSourceStroke',  'subSourceStrokeW',  'subSourceSize',
   'subTarget1Color', 'subTarget1Stroke', 'subTarget1StrokeW', 'subTarget1Size',
   'subTarget2Color', 'subTarget2Stroke', 'subTarget2StrokeW', 'subTarget2Size',

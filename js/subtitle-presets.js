@@ -1,7 +1,9 @@
 /**
  * @file subtitle-presets.js
  * @description Colour presets for the subtitle lines: one click writes a whole
- * set of text colours, outline colours and outline widths into the settings.
+ * set of text colours, outline colours and outline widths into the settings —
+ * and the outline style, since the cloud outlines (js/subtitle-cloud.js) have
+ * sets of their own, which also carry each line's rim colour.
  *
  * A preset is data, not CSS. Applying one only writes the same settings keys
  * the Languages tab's matrix writes, so everything downstream — the output
@@ -23,8 +25,14 @@
  * Names are generic on purpose. Some presets are inspired by well-known
  * characters' colour schemes; their names and trademarks never appear here.
  *
+ * The themes menu shows one style's sets at a time, under a switch that is the
+ * outline setting itself: switching it changes the look at once and brings up
+ * the sets made for that style. A plain set's colours seldom make a good
+ * cloud, which is why the two lists are kept apart.
+ *
  * Three more slots hold the user's own sets (settings.subCustomPresets), saved
- * from the current values with the same fields as a built-in one. The scene
+ * from the current values with the same fields as a built-in one, outline
+ * style included; they are listed under both styles. The scene
  * link can pick them too; an empty slot picked there leaves the colours as
  * they are. Modelled on the sister project's マイテーマ, which keeps colours
  * only; these keep the outline width as well, since the built-in sets here do.
@@ -32,11 +40,15 @@
 
 import { settings, subscribe } from './store.js';
 import { t } from './i18n.js';
+import { isCloudOutline } from './subtitle-cloud.js';
 
 /* [settings-key middle part, preset slot] for each subtitle line. */
 const LINES = [['Source', 'src'], ['Target1', 't1'], ['Target2', 't2']];
 
 const line = (color, stroke, w) => ({ color, stroke, w });
+/* stroke is the cloud's colour, w its size, rim the ring around it; the
+   set's rimW is the ring's width, shared by its three lines. */
+const cloud = (color, stroke, w, rim) => ({ color, stroke, w, rim });
 
 /* `default` is the store's own defaults — "back to how it was". */
 export const PRESETS = [
@@ -49,20 +61,53 @@ export const PRESETS = [
   { id: 'berrymilk', src: line('#FFFFFF', '#C8336F', 5), t1: line('#FFC2DA', '#A82A5E', 5), t2: line('#FFF1A8', '#A82A5E', 5) },
   { id: 'contrast',  src: line('#FFFFFF', '#000000', 7), t1: line('#FFFF00', '#000000', 7), t2: line('#7FDBFF', '#000000', 7) },
   { id: 'retro',     src: line('#F3E6C8', '#3B2414', 5), t1: line('#F2B45A', '#3B2414', 5), t2: line('#E89A7C', '#3B2414', 5) },
+
+  { id: 'bubbleSticker',  outline: 'bubble', rimW: 3,
+    src: cloud('#FF4FA3', '#FFFFFF', 4, '#1A1A1A'), t1: cloud('#38BDF8', '#FFFFFF', 4, '#1A1A1A'), t2: cloud('#FFB020', '#FFFFFF', 4, '#1A1A1A') },
+  { id: 'bubbleLavender', outline: 'bubble', rimW: 4,
+    src: cloud('#1A1A1A', '#8A80C8', 8, '#C8337A'), t1: cloud('#1A1A1A', '#A99BE8', 8, '#C8337A'), t2: cloud('#1A1A1A', '#F2A7C9', 8, '#C8337A') },
+  { id: 'bubbleCandy',    outline: 'bubble', rimW: 3,
+    src: cloud('#FFFFFF', '#FF7FB0', 6, '#FFFFFF'), t1: cloud('#FFFFFF', '#B58CFF', 6, '#FFFFFF'), t2: cloud('#FFFFFF', '#FF9E6B', 6, '#FFFFFF') },
+  { id: 'bubbleSoda',     outline: 'bubble', rimW: 3,
+    src: cloud('#0B2545', '#8FD3FF', 6, '#FFFFFF'), t1: cloud('#0B2545', '#BFE6FF', 6, '#FFFFFF'), t2: cloud('#0B2545', '#FFD6E8', 6, '#FFFFFF') },
+  { id: 'bubbleLemon',    outline: 'bubble', rimW: 3,
+    src: cloud('#3B2414', '#FFE27A', 6, '#E07A2E'), t1: cloud('#3B2414', '#FFF3B0', 6, '#E07A2E'), t2: cloud('#3B2414', '#FFC9A3', 6, '#E07A2E') },
+  { id: 'bubbleNight',    outline: 'bubble', rimW: 3,
+    src: cloud('#FFFFFF', '#2A2350', 6, '#B79CFF'), t1: cloud('#FFE873', '#2A2350', 6, '#B79CFF'), t2: cloud('#9FD4FF', '#2A2350', 6, '#B79CFF') },
+
+  { id: 'gooeyPeach', outline: 'gooey', rimW: 3,
+    src: cloud('#4A1F12', '#FFB38A', 6, '#FFFFFF'), t1: cloud('#4A1F12', '#FFD0A8', 6, '#FFFFFF'), t2: cloud('#4A1F12', '#FFC2D4', 6, '#FFFFFF') },
+  { id: 'gooeyGrape', outline: 'gooey', rimW: 3,
+    src: cloud('#FFFFFF', '#7B4FC9', 6, '#F5D0FF'), t1: cloud('#FFFFFF', '#9A6BE0', 6, '#F5D0FF'), t2: cloud('#FFFFFF', '#C25AA8', 6, '#F5D0FF') },
+  { id: 'gooeyInk',   outline: 'gooey', rimW: 2,
+    src: cloud('#FFFFFF', '#1C1C24', 6, '#FFD400'), t1: cloud('#FFE873', '#1C1C24', 6, '#FFD400'), t2: cloud('#9FD4FF', '#1C1C24', 6, '#FFD400') },
 ];
 
-const KEYS = LINES.flatMap(([name]) => [`sub${name}Color`, `sub${name}Stroke`, `sub${name}StrokeW`]);
+/** A preset's outline style; sets from before there was a choice are plain. */
+export const outlineOf = (preset) => isCloudOutline(preset?.outline) ? preset.outline : 'stroke';
+
+const isCloud = (preset) => outlineOf(preset) !== 'stroke';
+
+/* Which setting a preset's w goes to: the plain outline keeps its widths, the
+   cloud styles share theirs. */
+const widthKey = (preset, name) => `sub${name}${isCloud(preset) ? 'BubbleW' : 'StrokeW'}`;
+
+const KEYS = ['subOutline', 'subRimW', ...LINES.flatMap(([name]) =>
+  [`sub${name}Color`, `sub${name}Stroke`, `sub${name}StrokeW`, `sub${name}BubbleW`, `sub${name}Rim`])];
 
 /** The user's slots, by id; their index is their place in subCustomPresets. */
 export const CUSTOM_SLOTS = ['custom1', 'custom2', 'custom3'];
 
 const isHex = (v) => typeof v === 'string' && /^#[0-9A-F]{6}$/.test(v);
 
-/* A saved slot, or null when it is empty or no longer the right shape. */
+/* A saved slot, or null when it is empty or no longer the right shape. A
+   cloud slot needs its rims; a plain one saved before rims existed has none. */
 function customPreset(index) {
   const saved = settings.subCustomPresets?.[index];
   const ok = saved && LINES.every(([, slot]) =>
-    isHex(saved[slot]?.color) && isHex(saved[slot]?.stroke) && Number.isFinite(saved[slot]?.w));
+    isHex(saved[slot]?.color) && isHex(saved[slot]?.stroke) && Number.isFinite(saved[slot]?.w)
+    && (!isCloud(saved) || isHex(saved[slot]?.rim)))
+    && (!isCloud(saved) || Number.isFinite(saved.rimW));
   return ok ? { ...saved, id: CUSTOM_SLOTS[index] } : null;
 }
 
@@ -92,22 +137,34 @@ export function applyPreset(id) {
   return !!preset;
 }
 
+/* A plain set leaves the rims and the cloud sizes alone, and a cloud set the
+   plain outline widths: neither is part of the other's look. */
 function apply(preset) {
+  const cloudSet = isCloud(preset);
+  settings.subOutline = outlineOf(preset);
+  if (cloudSet) settings.subRimW = preset.rimW;
   for (const [name, slot] of LINES) {
     settings[`sub${name}Color`]   = preset[slot].color;
     settings[`sub${name}Stroke`]  = preset[slot].stroke;
-    settings[`sub${name}StrokeW`] = preset[slot].w;
+    settings[widthKey(preset, name)] = preset[slot].w;
+    if (cloudSet) settings[`sub${name}Rim`] = preset[slot].rim;
   }
 }
 
 /* The current values, in a preset's shape. Colours upper-cased: the colour
    inputs hand them over in lower case. */
 function currentPreset() {
-  return Object.fromEntries(LINES.map(([name, slot]) => [slot, line(
-    String(settings[`sub${name}Color`]).toUpperCase(),
-    String(settings[`sub${name}Stroke`]).toUpperCase(),
-    Number(settings[`sub${name}StrokeW`]),
-  )]));
+  const outline = outlineOf({ outline: settings.subOutline });
+  return {
+    outline,
+    rimW: Number(settings.subRimW),
+    ...Object.fromEntries(LINES.map(([name, slot]) => [slot, cloud(
+      String(settings[`sub${name}Color`]).toUpperCase(),
+      String(settings[`sub${name}Stroke`]).toUpperCase(),
+      Number(settings[widthKey({ outline }, name)]),
+      String(settings[`sub${name}Rim`]).toUpperCase(),
+    )])),
+  };
 }
 
 function saveCustom(index) {
@@ -116,26 +173,35 @@ function saveCustom(index) {
   settings.subCustomPresets = next;
 }
 
+/* The rims count only for a cloud set; a plain one never shows them. */
 function matches(preset) {
-  return LINES.every(([name, slot]) =>
-    String(settings[`sub${name}Color`]).toUpperCase()  === preset[slot].color &&
-    String(settings[`sub${name}Stroke`]).toUpperCase() === preset[slot].stroke &&
-    Number(settings[`sub${name}StrokeW`])              === preset[slot].w);
+  const cloudSet = isCloud(preset);
+  return outlineOf({ outline: settings.subOutline }) === outlineOf(preset)
+    && (!cloudSet || Number(settings.subRimW) === preset.rimW)
+    && LINES.every(([name, slot]) =>
+      String(settings[`sub${name}Color`]).toUpperCase()  === preset[slot].color &&
+      String(settings[`sub${name}Stroke`]).toUpperCase() === preset[slot].stroke &&
+      Number(settings[widthKey(preset, name)])           === preset[slot].w &&
+      (!cloudSet || String(settings[`sub${name}Rim`]).toUpperCase() === preset[slot].rim));
 }
 
 /* The inside of a preset button: three dots for the three lines — each the
    line's text colour, ringed in its outline colour, since the outline decides
    the look as much as the fill (the pastel set is dark text on white) — then
    the name, drawn in the preset's second line (the first is white in most of
-   them). So every button previews itself. An empty slot has no colours, and
-   its name says so. */
+   them). So every button previews itself. A cloud set adds its rim to the
+   dots, which also marks a cloud slot among the plain ones. An empty slot
+   has no colours, and its name says so. */
 function paintItem(item, preset, name) {
   item.disabled = !preset;
   item.classList.toggle('is-empty', !preset);
+  item.classList.toggle('is-cloud', !!preset && isCloud(preset));
   item.style.setProperty('--p-color', preset?.t1.color ?? '');
   item.style.setProperty('--p-stroke', preset?.t1.stroke ?? '');
+  item.style.setProperty('--p-rim', preset?.t1.rim ?? '');
   const dots = preset
-    ? LINES.map(([, slot]) => `<i style="--d-color:${preset[slot].color};--d-stroke:${preset[slot].stroke}"></i>`).join('')
+    ? LINES.map(([, slot]) =>
+        `<i style="--d-color:${preset[slot].color};--d-stroke:${preset[slot].stroke};--d-rim:${preset[slot].rim ?? ''}"></i>`).join('')
     : '';
   item.innerHTML = `<span class="sub-preset-dots" aria-hidden="true">${dots}</span>`
     + `<span class="sub-preset-name"></span>`;
@@ -199,6 +265,13 @@ export function wireSubtitlePresets(row) {
     themesBtn.classList.toggle('has-pressed', themed);
   };
 
+  /* The menu lists the sets for the outline in use; the slots stay, as they
+     can hold either. */
+  const filter = () => {
+    const outline = outlineOf({ outline: settings.subOutline });
+    for (const item of builtIns) item.hidden = outlineOf(findPreset(item.dataset.preset)) !== outline;
+  };
+
   /* Names and save labels follow the interface language; slots also follow
      what is saved in them. */
   const paint = () => {
@@ -222,5 +295,7 @@ export function wireSubtitlePresets(row) {
   subscribe('uiLang', paint);
   subscribe('subCustomPresets', paint);
   for (const key of KEYS) subscribe(key, sync);
+  subscribe('subOutline', filter);
+  filter();
   paint();
 }

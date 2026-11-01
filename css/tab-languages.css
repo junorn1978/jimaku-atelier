@@ -321,6 +321,22 @@
     align-items: center;
   }
 
+  /* The outline colour cell and the width header mean one thing under the
+     plain outline and another under the cloud styles (js/subtitle-cloud.js);
+     the root carries which (js/output.js). Under a cloud the cell holds two
+     swatches, cloud and rim, without their hex readouts, so the column keeps
+     about its usual width. */
+  :root[data-sub-outline="stroke"] .outline-cloud-only,
+  :root:not([data-sub-outline="stroke"]) .outline-stroke-only { display: none; }
+
+  .outline-colors {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  :root:not([data-sub-outline="stroke"]) .outline-colors .color-value { display: none; }
+
   /* --- colour presets: one row under the matrix and the display settings --- */
 
   /* A hairline above, like any second row of a panel: the presets act on
@@ -392,6 +408,25 @@
         opacity: 0;
         transform: scale(0.97);
       }
+    }
+
+    /* The outline switch tops the menu, the rim width beside it. */
+    .sub-outline-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      margin-bottom: var(--space-1);
+    }
+
+    .sub-rim-width {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: var(--text-sm);
+      color: var(--color-text-dim);
+      white-space: nowrap;
+
+      .slider-group { width: calc(100px + var(--space-2) + 28px); }
     }
 
     .sub-preset-head {
@@ -497,6 +532,22 @@
         box-shadow:
           0 0 0 2px var(--d-stroke),
           0 0 0 3px var(--color-border-strong);
+      }
+    }
+
+    /* A cloud set: the name keeps the plain preview (cloud colour as its
+       outline) — a rim drawn around it at this size fused the letters into
+       an unreadable blob — and the rim shows as the dots' outer ring. */
+    .is-cloud {
+      .sub-preset-dots {
+        gap: 7px;
+
+        i {
+          box-shadow:
+            0 0 0 2px var(--d-stroke),
+            0 0 0 3.5px var(--d-rim),
+            0 0 0 4.5px var(--color-border-strong);
+        }
       }
     }
   }

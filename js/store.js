@@ -37,6 +37,8 @@ const PER_CHANNEL = new Set([
   'useSttTranslations',
   'sourceLangId', 'target1LangId', 'target2LangId',
   'subAlign', 'subBg', 'subOverflow', 'subShowSource', 'subSourceSingleLine', 'subClearIdleSec',
+  'subOutline', 'subRimW', 'subSourceRim', 'subTarget1Rim', 'subTarget2Rim',
+  'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor', 'subSourceStroke', 'subSourceStrokeW', 'subSourceSize',
   'subSourcePrefix', 'subSourceSuffix',
   'subTarget1Color', 'subTarget1Stroke', 'subTarget1StrokeW', 'subTarget1Size',
@@ -194,6 +196,23 @@ const _defaults = Object.freeze({
      the text reappear seconds later. 0 leaves the last line on screen. */
   subClearIdleSec:    7,
 
+  /* How the lines are outlined: 'stroke' is the plain outline; the cloud
+     styles (js/subtitle-cloud.js: 'bubble', 'gooey') set the text on a cloud
+     in the outline colour, ringed by the line's rim colour, and share the
+     cloud sizes and the rim. Each style keeps its own widths
+     (sub*StrokeW for the plain outline, sub*BubbleW for the cloud), so
+     switching back and forth finds both as they were. Cloud and rim widths
+     are steps of 0–15 that scale with the font size; the rim's is one value
+     for all three lines. */
+  subOutline:         'stroke',  // 'stroke' | 'bubble' | 'gooey'
+  subRimW:            3,
+  subSourceRim:       '#FFFFFF',
+  subTarget1Rim:      '#FFFFFF',
+  subTarget2Rim:      '#FFFFFF',
+  subSourceBubbleW:   6,
+  subTarget1BubbleW:  6,
+  subTarget2BubbleW:  6,
+
   subSourceColor:     '#FFFFFF',
   subSourceStroke:    '#000000',
   subSourceStrokeW:   4,
@@ -244,8 +263,8 @@ const _defaults = Object.freeze({
   obsScenePresets:    {},
 
   /* The user's own colour presets (js/subtitle-presets.js): three slots, each
-     null or { src, t1, t2 } of { color, stroke, w } — the shape of a built-in
-     preset. Shared by both windows, like the scene link that can pick them;
+     null or { outline, rimW?, src, t1, t2 } of { color, stroke, w, rim } —
+     the shape of a built-in preset, w being the width of its own style. Shared by both windows, like the scene link that can pick them;
      each window applies a slot to its own lines. Replaced whole. */
   subCustomPresets:   [null, null, null],
 });
