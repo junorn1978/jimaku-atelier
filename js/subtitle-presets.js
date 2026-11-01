@@ -64,23 +64,23 @@ export const PRESETS = [
 
   { id: 'bubbleSticker',  outline: 'bubble', rimW: 4,
     src: cloud('#FF4FA3', '#FFFFFF', 1, '#FA5151'), t1: cloud('#38BDF8', '#FFFFFF', 1, '#28C1DF'), t2: cloud('#CD9AFD', '#FFFFFF', 1, '#CD9AFD') },
-  { id: 'bubbleLavender', outline: 'bubble', rimW: 4,
-    src: cloud('#1A1A1A', '#8A80C8', 8, '#C8337A'), t1: cloud('#1A1A1A', '#A99BE8', 8, '#C8337A'), t2: cloud('#1A1A1A', '#F2A7C9', 8, '#C8337A') },
+  { id: 'bubbleLavender', outline: 'bubble', rimW: 7,
+    src: cloud('#1A1A1A', '#8A80C8', 11, '#C8337A'), t1: cloud('#1A1A1A', '#A99BE8', 11, '#C8337A'), t2: cloud('#1A1A1A', '#F2A7C9', 11, '#C8337A') },
   { id: 'bubbleCandy',    outline: 'bubble', rimW: 3,
     src: cloud('#FFFFFF', '#FF7FB0', 6, '#FFFFFF'), t1: cloud('#FFFFFF', '#B58CFF', 6, '#FFFFFF'), t2: cloud('#FFFFFF', '#FF9E6B', 6, '#FFFFFF') },
-  { id: 'bubbleSoda',     outline: 'bubble', rimW: 3,
+  { id: 'bubbleSoda',     outline: 'bubble', rimW: 8,
     src: cloud('#0B2545', '#8FD3FF', 6, '#FFFFFF'), t1: cloud('#0B2545', '#BFE6FF', 6, '#FFFFFF'), t2: cloud('#0B2545', '#FFD6E8', 6, '#FFFFFF') },
-  { id: 'bubbleLemon',    outline: 'bubble', rimW: 3,
+  { id: 'bubbleLemon',    outline: 'bubble', rimW: 6,
     src: cloud('#3B2414', '#FFE27A', 6, '#E07A2E'), t1: cloud('#3B2414', '#FFF3B0', 6, '#E07A2E'), t2: cloud('#3B2414', '#FFC9A3', 6, '#E07A2E') },
-  { id: 'bubbleNight',    outline: 'bubble', rimW: 3,
+  { id: 'bubbleNight',    outline: 'bubble', rimW: 4,
     src: cloud('#FFFFFF', '#2A2350', 6, '#B79CFF'), t1: cloud('#FFE873', '#2A2350', 6, '#B79CFF'), t2: cloud('#9FD4FF', '#2A2350', 6, '#B79CFF') },
 
-  { id: 'gooeyPeach', outline: 'gooey', rimW: 3,
+  { id: 'gooeyPeach', outline: 'gooey', rimW: 8,
     src: cloud('#4A1F12', '#FFB38A', 6, '#FFFFFF'), t1: cloud('#4A1F12', '#FFD0A8', 6, '#FFFFFF'), t2: cloud('#4A1F12', '#FFC2D4', 6, '#FFFFFF') },
-  { id: 'gooeyGrape', outline: 'gooey', rimW: 3,
+  { id: 'gooeyGrape', outline: 'gooey', rimW: 6,
     src: cloud('#FFFFFF', '#7B4FC9', 6, '#F5D0FF'), t1: cloud('#FFFFFF', '#9A6BE0', 6, '#F5D0FF'), t2: cloud('#FFFFFF', '#C25AA8', 6, '#F5D0FF') },
-  { id: 'gooeyInk',   outline: 'gooey', rimW: 2,
-    src: cloud('#FFFFFF', '#1C1C24', 6, '#FFD400'), t1: cloud('#FFE873', '#1C1C24', 6, '#FFD400'), t2: cloud('#9FD4FF', '#1C1C24', 6, '#FFD400') },
+  { id: 'gooeyInk',   outline: 'gooey', rimW: 8,
+    src: cloud('#FFFFFF', '#1C1C24', 4, '#FFD400'), t1: cloud('#FFE873', '#1C1C24', 4, '#FFD400'), t2: cloud('#9FD4FF', '#1C1C24', 4, '#FFD400') },
 ];
 
 /** A preset's outline style; sets from before there was a choice are plain. */
