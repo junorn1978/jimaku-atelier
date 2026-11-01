@@ -11,4 +11,4 @@
  * Bump on release.
  */
 
-export const APP_VERSION = 'v1.34.0';
+export const APP_VERSION = 'v1.35.0';
