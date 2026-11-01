@@ -24,14 +24,24 @@
     padding-inline: 16px;
     white-space: nowrap;
 
+    /* The faces crossfade through a slight blur rather than swapping in one
+       frame: the flip lands only once recognition has actually started, a
+       beat after the press, and an instant swap that late reads as a glitch
+       rather than as the answer. Blur makes the two labels read as one thing
+       changing instead of two overlapping. visibility rides along so the
+       hidden face still leaves the accessible name. */
     .speech-face {
       grid-area: 1 / 1;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       gap: var(--space-1);
+      transition:
+        opacity    150ms var(--ease-out),
+        filter     150ms var(--ease-out),
+        visibility 150ms;
     }
-    .speech-face-stop { visibility: hidden; }
+    .speech-face-stop { visibility: hidden; opacity: 0; filter: blur(2px); }
 
     /* Live: the stop face, on a pulsing red badge — the toolbar's one
        at-a-glance sign that recognition is running. */
@@ -47,8 +57,8 @@
         background: color-mix(in oklab, var(--color-danger) 30%, transparent);
       }
 
-      .speech-face-start { visibility: hidden; }
-      .speech-face-stop  { visibility: visible; }
+      .speech-face-start { visibility: hidden;  opacity: 0; filter: blur(2px); }
+      .speech-face-stop  { visibility: visible; opacity: 1; filter: none; }
       svg { animation: rec-pulse 1.4s ease-in-out infinite; }
     }
   }
@@ -247,6 +257,35 @@
       &[aria-checked="true"]::after {
         content: "✓";
         color: var(--color-accent-hover);
+      }
+    }
+  }
+
+  /* Both toolbar popovers grow up and to the left from their button, so they
+     scale out of its corner (bottom right) rather than from their own centre,
+     the way the colour popover does. Opened a few times a session, which is
+     the frequency that earns a short entrance; the exit is quicker, since by
+     then the user has moved on. allow-discrete lets display and overlay wait
+     for the fade, or the exit would be skipped and they would just vanish. */
+  .mic-panel,
+  .lang-menu {
+    opacity: 0;
+    transform: scale(0.97);
+    transform-origin: bottom right;
+    transition:
+      opacity   100ms var(--ease-out),
+      transform 100ms var(--ease-out),
+      overlay   100ms allow-discrete,
+      display   100ms allow-discrete;
+
+    &:popover-open {
+      opacity: 1;
+      transform: none;
+      transition-duration: 150ms;
+
+      @starting-style {
+        opacity: 0;
+        transform: scale(0.97);
       }
     }
   }

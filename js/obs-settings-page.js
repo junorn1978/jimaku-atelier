@@ -24,7 +24,7 @@ import {
   initObs, triggerAutoSetup, onConnectionState, onSceneListChanged, fetchSceneNames,
 } from './obs.js';
 import { SCENE_ACTIONS, sceneAction, setSceneAction, scenePreset, setScenePreset } from './obs-scene-link.js';
-import { PRESETS } from './subtitle-presets.js';
+import { PRESETS, CUSTOM_SLOTS, presetName } from './subtitle-presets.js';
 
 async function init() {
   initTheme();
@@ -180,8 +180,10 @@ function buildRow(sceneName) {
   colours.className = 'select';
   colours.setAttribute('aria-label', `${sceneName} — ${t('obs.sceneLink.preset')}`);
   colours.add(new Option(t('obs.sceneLink.preset.keep'), '', false, !preset));
-  for (const p of PRESETS) {
-    colours.add(new Option(t(`style.preset.${p.id}`), p.id, false, p.id === preset));
+  /* The user's own slots too. An empty one can be picked ahead of filling
+     it; until then switching to the scene leaves the colours alone. */
+  for (const id of [...PRESETS.map(p => p.id), ...CUSTOM_SLOTS]) {
+    colours.add(new Option(presetName(id), id, false, id === preset));
   }
   colours.addEventListener('change', () => setScenePreset(sceneName, colours.value));
 

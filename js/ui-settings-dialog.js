@@ -142,9 +142,9 @@ export function mountSettingsDialog(container) {
       <dl class="about-list">
         <div>
           <dt data-i18n="settings.about.app">App</dt>
-          <!-- The full statement of what this is. The Languages tab carries the
-               same name and version as a signature in its corner; that one is a
-               watermark, this one is the record. -->
+          <!-- The full statement of what this is, and the one place the
+               version is shown: the Languages tab's signature was taken out to
+               give its engine row room. -->
           <dd><span data-i18n="app.title">字幕アトリエ</span>
               <span class="about-version">${APP_VERSION}</span></dd>
         </div>

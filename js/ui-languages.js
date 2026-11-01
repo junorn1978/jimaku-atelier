@@ -16,8 +16,9 @@
  *
  * Bottom — two columns matching the matrix's sides: the Chrome-only offline
  * recognition pack on the recognition side, and HOW to translate on the other
- * (one row: heading, picker, whatever the chosen engine needs, and the
- * signature at the far end). The columns are sized to their contents rather
+ * (one row: heading, picker, whatever the chosen engine needs). The version
+ * signature that used to close this row lives only in the settings dialog's
+ * About section now. The columns are sized to their contents rather
  * than split evenly, and everything is inlined (.col-head) since this is the
  * shortest tab in the app. The
  * verbose URL format help lives in a dialog (#dialog-url-format in index.html).
@@ -35,7 +36,6 @@ import { getAllLanguages } from './languages.js';
 import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { isChrome } from './env.js';
-import { APP_VERSION } from './app-meta.js';
 import { setupLanguagePackButton, isCloudOnly } from './language-pack.js';
 import { wireSecretInputs } from './ui-secret-input.js';
 import { onSttState } from './stt-custom.js';
@@ -47,7 +47,8 @@ import { isTranslatorSupported, prepareTranslators,
 import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, deleteHymt,
          HYMT_SIZE } from './translate-hymt.js';
 import { wirePairList } from './ui-filter.js';
-import { presetItemsHtml, wireSubtitlePresets } from './subtitle-presets.js';
+import { wireHoverTip } from './hover-tip.js';
+import { wireSubtitlePresets } from './subtitle-presets.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
    the Style tab, which this tab absorbed. */
@@ -83,6 +84,84 @@ function styleCells(prefix) {
           </div>`;
 }
 
+/**
+ * The compact face of one engine's status line (see engineStatusLine): a chip
+ * naming a steady state in a word or two, and the tip holding its sentence
+ * (opened on hover too, by js/hover-tip.js).
+ */
+function statusChip(engine) {
+  return `
+              <button type="button" class="engine-status-chip" id="engine-${engine}-chip"
+                      popovertarget="engine-${engine}-tip" hidden
+                      data-i18n-title="lang.engine.status.more" title="詳細">
+                <span class="engine-status-dot" aria-hidden="true"></span>
+                <span class="engine-status-label"></span>
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 16v-4"/>
+                  <path d="M12 8h.01"/>
+                </svg>
+              </button>
+              <div class="help-popover engine-status-tip" id="engine-${engine}-tip" popover="hint"></div>`;
+}
+
+/* Which engine messages show as a chip, and as what: [short label, tone]. The
+   tone colours the chip's dot — ok green, warn amber, error red, info the
+   accent (something to do, with its button beside the chip). */
+const COMPACT_STATUS = {
+  'lang.engine.translator.note':         ['lang.engine.status.caveat',         'warn'],
+  'lang.engine.translator.needDownload': ['lang.engine.status.needDownload',   'info'],
+  'lang.engine.translator.unavailable':  ['lang.engine.status.langUnsupported', 'error'],
+  'lang.engine.translator.blocked':      ['lang.engine.status.failed',         'error'],
+  'lang.engine.translator.failed':       ['lang.engine.status.failed',         'error'],
+  'lang.engine.translator.unsupported':  ['lang.engine.status.unavailable',    'error'],
+  'lang.engine.prompt.ready':            ['lang.engine.status.ready',          'ok'],
+  'lang.engine.prompt.failed':           ['lang.engine.status.failed',         'error'],
+  'lang.engine.prompt.langUnsupported':  ['lang.engine.status.langUnsupported', 'error'],
+  'lang.engine.hymt.ready':              ['lang.engine.status.ready',          'ok'],
+  'lang.engine.hymt.needDownload':       ['lang.engine.status.needDownload',   'info'],
+  'lang.engine.hymt.failed':             ['lang.engine.status.failed',         'error'],
+};
+
+/**
+ * An engine's status line has two faces. What is in flux — a countdown,
+ * progress, a model loading — is short and written out in the row. Every
+ * other message is a sentence, and the row beside the picker has room for a
+ * few words and the engine's buttons, not for a sentence: written out it
+ * wrapped the buttons onto two-line text, or the whole row into a column one
+ * character wide. Those shrink to a chip naming the state in a word or two,
+ * coloured by tone so a failure still reads as one at a glance, with the
+ * sentence in its tip.
+ * The <p> keeps the full sentence either way, only visually hidden behind the
+ * chip, so its live region still announces it.
+ * Returns show(text, keys): text '' hides the line; keys are the message's
+ * i18n key(s), looked up in COMPACT_STATUS for the chip face.
+ */
+function engineStatusLine(container, engine) {
+  const status = container.querySelector(`#engine-${engine}-status`);
+  const chip   = container.querySelector(`#engine-${engine}-chip`);
+  const tip    = container.querySelector(`#engine-${engine}-tip`);
+  const label  = chip.querySelector('.engine-status-label');
+
+  const closeTip = wireHoverTip(chip, tip);
+
+  return (text, keys = []) => {
+    const compact = [].concat(keys).map(k => COMPACT_STATUS[k]).find(Boolean);
+    const asChip = !!(text && compact);
+    status.hidden = !text;
+    status.textContent = text || '';
+    status.classList.toggle('visually-hidden', asChip);
+    chip.hidden = !asChip;
+    if (asChip) {
+      chip.dataset.tone = compact[1];
+      label.textContent = t(compact[0]);
+      tip.textContent = text;
+    } else {
+      closeTip();
+    }
+  };
+}
+
 export function mountLanguagesTab(container) {
   if (!container) return;
 
@@ -111,26 +190,11 @@ export function mountLanguagesTab(container) {
                language column by its own width on every row. The two halves
                are in different grid cells, so they are tied with for/id. -->
           <span><label for="lang-show-source" class="lang-show-source-label" data-i18n="style.showSource">原文を表示</label></span>
-          <!-- The colour preset menu (js/subtitle-presets.js) shares the
-               corner with the toggle: the row has no other room, and the
-               select column below is wide enough for both. It opens upward
-               over the output pane, where the result shows. -->
           <span class="lang-matrix-corner">
             <label class="toggle toggle-compact">
               <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
               <span class="toggle-track"><span class="toggle-thumb"></span></span>
             </label>
-            <button type="button" class="btn sub-preset-btn" popovertarget="sub-preset-menu"
-                    data-i18n-title="style.preset.title" title="字幕の配色">
-              <span data-i18n="style.preset">配色</span>
-              <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
-            </button>
-            <div class="sub-preset-menu" id="sub-preset-menu" popover role="menu"
-                 data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
-              <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
-              <div class="sub-preset-grid">${presetItemsHtml()}
-              </div>
-            </div>
           </span>
           <span data-i18n="style.textColor">文字色</span>
           <span data-i18n="style.strokeColor">縁取り色</span>
@@ -161,149 +225,16 @@ export function mountLanguagesTab(container) {
           </div>
           ${styleCells('target2')}
         </div>
-      </div>
 
-      <!-- The settings you judge against the output, filling the space the
-           matrix leaves: the source line's symbols and one-line limit,
-           alignment, background. They belong beside the colours rather than a
-           tab away, because they are adjusted the same way — by looking. -->
-      <section class="lang-extras">
-        <!-- Two groups, because the four settings are two kinds of thing: the
-             first pair only touches the source line, the second pair the whole
-             display. Laid out as four identical rows they read as one list of
-             unrelated odds and ends.
-             The source group is headed once, so its row labels drop the
-             repeated "source" word. It dims while the source line is hidden
-             (CSS :has() on the matrix toggle) but stays editable, so it can be
-             set up before the line is turned on.
-             A two-state picker rather than a bare toggle: it names both states
-             instead of leaving one implied. -->
-        <div class="lang-extras-group lang-extras-source">
-        <span class="lang-extras-heading" data-i18n="style.group.source">原文</span>
-        <span class="lang-extras-label" data-i18n="style.sourceLines">行数</span>
-        <div class="seg-switch" role="group">
-          <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
-          <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
-        </div>
-
-        <span class="lang-extras-label" data-i18n="style.sourceWrap">囲み記号</span>
-        <div class="symbol-inputs">
-          <input type="text" class="text-input" data-bind="subSourcePrefix"
-                 data-i18n-placeholder="style.sourcePrefix.ph" data-i18n-title="style.sourcePrefix" title="左記号"
-                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
-          <input type="text" class="text-input" data-bind="subSourceSuffix"
-                 data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
-                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
-        </div>
-        </div>
-
-        <!-- The whole-display pair shares one row: both controls are short, so
-             stretching each across its own row only padded them with air. -->
-        <div class="lang-extras-group lang-extras-display">
-        <div class="lang-extras-pair">
-        <span class="lang-extras-label" data-i18n="style.align">横位置</span>
-        <div class="seg-switch seg-switch-icons style-align-control" role="group">
-          <label>
-            <input type="radio" name="subAlign" value="left" data-bind="subAlign">
-            <span data-i18n-title="style.align.left" title="左">
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-                <line x1="2" y1="3.5"  x2="10" y2="3.5"/>
-                <line x1="2" y1="7"    x2="12" y2="7"/>
-                <line x1="2" y1="10.5" x2="8"  y2="10.5"/>
-              </svg>
-            </span>
-          </label>
-          <label>
-            <input type="radio" name="subAlign" value="center" data-bind="subAlign">
-            <span data-i18n-title="style.align.center" title="中">
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-                <line x1="3" y1="3.5"  x2="11" y2="3.5"/>
-                <line x1="1" y1="7"    x2="13" y2="7"/>
-                <line x1="4" y1="10.5" x2="10" y2="10.5"/>
-              </svg>
-            </span>
-          </label>
-          <label>
-            <input type="radio" name="subAlign" value="right" data-bind="subAlign">
-            <span data-i18n-title="style.align.right" title="右">
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-                <line x1="4" y1="3.5"  x2="12" y2="3.5"/>
-                <line x1="2" y1="7"    x2="12" y2="7"/>
-                <line x1="6" y1="10.5" x2="12" y2="10.5"/>
-              </svg>
-            </span>
-          </label>
-        </div>
-        </div>
-
-        <!-- Opened from a plain button rather than a filled swatch: the swatch
-             would be painted in exactly the chroma-key colour, so capturing the
-             window with a key filter punches a hole straight through the
-             control. The hex label carries the value instead — text survives the
-             key. js/color-picker.js recognises .color-trigger-text and skips
-             the swatch it paints on every other trigger for the same reason.
-             The quick colours here are the three that make sense as a key
-             (green / blue / magenta) plus black and white — a different list
-             from the text colours, which is why each input names its own. -->
-        <div class="lang-extras-pair">
-        <span class="lang-extras-label" data-i18n="style.bg">背景色</span>
-        <span class="color-pick">
-          <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
-          <button type="button" class="btn color-trigger-text" data-color-trigger>
-            <output class="color-value"></output>
-          </button>
-        </span>
-        </div>
-        </div>
-      </section>
-      </div>
-
-      <!-- Recognition-side settings on the left, translation-side on the right,
-           matching the matrix rows above. The columns are deliberately unequal:
-           the pack is a heading and two buttons, while the engine wants the
-           width for its picker and URL field. The engine also inlines its
-           heading with the picker, which costs no height because the picker is
-           the taller of the two. -->
-      <div class="panel-cols cols-2">
-        <!-- Offline recognition pack: a property of the recognition language, so
-             it sits on the recognition side. Chrome-only; hidden elsewhere.
-             Heading inline with the button, like the engine beside it: stacked,
-             the button fell below the panel's bottom edge. -->
-        <section class="panel-col lang-sub" id="offline-pack-row" hidden>
-          <div class="col-head">
-            <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
-            <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
-
-            <!-- Removal instructions live in a popover rather than as standing
-                 text: they only matter once a pack is installed, and as a
-                 permanent paragraph they were the tallest thing in the tab.
-                 A popover (not a tooltip) stays open while the user follows the
-                 steps in the browser's own settings. -->
-            <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
-                    popovertarget="popover-offline-help"
-                    data-i18n="lang.offline.help" hidden>削除方法</button>
-
-            <div class="help-popover offline-popover" id="popover-offline-help" popover>
-              <p class="offline-pack-info" id="offline-pack-info"></p>
-            </div>
-
-            <!-- Download result. In the top layer rather than in the column:
-                 this section sits on the panel's bottom edge with no room left
-                 under it, and as a paragraph the message was clipped away by
-                 .tab-panel's overflow — it was never actually visible. Anchored
-                 to the download button so it appears where the user just
-                 clicked, costs the layout nothing, and fades rather than
-                 blinking in. -->
-            <div class="help-popover offline-status-popover" id="offline-pack-status"
-                 popover role="status" aria-live="polite"></div>
-          </div>
-        </section>
-
-        <!-- How to translate: the picker, then whatever the chosen engine needs
-             (a status line, the custom URL row), then the signature — one row. -->
-        <section class="panel-col lang-engine">
-          <div class="col-head">
-            <h3 class="section-title" data-i18n="lang.engine">翻訳エンジン</h3>
+        <!-- How to translate, as the matrix's last row: the label and picker in
+             the label and language columns, then whatever the chosen engine
+             needs (a status line, its buttons) and the advanced button across
+             the appearance columns, which a translation method has no use
+             for. Under the two translation lines it serves, rather than on a
+             footer row of its own that ran the full width of the card. -->
+        <div class="lang-matrix-row lang-engine">
+          <span class="lang-field-label" data-i18n="lang.engine">翻訳エンジン</span>
+          <div class="lang-control">
             <!-- A pop-up button rather than a segmented switch: with three
                  engines and a fourth behind a setting, of uneven name lengths,
                  picked once and then left, the switch only took the width the
@@ -313,7 +244,7 @@ export function mountLanguagesTab(container) {
                  translation server (lang.advanced) while that is on, so the
                  picker shows what is actually translating. Picking an engine
                  from here turns the server off, as before. -->
-            <select class="select engine-select" id="engine-select" data-bind="translationMode"
+            <select class="select select-compact engine-select" id="engine-select" data-bind="translationMode"
                     data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
               <option value="gtx" data-i18n="lang.engine.gtx">Google 翻訳</option>
               <option value="translator" id="engine-translator-option" data-i18n="lang.engine.translator">ブラウザ翻訳</option>
@@ -326,24 +257,26 @@ export function mountLanguagesTab(container) {
                  the translation server, so there is nothing to pick. A second
                  select rather than an option of the first, which is bound to
                  translationMode and would be set back to the engine. -->
-            <select class="select engine-select" id="engine-stt-select" disabled hidden
+            <select class="select select-compact engine-select" id="engine-stt-select" disabled hidden
                     data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
               <option data-i18n="lang.engine.stt.active">音声認識サーバーの翻訳を使用中</option>
             </select>
+          </div>
 
-            <!-- Whatever the selected engine needs — a status line, the custom
-                 URL row, or nothing — beside the picker, in the space the row
-                 leaves free. The heading row wraps, so a narrow window moves
-                 it underneath instead of squeezing it. -->
+          <div class="engine-detail">
+            <!-- Whatever the selected engine needs — a status line, its
+                 buttons, or nothing — beside the picker, in the width the
+                 appearance columns leave. The status line wraps when that is
+                 too little; the buttons keep their size. -->
             <div class="engine-inline">
-              <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>
+              <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>${statusChip('translator')}
               <!-- Downloads are the user's to start, so a missing model is
                    offered here instead of fetched on the pick. -->
               <button type="button" class="btn" id="engine-translator-download" data-i18n="lang.engine.translator.download" hidden>ダウンロード</button>
-              <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>
+              <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>${statusChip('prompt')}
               <!-- HY-MT asks before its first download (over a gigabyte), so
                    its row carries a button beside the status line. -->
-              <p class="manual-status" id="engine-hymt-status" role="status" aria-live="polite" hidden></p>
+              <p class="manual-status" id="engine-hymt-status" role="status" aria-live="polite" hidden></p>${statusChip('hymt')}
               <button type="button" class="btn" id="engine-hymt-download" data-i18n="lang.engine.hymt.download" hidden>ダウンロード</button>
               <!-- The options only mean something to a loaded model, so they
                    show with the delete button rather than on the pick. -->
@@ -469,21 +402,160 @@ export function mountLanguagesTab(container) {
                 </div>
               </section>
             </div>
-
-            <!-- Signature, at the far end of the engine row. Which version is
-                 running is a real question while two machines are being kept
-                 in sync. It lives in the tab body rather than the toolbar so
-                 that .panel-collapsed takes it away with everything else: on
-                 screen while setting up, gone before the window is captured.
-                 It used to sit on a footer row of its own, which cost the
-                 panel a row of empty height in every engine mode. -->
-            <p class="app-signature">
-              <span data-i18n="app.title">字幕アトリエ</span>
-              <span class="app-signature-version">${APP_VERSION}</span>
-            </p>
           </div>
-        </section>
+        </div>
       </div>
+
+      <!-- The settings you judge against the output, filling the space the
+           matrix leaves: the source line's symbols and one-line limit,
+           alignment, background. They belong beside the colours rather than a
+           tab away, because they are adjusted the same way — by looking. -->
+      <section class="lang-extras">
+        <!-- Two groups, because the four settings are two kinds of thing: the
+             first pair only touches the source line, the second pair the whole
+             display. Laid out as four identical rows they read as one list of
+             unrelated odds and ends.
+             The source group is headed once, so its row labels drop the
+             repeated "source" word. It dims while the source line is hidden
+             (CSS :has() on the matrix toggle) but stays editable, so it can be
+             set up before the line is turned on.
+             A two-state picker rather than a bare toggle: it names both states
+             instead of leaving one implied. -->
+        <div class="lang-extras-group lang-extras-source">
+        <span class="lang-extras-heading" data-i18n="style.group.source">原文</span>
+        <span class="lang-extras-label" data-i18n="style.sourceLines">行数</span>
+        <div class="seg-switch" role="group">
+          <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
+          <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
+        </div>
+
+        <span class="lang-extras-label" data-i18n="style.sourceWrap">囲み記号</span>
+        <div class="symbol-inputs">
+          <input type="text" class="text-input" data-bind="subSourcePrefix"
+                 data-i18n-placeholder="style.sourcePrefix.ph" data-i18n-title="style.sourcePrefix" title="左記号"
+                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
+          <input type="text" class="text-input" data-bind="subSourceSuffix"
+                 data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
+                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
+        </div>
+        </div>
+
+        <!-- The whole-display pair shares one row: both controls are short, so
+             stretching each across its own row only padded them with air. -->
+        <div class="lang-extras-group lang-extras-display">
+        <div class="lang-extras-pair">
+        <span class="lang-extras-label" data-i18n="style.align">横位置</span>
+        <div class="seg-switch seg-switch-icons style-align-control" role="group">
+          <label>
+            <input type="radio" name="subAlign" value="left" data-bind="subAlign">
+            <span data-i18n-title="style.align.left" title="左">
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <line x1="2" y1="3.5"  x2="10" y2="3.5"/>
+                <line x1="2" y1="7"    x2="12" y2="7"/>
+                <line x1="2" y1="10.5" x2="8"  y2="10.5"/>
+              </svg>
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="subAlign" value="center" data-bind="subAlign">
+            <span data-i18n-title="style.align.center" title="中">
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <line x1="3" y1="3.5"  x2="11" y2="3.5"/>
+                <line x1="1" y1="7"    x2="13" y2="7"/>
+                <line x1="4" y1="10.5" x2="10" y2="10.5"/>
+              </svg>
+            </span>
+          </label>
+          <label>
+            <input type="radio" name="subAlign" value="right" data-bind="subAlign">
+            <span data-i18n-title="style.align.right" title="右">
+              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                <line x1="4" y1="3.5"  x2="12" y2="3.5"/>
+                <line x1="2" y1="7"    x2="12" y2="7"/>
+                <line x1="6" y1="10.5" x2="12" y2="10.5"/>
+              </svg>
+            </span>
+          </label>
+        </div>
+        </div>
+
+        <!-- Opened from a plain button rather than a filled swatch: the swatch
+             would be painted in exactly the chroma-key colour, so capturing the
+             window with a key filter punches a hole straight through the
+             control. The hex label carries the value instead — text survives the
+             key. js/color-picker.js recognises .color-trigger-text and skips
+             the swatch it paints on every other trigger for the same reason.
+             The quick colours here are the three that make sense as a key
+             (green / blue / magenta) plus black and white — a different list
+             from the text colours, which is why each input names its own. -->
+        <div class="lang-extras-pair">
+        <span class="lang-extras-label" data-i18n="style.bg">背景色</span>
+        <span class="color-pick">
+          <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
+          <button type="button" class="btn color-trigger-text" data-color-trigger>
+            <output class="color-value"></output>
+          </button>
+        </span>
+        </div>
+        </div>
+      </section>
+      </div>
+
+      <!-- The colour presets (js/subtitle-presets.js), under both the matrix
+           and the display settings, since a preset sets every line's colours
+           at once. Two buttons: the default set, which is the way back, and
+           the themes menu — every built-in set and the user's three saved
+           ones. Both are filled in by js/subtitle-presets.js. -->
+      <section class="sub-preset-row" aria-labelledby="sub-preset-label">
+        <span class="lang-field-label" id="sub-preset-label" data-i18n="style.preset">配色</span>
+        <button type="button" class="sub-preset-default" data-preset="default"></button>
+        <button type="button" class="btn sub-preset-themes" popovertarget="sub-preset-menu">
+          <span data-i18n="style.preset.themes">テーマ</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+        </button>
+        <div class="sub-preset-menu" id="sub-preset-menu" popover
+             data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
+          <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
+          <div class="sub-preset-grid"></div>
+          <span class="sub-preset-head" data-i18n="style.preset.custom.head">マイテーマ</span>
+          <div class="sub-preset-mine"></div>
+        </div>
+      </section>
+
+      <!-- Offline recognition pack, the one row left under the matrix once the
+           engine moved into it. Chrome-only, and behind the experimental switch
+           in the settings dialog, so for most people this row does not exist.
+           Heading inline with the button: stacked, the button fell below the
+           panel's bottom edge. -->
+      <section class="lang-sub" id="offline-pack-row" hidden>
+        <div class="col-head">
+          <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
+          <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
+
+          <!-- Removal instructions live in a popover rather than as standing
+               text: they only matter once a pack is installed, and as a
+               permanent paragraph they were the tallest thing in the tab.
+               A popover (not a tooltip) stays open while the user follows the
+               steps in the browser's own settings. -->
+          <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
+                  popovertarget="popover-offline-help"
+                  data-i18n="lang.offline.help" hidden>削除方法</button>
+
+          <div class="help-popover offline-popover" id="popover-offline-help" popover>
+            <p class="offline-pack-info" id="offline-pack-info"></p>
+          </div>
+
+          <!-- Download result. In the top layer rather than in the column:
+               this section sits on the panel's bottom edge with no room left
+               under it, and as a paragraph the message was clipped away by
+               .tab-panel's overflow — it was never actually visible. Anchored
+               to the download button so it appears where the user just
+               clicked, costs the layout nothing, and fades rather than
+               blinking in. -->
+          <div class="help-popover offline-status-popover" id="offline-pack-status"
+               popover role="status" aria-live="polite"></div>
+        </div>
+      </section>
     </div>
   `;
 
@@ -498,7 +570,7 @@ export function mountLanguagesTab(container) {
 
   wireExampleButtons(container);
   wireSecretInputs(container);
-  wireSubtitlePresets(container.querySelector('#sub-preset-menu'));
+  wireSubtitlePresets(container.querySelector('.sub-preset-row'));
   setupAdvanced(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);
@@ -603,13 +675,17 @@ function setupTranslatorEngine(container) {
   let messageKey = null;
   let percent    = null;
 
+  const show = engineStatusLine(container, 'translator');
+
+  /* Ready shows as the caveat's chip: the standing caveat is what the line
+     says from then on, so the chip names it rather than "ready". */
   const render = () => {
-    if (!messageKey) { status.hidden = true; status.textContent = ''; return; }
+    if (!messageKey) { show(''); return; }
     const suffix = percent == null ? '' : ` ${percent}%`;
-    status.hidden = false;
-    status.textContent = [].concat(messageKey).map(k => t(k)).join(' ')
+    const text = [].concat(messageKey).map(k => t(k)).join(' ')
       .replace('{lang}', vars.lang ? t(`lang.name.${vars.lang}`) : '')
       .replace('{n}', String(vars.n ?? '')) + suffix;
+    show(text, messageKey);
   };
 
   /* `vars`: {lang} is a language id, named in the UI language; {n} a count. */
@@ -766,18 +842,20 @@ function setupPromptEngine(container) {
 
   const shownKey = () => (langUnsupported() ? 'lang.engine.prompt.langUnsupported' : currentMessageKey);
 
+  const show = engineStatusLine(container, 'prompt');
+
   const renderMessage = () => {
     const key = shownKey();
-    /* A hidden engine must not leave its status line behind — the availability
-       check runs regardless of visibility, so it can produce a message for an
-       option nobody can see. */
-    status.hidden = !key || option.hidden;
-    if (!key) { status.textContent = ''; return; }
+    /* Only while this engine is the one picked: the line sits in the engine
+       row, beside whichever engine is in use, and the availability check runs
+       whether or not anyone picked this one — its "unavailable" used to stand
+       beside another engine's status. A hidden engine shows nothing either. */
+    if (!key || option.hidden || settings.translationMode !== 'prompt') { show(''); return; }
     /* The countdown belongs inside the sentence, not tacked onto its end:
        Japanese wants "あと 5 秒" mid-string, English "Preparing in 5s". So the
        message owns a {s} placeholder and we substitute; on every other message
        (which carries no value) the replace is a no-op. */
-    status.textContent = t(key).replace('{s}', value);
+    show(t(key).replace('{s}', value), key);
   };
 
   const setMessage = (key, slot = '') => {
@@ -787,19 +865,41 @@ function setupPromptEngine(container) {
   };
 
   subscribe('uiLang', renderMessage);
-  ['sourceLangId', 'target1LangId', 'target2LangId'].forEach(key => subscribe(key, renderMessage));
+  ['sourceLangId', 'target1LangId', 'target2LangId', 'translationMode'].forEach(key => subscribe(key, renderMessage));
+
+  /* An engine that cannot run says so on its option, as the Translator and
+     HY-MT ones do: the menu is where the engine is looked for, and a disabled
+     option can never be picked to bring its status line up. The sentence
+     saying why rides along as the option's tooltip. */
+  const OPTION_KEYS = {
+    'lang.engine.prompt.unavailable': 'lang.engine.prompt.unavailableOption',
+    'lang.engine.prompt.unsupported': 'lang.engine.prompt.unsupportedOption',
+  };
+  const labelOption = (msgKey) => {
+    option.dataset.i18n = OPTION_KEYS[msgKey] ?? 'lang.engine.prompt';
+    option.textContent = t(option.dataset.i18n);
+    if (OPTION_KEYS[msgKey]) {
+      option.dataset.i18nTitle = msgKey;
+      option.title = t(msgKey);
+    } else {
+      delete option.dataset.i18nTitle;
+      option.removeAttribute('title');
+    }
+  };
 
   /* `fallback` is only set once we KNOW the engine is unusable; during the
      async "checking" phase we just disable the option without stranding a
      valid prompt selection. */
   const disable = (msgKey, fallback) => {
     option.disabled = true;
+    labelOption(msgKey);
     setMessage(msgKey);
     if (fallback && settings.translationMode === 'prompt') settings.translationMode = 'gtx';
   };
 
   const enable = () => {
     option.disabled = false;
+    labelOption(null);
     setMessage(null);
   };
 
@@ -926,9 +1026,9 @@ function setupHymtEngine(container) {
   /* Kept as a key plus its {s} value so a UI language switch can re-render. */
   let messageKey = null;
   let slot = '';
+  const show = engineStatusLine(container, 'hymt');
   const render = () => {
-    status.hidden = !messageKey;
-    status.textContent = messageKey ? t(messageKey).replace('{s}', slot) : '';
+    show(messageKey ? t(messageKey).replace('{s}', slot) : '', messageKey);
   };
   const setMessage = (key, value = '') => { messageKey = key; slot = value; render(); };
   subscribe('uiLang', render);

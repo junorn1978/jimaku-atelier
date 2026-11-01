@@ -41,7 +41,7 @@ const PER_CHANNEL = new Set([
   'subSourcePrefix', 'subSourceSuffix',
   'subTarget1Color', 'subTarget1Stroke', 'subTarget1StrokeW', 'subTarget1Size',
   'subTarget2Color', 'subTarget2Stroke', 'subTarget2StrokeW', 'subTarget2Size',
-  'panelCollapsed', 'panelLocked', 'panelHeight', 'activeTab',
+  'panelCollapsed', 'panelLocked', 'panelHeight', 'activeTab', 'filterView',
 ]);
 
 /* The second window starts from the first one's values, except the device:
@@ -113,6 +113,8 @@ const _defaults = Object.freeze({
      null is the CSS default (--control-panel-h), which is also the minimum. */
   panelHeight:        null,
   activeTab:          'languages', // active settings tab: 'languages' | 'style' | 'filter' | 'obs'
+  /* Which list the word-replacement tab shows (ui-filter.js): 'rules' | 'blacklist'. */
+  filterView:         'rules',
 
   // --- Microphone (see ui-mic.js) ---
   /* '' is the system default. The label rides along so a device whose id was
@@ -240,6 +242,12 @@ const _defaults = Object.freeze({
      are. Shared like the rules, so both app windows switch to the preset;
      replaced whole, never mutated. */
   obsScenePresets:    {},
+
+  /* The user's own colour presets (js/subtitle-presets.js): three slots, each
+     null or { src, t1, t2 } of { color, stroke, w } — the shape of a built-in
+     preset. Shared by both windows, like the scene link that can pick them;
+     each window applies a slot to its own lines. Replaced whole. */
+  subCustomPresets:   [null, null, null],
 });
 
 /* Which stored object holds `key` for this window. */

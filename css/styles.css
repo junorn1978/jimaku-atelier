@@ -107,8 +107,11 @@
        Sized to the Languages tab, the one people sit on, rather than to the
        tallest tab: the OBS tab's instructions scroll instead (.tab-panel is
        overflow-y: auto). It was 324px while the engine column kept a footer
-       row for the signature; moving that into the engine row freed 46px. */
-    --control-panel-h: 285px;
+       row for the signature; moving that into the engine row freed 46px.
+       Given back 24px once the toolbar moved to the card's bottom edge: the
+       tab body ended flush against it there, and the panel is only this tall
+       while setting up — captures run collapsed or from the subtitle window. */
+    --control-panel-h: 309px;
     --panel-measure:   1200px;    /* widest the card grows to before it centres
                                      itself in the window */
     --radius-sm:       6px;
@@ -425,10 +428,18 @@
        control-strip-at-the-bottom arrangement sandwiched the content between
        two bands, which read as an I-beam on wide displays.
        .panel-collapsed hides only the tab body, so the toolbar (and start/stop
-       with it) stays reachable while the output fills the window. */
+       with it) stays reachable while the output fills the window.
+       The toolbar is the card's bottom row and the tab body grows upward
+       above it, so start/stop sits at the same height whether the panel is
+       open, collapsed or being resized; with the toolbar on top, each of those
+       moved it. Placed by grid row rather than DOM order, so the tabs still
+       come before the panel they control in tab order. */
     position: relative;   /* anchors the height grip (.panel-resize) */
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+
+    > .control-toolbar { grid-row: 2; }
+    > .settings-body   { grid-row: 1; }
     width: min(100% - var(--card-inset) * 2, var(--panel-measure));
     height: var(--control-panel-h);
     margin: 0 auto var(--card-inset);
@@ -512,9 +523,12 @@
     .settings-body {
       min-height: 0;
       overflow: hidden;
-      /* No divider above: the card's own edge does the separating, and a rule
-         between the tabs and their panel would say the two are unrelated. */
-      padding: var(--space-2) var(--space-4) var(--space-4);
+      /* No divider below: the card's own edge does the separating, and a rule
+         between the tabs and their panel would say the two are unrelated.
+         The full step on top clears the height grip on the card's edge; the
+         one below keeps the tab's last full-width row (the engine row, the
+         filter tab's add buttons) from running into the toolbar. */
+      padding: var(--space-4);
 
       /* Tabs are designed to fit without scrolling (the Filter tab scrolls
          inside its rule lists instead); overflow-y is a graceful fallback
@@ -1241,7 +1255,13 @@
     /* Same treatment as the dialogs: keep the fade, drop the scale — and this
        utilities-layer rule also outranks the components-layer @starting-style
        during the enter frame. */
-    .color-popover { transform: none; }
+    .color-popover,
+    .mic-panel,
+    .lang-menu,
+    .engine-status-tip { transform: none; }
+    .engine-status-chip:active,
+    .sub-preset-row [data-preset]:active { transform: none; }
+    .sub-preset-menu { transform: none; }
     .color-preset,
     .color-preset:hover,
     .color-preset:active { transition: none; transform: none; }

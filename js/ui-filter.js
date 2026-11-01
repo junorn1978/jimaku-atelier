@@ -1,11 +1,12 @@
 /**
  * @file ui-filter.js
- * @description Word-replacement UI, split into two columns: replacement rules
- * on the left and the blacklist on the right, each with its own enable toggle.
- * Appended into its own tab panel (#tab-filter) as a `.filter-section`; the
- * section fills the panel and only the rule lists scroll (see css/tab-filter.css).
+ * @description Word-replacement UI: the replacement rules and the blacklist,
+ * one at a time behind a switch (settings.filterView), each with its own
+ * enable toggle. Appended into its own tab panel (#tab-filter) as a
+ * `.filter-section`; the section fills the panel and only the lists scroll
+ * (see css/tab-filter.css).
  *
- * The blacklist column is masked (-webkit-text-security) behind one switch for
+ * The blacklist is masked (-webkit-text-security) behind one switch for
  * the whole column, and re-masks itself when recording starts — this panel can
  * end up on camera, and a list of explicit words is the last thing that should
  * be legible there. The built-in words are never rendered at all; they are a
@@ -20,6 +21,7 @@
 
 import { settings, subscribe } from './store.js';
 import { applyTo, t } from './i18n.js';
+import { wireHoverTip } from './hover-tip.js';
 
 const TRASH_SVG = `
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -46,65 +48,109 @@ const EYE_SVG = `
   </svg>
 `;
 
+/* An ⓘ beside a toggle, and the note it opens (on hover too, js/hover-tip.js). */
+const hintButton = (id, key) => `
+        <button type="button" class="icon-btn hint-btn" popovertarget="${id}"
+                data-i18n-aria-label="${key}" aria-label="">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+        </button>
+        <div class="help-popover hint-tip" id="${id}" popover="hint" data-i18n="${key}"></div>`;
+
 export function mountFilterTab(container) {
   if (!container) return;
 
   const section = document.createElement('div');
   section.className = 'filter-section';
   section.innerHTML = `
-    <div class="panel-cols cols-2">
-      <section class="panel-col">
-        <div class="form-row">
-          <span class="form-row-label" data-i18n="filter.enabled">有効化</span>
-          <label class="toggle">
+    <!-- One list at a time, picked by the switch at the head's left: the two
+         used to share the tab as columns, and their content never split
+         evenly — the blacklist's toggles and notes filled its column while
+         the rules' column stood half empty, and each list had half the width.
+         Same switch material and skeleton as the OBS tab. Each segment
+         carries a dot while its feature is on, since the other list's toggle
+         is out of sight. The head's right end holds the shown list's toggles. -->
+    <div class="filter-head">
+      <div class="seg-switch filter-switch" role="group" data-i18n-aria-label="filter.view" aria-label="一覧">
+        <label><input type="radio" name="filterView" value="rules" data-bind="filterView"><span><span data-i18n="filter.rules">置換ルール</span><i class="seg-dot" data-dot="filterEnabled" aria-hidden="true"></i></span></label>
+        <label><input type="radio" name="filterView" value="blacklist" data-bind="filterView"><span><span data-i18n="filter.view.blacklist">NGワード</span><i class="seg-dot" data-dot="blacklistEnabled" aria-hidden="true"></i></span></label>
+      </div>
+
+      <div class="filter-controls" data-view="rules">
+        <label class="filter-toggle">
+          <span data-i18n="filter.enabled">有効化</span>
+          <span class="toggle">
             <input type="checkbox" data-bind="filterEnabled">
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-        </div>
-        <h3 class="section-title" data-i18n="filter.rules">ルール</h3>
-        <div class="filter-list-wrap">
-          <div class="filter-list" id="filter-rules-list"></div>
-          <button type="button" class="btn filter-add" id="filter-add-rule" data-i18n="filter.add">+ 追加</button>
-        </div>
-      </section>
+          </span>
+        </label>
+      </div>
 
-      <section class="panel-col">
-        <div class="form-row">
-          <span class="form-row-label" data-i18n="blacklist.enabled">ブラックリスト</span>
-          <label class="toggle">
-            <input type="checkbox" data-bind="blacklistEnabled">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-        </div>
-        <p class="form-hint" data-i18n="blacklist.hint">登録した語は文字数ぶんの * で伏せ字になります。</p>
-
-        <div class="form-row">
-          <span class="form-row-label" data-i18n="blacklist.useDefaults">内蔵のNGワード</span>
-          <label class="toggle">
+      <!-- The notes that used to stand under each toggle wait behind an ⓘ:
+           read once, they cost the list its height on every visit. -->
+      <div class="filter-controls" data-view="blacklist" hidden>
+        <label class="filter-toggle">
+          <span data-i18n="blacklist.useDefaults">内蔵のNGワード</span>
+          <span class="toggle">
             <input type="checkbox" data-bind="blacklistUseDefaults">
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-        </div>
-        <p class="form-hint" data-i18n="blacklist.useDefaults.desc">内蔵リストを使います。</p>
+          </span>
+        </label>
+        ${hintButton('blacklist-defaults-tip', 'blacklist.useDefaults.desc')}
+        <label class="filter-toggle">
+          <span data-i18n="blacklist.enabled">ブラックリスト</span>
+          <span class="toggle">
+            <input type="checkbox" data-bind="blacklistEnabled">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
+        ${hintButton('blacklist-hint-tip', 'blacklist.hint')}
+      </div>
+    </div>
 
-        <!-- data-secret-visible drives the mask in CSS, matching the attribute
-             js/ui-secret-input.js uses on single fields. Not wired through that
-             module: it positions one toggle inside one input, and this switch
-             covers a whole column. -->
-        <div class="filter-list-wrap blacklist-mask" data-secret-visible="false">
-          <div class="filter-list" id="blacklist-list"></div>
-          <div class="blacklist-actions">
-            <button type="button" class="btn filter-add" id="blacklist-add" data-i18n="blacklist.add">+ 追加</button>
-            <button type="button" class="icon-btn secret-toggle" id="blacklist-reveal" aria-pressed="false">
-              ${EYE_SVG}
-            </button>
-          </div>
-        </div>
-      </section>
+    <div class="filter-list-wrap" data-view="rules">
+      <div class="filter-list" id="filter-rules-list"></div>
+      <button type="button" class="btn filter-add" id="filter-add-rule" data-i18n="filter.add">+ 追加</button>
+    </div>
+
+    <!-- data-secret-visible drives the mask in CSS, matching the attribute
+         js/ui-secret-input.js uses on single fields. Not wired through that
+         module: it positions one toggle inside one input, and this switch
+         covers the whole list. -->
+    <div class="filter-list-wrap blacklist-mask" data-view="blacklist" data-secret-visible="false" hidden>
+      <div class="filter-list blacklist-list" id="blacklist-list"></div>
+      <div class="blacklist-actions">
+        <button type="button" class="btn filter-add" id="blacklist-add" data-i18n="blacklist.add">+ 追加</button>
+        <button type="button" class="icon-btn secret-toggle" id="blacklist-reveal" aria-pressed="false">
+          ${EYE_SVG}
+        </button>
+      </div>
     </div>
   `;
 
   container.appendChild(section);
+
+  /* --- which list shows, and the dots that say which feature is on --- */
+  const syncView = (view) => {
+    const shown = view === 'blacklist' ? 'blacklist' : 'rules';
+    section.querySelectorAll('[data-view]').forEach(el => { el.hidden = el.dataset.view !== shown; });
+  };
+  syncView(settings.filterView);
+  subscribe('filterView', syncView);
+
+  section.querySelectorAll('.seg-dot').forEach(dot => {
+    const key = dot.dataset.dot;
+    const sync = () => { dot.hidden = settings[key] !== true; };
+    sync();
+    subscribe(key, sync);
+  });
+
+  section.querySelectorAll('.hint-btn').forEach(btn => {
+    wireHoverTip(btn, section.querySelector(`#${btn.getAttribute('popovertarget')}`));
+  });
 
   const listEl = section.querySelector('#filter-rules-list');
   const addBtn = section.querySelector('#filter-add-rule');

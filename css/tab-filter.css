@@ -9,26 +9,82 @@
    ========================================= */
 
 @layer components {
-  /* --- word-replacement tab: two side-by-side rule lists. The section fills
-     its tab panel and only the lists themselves scroll, so the toggles and
-     add buttons always stay in reach. --- */
+  /* --- word-replacement tab: one list at a time under a head row. The
+     section fills its tab panel and only the list itself scrolls, so the
+     switch, the toggles and the add button always stay in reach. --- */
   .filter-section {
     height: 100%;
     min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
 
-    .panel-cols.cols-2 {
-      height: 100%;
-      grid-template-rows: minmax(0, 1fr);
+    .filter-list-wrap { flex: 1 1 auto; }
+  }
+
+  /* The switch at the left, the shown list's toggles at the right end, in the
+     same spot whichever list is showing. */
+  .filter-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-shrink: 0;
+  }
+
+  /* A dot after a segment's name while that list's feature is on: the other
+     list's toggle is out of sight, and a mask left running should not be. */
+  .filter-switch {
+    label > span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* Columns keep the base flex stack (the blacklist column holds five blocks,
-       so a fixed three-row grid handed the stretch row to the second toggle);
-       the list group alone takes the leftover height. */
-    .panel-col { min-height: 0; }
-    .filter-list-wrap { flex: 1 1 auto; }
+    .seg-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-success);
+    }
+  }
 
-    /* each hint sits right under its toggle; the column gap already spaces it */
-    .form-hint { margin-top: 0; }
+  .filter-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+
+    /* A second toggle stands apart from the first one's ⓘ. */
+    .hint-btn + .filter-toggle { margin-left: var(--space-3); }
+  }
+
+  /* Label then switch, clicked as one. */
+  .filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-md);
+    color: var(--color-text);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .hint-btn {
+    width: 24px;
+    height: 24px;
+    color: var(--color-text-dim);
+
+    svg { width: 14px; height: 14px; }
+  }
+
+  /* Above its ⓘ (the invoker is the implicit anchor), ending at its right
+     edge — the toggles sit at the panel's right end, so the note grows
+     leftward into the room there. */
+  .hint-tip {
+    position-area: top span-left;
+    position-try-fallbacks: flip-inline;
+    margin: var(--space-2) 0;
+    max-width: min(360px, 80vw);
   }
 
   /* List + its add buttons: the list takes all the height the column leaves,
@@ -107,6 +163,17 @@
     grid-template-columns: 1fr 28px;
   }
 
+  /* Words are short, so the list takes them several to a line rather than
+     one per full-width row; the empty note spans them all. */
+  .blacklist-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    align-content: start;
+    column-gap: var(--space-3);
+
+    .filter-empty { grid-column: 1 / -1; }
+  }
+
   .blacklist-actions {
     display: flex;
     gap: var(--space-1);
@@ -123,12 +190,5 @@
      read is still the right thing to be able to do in a hurry. */
   .blacklist-mask[data-secret-visible="false"] .filter-source {
     -webkit-text-security: disc;
-  }
-
-  .form-hint {
-    margin-top: var(--space-2);
-    color: var(--color-text-dim);
-    font-size: var(--text-sm);
-    line-height: 1.4;
   }
 }
