@@ -263,6 +263,11 @@ function publish() {
           sourceSingleLine: settings.subSourceSingleLine === true,
           outline:    isCloudOutline(settings.subOutline) ? settings.subOutline : 'stroke',
           rimWidth:   settings.subRimW,
+          langs: {
+            source:  settings.sourceLangId  || '',
+            target1: settings.target1LangId || '',
+            target2: settings.target2LangId || '',
+          },
           styles: {
             source:  getStyleFor('source'),
             target1: getStyleFor('target1'),
@@ -497,6 +502,7 @@ const STYLE_KEYS = [
   'subAlign', 'subOverflow', 'subShowSource', 'subSourceSingleLine',
   'subSourcePrefix', 'subSourceSuffix', 'subOutline',
   'subSourceRim', 'subTarget1Rim', 'subTarget2Rim', 'subRimW',
+  'sourceLangId', 'target1LangId', 'target2LangId',
   'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor',  'subSourceStroke',  'subSourceStrokeW',  'subSourceSize',
   'subTarget1Color', 'subTarget1Stroke', 'subTarget1StrokeW', 'subTarget1Size',

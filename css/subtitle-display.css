@@ -167,7 +167,40 @@
 
     .subtitle-line,
     .subtitle-line:empty::before { -webkit-text-stroke: 0; }
+
+    /* The rounded faces suit a thin outline; a cloud wants heavy type. Each
+       line is set in the Noto Sans cut for its own language (below), not the
+       interface's: the cuts share weights, widths, Latin and kana, but write
+       shared Han characters to their region's standard (辶, 言, 今, 直…) and
+       place 。、， differently — centred for Chinese, low for Japanese. Lines
+       in Latin-script languages, and any line without one, take Noto Sans. */
+    .subtitle-line {
+      font-family: var(--cloud-font, "Noto Sans"), "Noto Sans", "Noto Sans JP", "Noto Sans TC", sans-serif;
+      font-weight: 900;
+    }
   }
+
+  [data-source-lang="ja-JP"] .source,
+  [data-target1-lang="ja-JP"] .target-1,
+  [data-target2-lang="ja-JP"] .target-2 { --cloud-font: "Noto Sans JP"; }
+  [data-source-lang="zh-TW"] .source,
+  [data-target1-lang="zh-TW"] .target-1,
+  [data-target2-lang="zh-TW"] .target-2 { --cloud-font: "Noto Sans TC"; }
+  [data-source-lang="zh-HK"] .source,
+  [data-target1-lang="zh-HK"] .target-1,
+  [data-target2-lang="zh-HK"] .target-2,
+  [data-source-lang="yue-Hant-HK"] .source,
+  [data-target1-lang="yue-Hant-HK"] .target-1,
+  [data-target2-lang="yue-Hant-HK"] .target-2 { --cloud-font: "Noto Sans HK"; }
+  [data-source-lang="zh-CN"] .source,
+  [data-target1-lang="zh-CN"] .target-1,
+  [data-target2-lang="zh-CN"] .target-2 { --cloud-font: "Noto Sans SC"; }
+  [data-source-lang="ko-KR"] .source,
+  [data-target1-lang="ko-KR"] .target-1,
+  [data-target2-lang="ko-KR"] .target-2 { --cloud-font: "Noto Sans KR"; }
+  [data-source-lang="th-TH"] .source,
+  [data-target1-lang="th-TH"] .target-1,
+  [data-target2-lang="th-TH"] .target-2 { --cloud-font: "Noto Sans Thai"; }
 
   [data-sub-outline="bubble"] {
     .source   { filter: url(#sub-bubble-source); }

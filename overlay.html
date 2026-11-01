@@ -9,6 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+  <!-- The cloud outlines' heavy faces, one per subtitle language (see
+       css/subtitle-display.css). Only the weight they use; each downloads
+       only the slices of characters actually drawn. -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@900&family=Noto+Sans+JP:wght@900&family=Noto+Sans+TC:wght@900&family=Noto+Sans+HK:wght@900&family=Noto+Sans+SC:wght@900&family=Noto+Sans+KR:wght@900&family=Noto+Sans+Thai:wght@900&display=swap" rel="stylesheet">
 
   <!-- Shared with the app window (index.html + css/styles.css) — defines the
        subtitle line height and the clip heights derived from it, so both sides
@@ -84,8 +88,19 @@
       --sub-clip-1line: calc(var(--sub-line-height) * 1em);
       --sub-clip-2line: calc(var(--sub-line-height) * 2em);
 
-      .text-line { padding-inline: 0.7em; }
+      .text-line {
+        padding-inline: 0.7em;
+        font-family: var(--cloud-font, "Noto Sans"), "Noto Sans", "Noto Sans JP", "Noto Sans TC", sans-serif;
+        font-weight: 900;
+      }
     }
+    .text-line[data-lang="ja-JP"] { --cloud-font: "Noto Sans JP"; }
+    .text-line[data-lang="zh-TW"] { --cloud-font: "Noto Sans TC"; }
+    .text-line[data-lang="zh-HK"],
+    .text-line[data-lang="yue-Hant-HK"] { --cloud-font: "Noto Sans HK"; }
+    .text-line[data-lang="zh-CN"] { --cloud-font: "Noto Sans SC"; }
+    .text-line[data-lang="ko-KR"] { --cloud-font: "Noto Sans KR"; }
+    .text-line[data-lang="th-TH"] { --cloud-font: "Noto Sans Thai"; }
     body[data-outline="bubble"] {
       #source   { filter: url(#sub-bubble-source); }
       #target-1 { filter: url(#sub-bubble-target1); }
@@ -296,6 +311,11 @@
           updateText(sourceEl, data.source);
           updateText(t1El,     data.target1);
           updateText(t2El,     data.target2);
+
+          /* Each line's language picks its face under a cloud outline. */
+          sourceEl.dataset.lang = data.langs?.source  ?? '';
+          t1El.dataset.lang     = data.langs?.target1 ?? '';
+          t2El.dataset.lang     = data.langs?.target2 ?? '';
 
           /* An app older than the cloud outlines sends no outline: plain. */
           const cloud = isCloudOutline(data.outline);

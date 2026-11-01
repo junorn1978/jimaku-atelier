@@ -62,8 +62,8 @@ export const PRESETS = [
   { id: 'contrast',  src: line('#FFFFFF', '#000000', 7), t1: line('#FFFF00', '#000000', 7), t2: line('#7FDBFF', '#000000', 7) },
   { id: 'retro',     src: line('#F3E6C8', '#3B2414', 5), t1: line('#F2B45A', '#3B2414', 5), t2: line('#E89A7C', '#3B2414', 5) },
 
-  { id: 'bubbleSticker',  outline: 'bubble', rimW: 3,
-    src: cloud('#FF4FA3', '#FFFFFF', 4, '#1A1A1A'), t1: cloud('#38BDF8', '#FFFFFF', 4, '#1A1A1A'), t2: cloud('#FFB020', '#FFFFFF', 4, '#1A1A1A') },
+  { id: 'bubbleSticker',  outline: 'bubble', rimW: 4,
+    src: cloud('#FF4FA3', '#FFFFFF', 1, '#FA5151'), t1: cloud('#38BDF8', '#FFFFFF', 1, '#28C1DF'), t2: cloud('#CD9AFD', '#FFFFFF', 1, '#CD9AFD') },
   { id: 'bubbleLavender', outline: 'bubble', rimW: 4,
     src: cloud('#1A1A1A', '#8A80C8', 8, '#C8337A'), t1: cloud('#1A1A1A', '#A99BE8', 8, '#C8337A'), t2: cloud('#1A1A1A', '#F2A7C9', 8, '#C8337A') },
   { id: 'bubbleCandy',    outline: 'bubble', rimW: 3,

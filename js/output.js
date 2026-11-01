@@ -82,6 +82,13 @@ function applySourceSingleLine(value) {
          ?.setAttribute('data-sub-source-single', value === true ? 'true' : 'false');
 }
 
+/* Each line's language, for the cloud outlines' per-language font
+   (css/subtitle-display.css). */
+function applySourceLang(value) {
+  document.querySelector('.subtitle-display')
+         ?.setAttribute('data-source-lang', value || 'none');
+}
+
 function applyTargetLang(slot, value) {
   document.querySelector('.subtitle-display')
          ?.setAttribute(`data-target${slot}-lang`, value || 'none');
@@ -101,6 +108,7 @@ export function initOutputBinding() {
   applyOverflow(settings.subOverflow);
   applyShowSource(settings.subShowSource);
   applySourceSingleLine(settings.subSourceSingleLine);
+  applySourceLang(settings.sourceLangId);
   applyTargetLang(1, settings.target1LangId);
   applyTargetLang(2, settings.target2LangId);
 
@@ -113,6 +121,7 @@ export function initOutputBinding() {
   subscribe('subOverflow', applyOverflow);
   subscribe('subShowSource', applyShowSource);
   subscribe('subSourceSingleLine', applySourceSingleLine);
+  subscribe('sourceLangId', applySourceLang);
   subscribe('target1LangId', (val) => applyTargetLang(1, val));
   subscribe('target2LangId', (val) => applyTargetLang(2, val));
 

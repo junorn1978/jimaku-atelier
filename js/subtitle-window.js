@@ -34,7 +34,7 @@ const SHARED_TOKENS = ['--space-2', '--space-5'];
 /* The .subtitle-display attributes css/subtitle-display.css keys on. */
 const MIRRORED_ATTRS = [
   'data-sub-overflow', 'data-sub-show-source', 'data-sub-source-single', 'data-sub-outline',
-  'data-target1-lang', 'data-target2-lang',
+  'data-source-lang', 'data-target1-lang', 'data-target2-lang',
 ];
 
 const root = document.documentElement;
