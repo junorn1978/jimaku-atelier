@@ -39,6 +39,10 @@
 
 @layer layout {
   .subtitle-display {
+    /* The containing block of the corner pictures (js/subtitle-deco.js),
+       and the stacking context their z-index: -1 stays inside. */
+    position: relative;
+    isolation: isolate;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -104,6 +108,21 @@
       &:empty::before {
         content: attr(data-placeholder);
       }
+    }
+
+    /* Pictures on the source line's corners (js/subtitle-deco.js), behind
+       every line. Place, size and angle are written by the script.
+       max-width: none undoes styles.css's img reset, which would squeeze a
+       large picture to the display's width. */
+    .subtitle-deco {
+      position: absolute;
+      z-index: -1;
+      height: auto;
+      max-width: none;
+      pointer-events: none;
+      user-select: none;
+
+      &[hidden] { display: none; }
     }
 
     .source {

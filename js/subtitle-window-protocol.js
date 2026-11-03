@@ -8,6 +8,9 @@
  *
  *   app → window
  *     state  { lang, vars, attrs, lines }  everything the subtitle window draws
+ *     deco   { deco }                       the corner pictures' settings
+ *                                           (js/subtitle-deco.js), apart from
+ *                                           state since they carry pictures
  *     ping                                  "is a subtitle window open?"
  *     bye                                   the app window is going away
  *     close                                 close yourself

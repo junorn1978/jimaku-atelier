@@ -42,6 +42,10 @@
     }
 
     .subtitle-container {
+      /* The corner pictures' containing block and stacking context, as in
+         css/subtitle-display.css. */
+      position: relative;
+      isolation: isolate;
       display: flex;
       flex-direction: column;
       align-items: var(--text-align);
@@ -112,6 +116,17 @@
       #target-2 { filter: url(#sub-gooey-target2); }
     }
 
+    /* Pictures on the source line's corners (js/subtitle-deco.js), behind
+       every line, as in css/subtitle-display.css. */
+    .subtitle-deco {
+      position: absolute;
+      z-index: -1;
+      height: auto;
+      pointer-events: none;
+      user-select: none;
+    }
+    .subtitle-deco[hidden] { display: none; }
+
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(4px); }
       to   { opacity: 1; transform: translateY(0); }
@@ -141,6 +156,7 @@
   <script type="module">
     import { keepTailVisible, setupCinemaScroll } from './js/subtitle-render.js';
     import { installCloudFilters, updateCloudFilters, isCloudOutline } from './js/subtitle-cloud.js';
+    import { mountSubtitleDeco, decoSlotName, DECO_DATA_REALM, DECO_SIDES } from './js/subtitle-deco.js';
 
     installCloudFilters();
 
@@ -184,6 +200,53 @@
     /* Arrow, not a bare reference: .map() passes (element, index, array), so
        passing setupCinemaScroll directly would hand it the index as isShrink. */
     const targetReevals = [t1El, t2El].map(el => setupCinemaScroll(el, isShrink));
+
+    /* The corner pictures (js/subtitle-deco.js), on overlays that show the
+       source line. The update names each picture by id only; the picture
+       itself is read from the OBS slot the app stored it in, once per id. */
+    const deco = mode === 'target1' || mode === 'target2'
+      ? null
+      : mountSubtitleDeco({ textEl: sourceEl, host: document.getElementById('container') });
+    const decoCache    = { left: { id: '', src: '' }, right: { id: '', src: '' } };
+    const decoFetching = { left: '', right: '' };
+    let lastDeco = null;
+
+    function applyDeco(info) {
+      if (!deco) return;
+      lastDeco = info || null;
+      const config = {};
+      for (const side of DECO_SIDES) {
+        const s  = info?.[side];
+        const id = s?.on ? String(s.id || '') : '';
+        const have = !!id && decoCache[side].id === id;
+        if (id && !have) fetchDeco(side, id);
+        config[side] = { on: have, src: have ? decoCache[side].src : '', angle: s?.angle, size: s?.size, x: s?.x, y: s?.y };
+      }
+      deco.set(config);
+    }
+
+    /* The app stores the picture and sends the update back to back, and OBS
+       may answer the read before the write lands: an id that does not match
+       yet is tried again a few times. */
+    async function fetchDeco(side, id, attempt = 0) {
+      if (attempt === 0 && decoFetching[side] === id) return;
+      decoFetching[side] = id;
+      try {
+        const res = await request('GetPersistentData', {
+          realm: DECO_DATA_REALM, slotName: decoSlotName(channel, side),
+        });
+        const value = res?.slotValue;
+        if (value?.id === id && typeof value.src === 'string') {
+          decoCache[side] = { id, src: value.src };
+          decoFetching[side] = '';
+          applyDeco(lastDeco);
+          return;
+        }
+      } catch { /* not connected, or no such slot yet */ }
+      if (decoFetching[side] !== id) return;   // a newer picture took over
+      if (attempt < 5) setTimeout(() => fetchDeco(side, id, attempt + 1), 500);
+      else decoFetching[side] = '';            // the next update tries again
+    }
 
     /* OBS WebSocket v5 auth = base64(sha256(base64(sha256(pwd+salt))+challenge)) */
     function toBase64(bytes) {
@@ -235,6 +298,30 @@
     let socket = null;
     let connected = false;
 
+    /* Requests this page makes itself (the corner pictures), answered by
+       op 7 with the same requestId. */
+    const pendingRequests = new Map();
+    let requestSeq = 0;
+    function request(requestType, requestData) {
+      return new Promise((resolve, reject) => {
+        if (!socket || !connected) { reject(new Error('not connected')); return; }
+        const requestId = `rtl-overlay-${++requestSeq}`;
+        const timer = setTimeout(() => {
+          pendingRequests.delete(requestId);
+          reject(new Error('timeout'));
+        }, 5000);
+        pendingRequests.set(requestId, { resolve, reject, timer });
+        socket.send(JSON.stringify({ op: 6, d: { requestType, requestId, requestData } }));
+      });
+    }
+    function failPendingRequests() {
+      for (const { reject, timer } of pendingRequests.values()) {
+        clearTimeout(timer);
+        reject(new Error('closed'));
+      }
+      pendingRequests.clear();
+    }
+
     function connect() {
       if (!connected) setStatus(`Connecting to ${wsUrl} ...`);
       try {
@@ -270,6 +357,17 @@
         if (op === 2) {
           connected = true;
           setStatus('');
+          return;
+        }
+
+        if (op === 7) {
+          const pending = pendingRequests.get(d?.requestId);
+          if (pending) {
+            pendingRequests.delete(d.requestId);
+            clearTimeout(pending.timer);
+            if (d.requestStatus?.result) pending.resolve(d.responseData);
+            else pending.reject(new Error(d.requestStatus?.comment || 'request failed'));
+          }
           return;
         }
 
@@ -326,6 +424,9 @@
 
           /* In single-line mode keep the latest line of the source in view. */
           keepTailVisible(sourceEl);
+
+          /* An app older than the corner pictures sends no deco: none. */
+          applyDeco(data.deco);
         }
       };
 
@@ -335,6 +436,7 @@
 
       socket.onclose = () => {
         socket = null;
+        failPendingRequests();
         if (connected) {
           connected = false;
           setStatus('Reconnecting...');

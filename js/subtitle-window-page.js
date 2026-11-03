@@ -8,11 +8,13 @@
  *
  * It does not read the settings store. Every value it draws comes from the app
  * window's DOM, so it cannot fall out of step with the preview — except the
- * background, which is fixed key green in subtitle-window.html.
+ * background, which is fixed key green in subtitle-window.html, and the corner
+ * pictures, whose settings the app window sends in a message of their own.
  */
 
 import { keepTailVisible, setupCinemaScroll } from './subtitle-render.js';
 import { installCloudFilters, syncCloudFromVars } from './subtitle-cloud.js';
+import { mountSubtitleDeco } from './subtitle-deco.js';
 import { CHANNEL_NAME, GEOMETRY_KEY } from './subtitle-window-protocol.js';
 
 const root    = document.documentElement;
@@ -32,6 +34,10 @@ installCloudFilters();
 const isShrink = () => display.dataset.subOverflow === 'shrink';
 /* Arrow, not a bare reference — see the same note in js/output.js. */
 const reevals = [lines.target1, lines.target2].map(el => setupCinemaScroll(el, isShrink));
+
+/* The corner pictures, placed against this window's own text. No
+   placeholder: an empty line here goes on stream, so nothing is hung on it. */
+const deco = mountSubtitleDeco({ textEl: lines.source, host: display });
 
 function applyState({ lang, vars, attrs, lines: text }) {
   if (lang && root.lang !== lang) root.lang = lang;
@@ -68,6 +74,7 @@ function clearLines() {
 channel.onmessage = ({ data }) => {
   switch (data?.type) {
     case 'state': applyState(data); break;
+    case 'deco':  deco.set(data.deco); break;
     case 'ping':  channel.postMessage({ type: 'hello' }); break;
     /* The app window closed or is reloading. Whatever is on screen now would
        stay on stream indefinitely, so take it down; a reloaded app sends a

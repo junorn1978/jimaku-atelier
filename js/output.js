@@ -13,6 +13,7 @@
 import { settings, subscribe } from './store.js';
 import { setupCinemaScroll } from './subtitle-render.js';
 import { installCloudFilters, syncCloudFromVars, isCloudOutline } from './subtitle-cloud.js';
+import { mountSubtitleDeco, decoFromSettings, DECO_KEYS } from './subtitle-deco.js';
 
 const root = document.documentElement;
 const px = (v) => `${Number(v) || 0}px`;
@@ -135,4 +136,16 @@ export function initOutputBinding() {
   /* A mode switch doesn't mutate text, so re-evaluate after the CSS height
      change settles. */
   subscribe('subOverflow', () => setTimeout(() => reevals.forEach(fn => fn()), 50));
+
+  /* The pictures on the source line's corners (js/subtitle-deco.js). With
+     the placeholder measured too, so they can be set up before anything is
+     recognised. */
+  const sourceEl = document.getElementById('display-source');
+  const display  = document.querySelector('.subtitle-display');
+  if (sourceEl && display) {
+    const deco = mountSubtitleDeco({ textEl: sourceEl, host: display, placeholder: true });
+    const syncDeco = () => deco.set(decoFromSettings(settings));
+    for (const key of DECO_KEYS) subscribe(key, syncDeco);
+    syncDeco();
+  }
 }

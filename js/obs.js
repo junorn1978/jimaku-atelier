@@ -33,6 +33,7 @@ import { isCloudOutline } from './subtitle-cloud.js';
 import { t } from './i18n.js';
 import { decorateSource } from './source-decoration.js';
 import { CHANNEL } from './channel.js';
+import { decoFromSettings, decoImageId, decoSlotName, DECO_DATA_REALM, DECO_KEYS, DECO_SIDES } from './subtitle-deco.js';
 
 const DEFAULT_WS_URL    = 'ws://127.0.0.1:4455';
 const RECONNECT_DELAY_MS = 2000;
@@ -56,6 +57,12 @@ let latestTarget1   = '';
 let latestTarget2   = '';
 let pendingPublish  = false;
 let pendingAutoSetup = false;
+
+/* The id of the corner picture (js/subtitle-deco.js) last stored in OBS for
+   each corner on this connection; null until stored. Cleared with every new
+   connection, so a restarted OBS — or one whose slot was overwritten by
+   another copy of the app — gets the picture again. */
+let storedDecoIds = { left: null, right: null };
 
 /* ============ connection-state broadcast (for the OBS tab UI) ============ */
 
@@ -192,6 +199,7 @@ function ensureConnection() {
     if (msg.op === 0)      handleHello(msg.d);
     else if (msg.op === 2) {
       authenticated = true;
+      storedDecoIds = { left: null, right: null };
       setConnState('connected');
       if (isDebugEnabled()) console.debug('[obs] authenticated');
       flushPending();
@@ -236,6 +244,33 @@ function getStyleFor(key) {
   };
 }
 
+/* Store each picture in OBS before the update that names it goes out, and
+   only when it is not there yet: a picture is tens of KB, the update goes out
+   several times a second. The overlay checks the id it reads back and tries
+   again if the slot is not there yet, so the order the two requests are
+   handled in does not matter. */
+function decoPayload() {
+  const deco = decoFromSettings(settings);
+  const out = {};
+  for (const side of DECO_SIDES) {
+    const { on, src, angle, size, x, y } = deco[side];
+    const id = on ? decoImageId(src) : '';
+    if (id && storedDecoIds[side] !== id) {
+      storedDecoIds[side] = id;
+      sendRaw({
+        op: 6,
+        d: {
+          requestType: 'SetPersistentData',
+          requestId:   `rtl-deco-${side}-${++requestCounter}`,
+          requestData: { realm: DECO_DATA_REALM, slotName: decoSlotName(CHANNEL, side), slotValue: { id, src } },
+        },
+      });
+    }
+    out[side] = { on: !!id, id, angle, size, x, y };
+  }
+  return out;
+}
+
 function publish() {
   if (!authenticated) {
     pendingPublish = true;
@@ -243,6 +278,7 @@ function publish() {
     return;
   }
   pendingPublish = false;
+  const deco = decoPayload();
   requestCounter++;
 
   sendRaw({
@@ -263,6 +299,7 @@ function publish() {
           sourceSingleLine: settings.subSourceSingleLine === true,
           outline:    isCloudOutline(settings.subOutline) ? settings.subOutline : 'stroke',
           rimWidth:   settings.subRimW,
+          deco,
           langs: {
             source:  settings.sourceLangId  || '',
             target1: settings.target1LangId || '',
@@ -507,6 +544,7 @@ const STYLE_KEYS = [
   'subSourceColor',  'subSourceStroke',  'subSourceStrokeW',  'subSourceSize',
   'subTarget1Color', 'subTarget1Stroke', 'subTarget1StrokeW', 'subTarget1Size',
   'subTarget2Color', 'subTarget2Stroke', 'subTarget2StrokeW', 'subTarget2Size',
+  ...DECO_KEYS,
 ];
 
 /** subtitles: false for the OBS window, which connects but never broadcasts

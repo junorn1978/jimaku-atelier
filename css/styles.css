@@ -110,8 +110,12 @@
        row for the signature; moving that into the engine row freed 46px.
        Given back 24px once the toolbar moved to the card's bottom edge: the
        tab body ended flush against it there, and the panel is only this tall
-       while setting up — captures run collapsed or from the subtitle window. */
-    --control-panel-h: 309px;
+       while setting up — captures run collapsed or from the subtitle window.
+       Raised to 320px when the source group gained its pictures row
+       (js/ui-deco.js): at 309px the colour row ended flush on the edge, and
+       the new row pushed it 4px under; the rest is room so it no longer
+       touches. */
+    --control-panel-h: 320px;
     --panel-measure:   1200px;    /* widest the card grows to before it centres
                                      itself in the window */
     --radius-sm:       6px;
@@ -1261,7 +1265,8 @@
     .engine-status-tip { transform: none; }
     .engine-status-chip:active,
     .sub-preset-row [data-preset]:active { transform: none; }
-    .sub-preset-menu { transform: none; }
+    .sub-preset-menu,
+    .deco-menu { transform: none; }
     .color-preset,
     .color-preset:hover,
     .color-preset:active { transition: none; transform: none; }

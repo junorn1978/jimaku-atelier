@@ -156,7 +156,7 @@ function initPanelResize() {
   const root = document.documentElement;
   /* Read before any override: the stylesheet's value is the default and the
      floor. */
-  const minH = parseFloat(getComputedStyle(root).getPropertyValue('--control-panel-h')) || 309;
+  const minH = parseFloat(getComputedStyle(root).getPropertyValue('--control-panel-h')) || 320;
   const maxH = () => Math.max(minH, Math.floor(window.innerHeight * MAX_PANEL_SHARE));
   const clamp = (h) => Math.round(Math.min(maxH(), Math.max(minH, h)));
 

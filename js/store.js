@@ -41,6 +41,8 @@ const PER_CHANNEL = new Set([
   'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor', 'subSourceStroke', 'subSourceStrokeW', 'subSourceSize',
   'subSourcePrefix', 'subSourceSuffix',
+  'subDecoLeftOn', 'subDecoLeftImg', 'subDecoLeftAngle', 'subDecoLeftSize', 'subDecoLeftX', 'subDecoLeftY',
+  'subDecoRightOn', 'subDecoRightImg', 'subDecoRightAngle', 'subDecoRightSize', 'subDecoRightX', 'subDecoRightY',
   'subTarget1Color', 'subTarget1Stroke', 'subTarget1StrokeW', 'subTarget1Size',
   'subTarget2Color', 'subTarget2Stroke', 'subTarget2StrokeW', 'subTarget2Size',
   'panelCollapsed', 'panelLocked', 'panelHeight', 'activeTab', 'filterView',
@@ -221,6 +223,27 @@ const _defaults = Object.freeze({
   // Wrapping symbols placed around the recognised (STT) source text.
   subSourcePrefix:    '【  ',     // left symbol, e.g. '【'
   subSourceSuffix:    ' 】',      // right symbol, e.g. '】'
+
+  /* Pictures hung on the source line's corners (js/subtitle-deco.js): the
+     first character's top left and the last one's top right, each with its
+     own picture, angle, size and offset. The picture is the user's own, scaled down
+     and stored as a data URL (js/ui-deco.js); '' is none, and a corner
+     without one stays off whatever its switch says. Size is a percentage of
+     the source font size, angle degrees clockwise, the X / Y offset % of the
+     font size from where the picture hangs by default (right and up positive). Not part of the colour
+     presets (js/subtitle-presets.js): a picture is not a colour. */
+  subDecoLeftOn:      false,
+  subDecoLeftImg:     '',
+  subDecoLeftAngle:   -15,
+  subDecoLeftSize:    180,
+  subDecoLeftX:       0,
+  subDecoLeftY:       0,
+  subDecoRightOn:     false,
+  subDecoRightImg:    '',
+  subDecoRightAngle:  15,
+  subDecoRightSize:   180,
+  subDecoRightX:      0,
+  subDecoRightY:      0,
 
   subTarget1Color:    '#FFFFFF',
   subTarget1Stroke:   '#000000',

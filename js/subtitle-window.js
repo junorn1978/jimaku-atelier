@@ -18,6 +18,8 @@
  */
 
 import { isDebugEnabled } from './logger.js';
+import { settings, subscribe } from './store.js';
+import { decoFromSettings, DECO_KEYS } from './subtitle-deco.js';
 import { CHANNEL_NAME, WINDOW_NAME, WINDOW_URL, GEOMETRY_KEY } from './subtitle-window-protocol.js';
 
 const DEFAULT_WIDTH  = 1280;
@@ -165,6 +167,16 @@ function queuePost() {
   });
 }
 
+/* The corner pictures (js/subtitle-deco.js) are the one thing not mirrored
+   from the DOM: the output pane draws them as <img>s it places itself, and
+   the window has to place its own against its own text. Their settings go as
+   a message of their own, sent when the window says hello and when one of
+   them changes — not with every state, as the pictures are data URLs and the
+   state goes out many times a second. */
+function postDeco() {
+  channel?.postMessage({ type: 'deco', deco: decoFromSettings(settings) });
+}
+
 /* ============ init ============ */
 
 export function initSubtitleWindow() {
@@ -182,10 +194,13 @@ export function initSubtitleWindow() {
       setOpen(true);
       if (win && !pollTimer) startPoll();
       queuePost();
+      postDeco();
     }
     /* Also sent when the window only reloads; its next hello reopens. */
     else if (data?.type === 'bye') setOpen(false);
   };
+
+  for (const key of DECO_KEYS) subscribe(key, postDeco);
 
   const observer = new MutationObserver(queuePost);
   observer.observe(root, { attributes: true, attributeFilter: ['style', 'lang'] });

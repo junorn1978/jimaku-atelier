@@ -49,6 +49,7 @@ import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, deleteHymt,
 import { wirePairList } from './ui-filter.js';
 import { wireHoverTip } from './hover-tip.js';
 import { wireSubtitlePresets } from './subtitle-presets.js';
+import { decoControlsHtml, wireDeco } from './ui-deco.js';
 
 /* Ranges for the per-line appearance controls, inherited along with them from
    the Style tab, which this tab absorbed. */
@@ -463,6 +464,11 @@ export function mountLanguagesTab(container) {
                  data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
                  autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
         </div>
+
+        <!-- Pictures on the first and last characters' top corners
+             (js/subtitle-deco.js, js/ui-deco.js): a button per corner, each
+             opening that corner's own picture, switch, angle and size. -->
+        ${decoControlsHtml()}
         </div>
 
         <!-- The whole-display pair shares one row: both controls are short, so
@@ -615,6 +621,7 @@ export function mountLanguagesTab(container) {
   wireExampleButtons(container);
   wireSecretInputs(container);
   wireSubtitlePresets(container.querySelector('.sub-preset-row'));
+  wireDeco(container);
   setupAdvanced(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);
