@@ -151,7 +151,7 @@
     padding: var(--space-4);
     display: none;
     gap: var(--space-4);
-    background: var(--color-surface-1);
+    background: var(--color-surface-popover);
     color: var(--color-text);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-lg);
@@ -233,7 +233,7 @@
     padding: var(--space-1);
     display: none;
     min-width: 150px;
-    background: var(--color-surface-1);
+    background: var(--color-surface-popover);
     color: var(--color-text);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-lg);

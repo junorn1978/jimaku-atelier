@@ -213,7 +213,7 @@
   "color.presets":          "クイックカラー",
   "style.showSource":       "原文を表示",
   "style.group.source":     "原文",
-  "style.displayMenu":      "表示",
+  "style.displayMenu":      "レイアウト",
   "style.overflow":         "翻訳字幕の行数",
   "style.overflow.normal":  "制限なし",
   "style.overflow.shrink":  "2行（スクロール）",

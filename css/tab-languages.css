@@ -205,7 +205,7 @@
     display: none;
     flex-direction: column;
     gap: var(--space-2);
-    background: var(--color-surface-1);
+    background: var(--color-surface-popover);
     color: var(--color-text);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-lg);
@@ -348,8 +348,10 @@
   }
 
   /* An icon toggle: a closed link while the translation lines follow the
-     source line's value, a broken one while each has its own. Lit when on,
-     like the panel's other pressed buttons. */
+     source line's value, a broken one while each has its own. The icon's
+     shape is the state, so it is not lit: on is the default and stays on,
+     and four accent spots always lit along the header drew the eye from the
+     start button and the selections, which the accent is kept for. */
   .link-toggle {
     display: inline-grid;
     place-items: center;
@@ -360,10 +362,6 @@
     cursor: pointer;
 
     &:hover { background: var(--color-surface-2); color: var(--color-text); }
-    &:has(input:checked) {
-      background: var(--color-accent-soft);
-      color: var(--color-accent-hover);
-    }
     &:has(input:focus-visible) { box-shadow: var(--focus-ring); }
 
     .link-off { display: none; }
@@ -373,9 +371,10 @@
     }
   }
 
-  /* A translation line's slider while it follows the source line's: shown,
-     so the value it is drawn with stays readable, but plainly not its own. */
-  .lang-matrix .slider-group:has(input:disabled) { opacity: 0.45; }
+  /* A translation line's slider while it follows the source line's: the
+     track fades, plainly not its own to drag, but the number stays at full
+     strength — it is the value the line is drawn with, not a dead control. */
+  .lang-matrix .slider-group:has(input:disabled) input { opacity: 0.4; }
 
   .lang-matrix-head > span {
     font-size: var(--text-xs);
@@ -446,7 +445,7 @@
     padding: var(--space-3);
     display: none;
     gap: var(--space-2);
-    background: var(--color-surface-1);
+    background: var(--color-surface-popover);
     color: var(--color-text);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-lg);
@@ -499,6 +498,15 @@
     }
 
     .sub-preset-grid [data-preset] { justify-content: flex-start; }
+
+    /* As many rows as the longest style's list (--preset-rows, set by
+       js/subtitle-presets.js), whichever style is showing: the menu keeps one
+       height as the outline switch changes the list, so the switch stays
+       under the pointer, and マイテーマ stays at the bottom. */
+    .sub-preset-grid {
+      grid-template-rows: repeat(var(--preset-rows, 3), var(--preset-chip-h));
+      align-content: start;
+    }
 
     /* A slot: its button, and the save beside it. */
     .sub-preset-slot {
@@ -790,7 +798,7 @@
     padding: var(--space-3);
     display: none;
     gap: var(--space-2);
-    background: var(--color-surface-1);
+    background: var(--color-surface-popover);
     color: var(--color-text);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-lg);

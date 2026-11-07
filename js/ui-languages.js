@@ -529,20 +529,22 @@ export function mountLanguagesTab(container) {
           <div class="sub-preset-mine"></div>
         </div>
 
-        <!-- The display menu: the source line's switch and settings, and the
+        <!-- The layout menu: the source line's switch and settings, and the
              two that act on the whole display (alignment, chroma-key
              background), behind a button beside the themes rather than as a
              standing card beside the matrix: they are set once and judged by
              looking, and the card took the width the matrix needs. Same
              button, same menu dress as the themes, so the row has one way of
-             opening things. More settings will join this menu, which is why
-             it is named for the display rather than the source line. -->
+             opening things. Named for the layout — whether the source shows,
+             its lines, alignment, background — rather than for the source
+             line, since more layout settings will join it; the brackets and
+             pictures, which are looks, may move to the themes later. -->
         <button type="button" class="btn sub-source-btn" popovertarget="sub-source-menu">
-          <span data-i18n="style.displayMenu">表示</span>
+          <span data-i18n="style.displayMenu">レイアウト</span>
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
         </button>
         <div class="sub-source-menu lang-extras" id="sub-source-menu" popover
-             data-i18n-aria-label="style.displayMenu" aria-label="表示">
+             data-i18n-aria-label="style.displayMenu" aria-label="レイアウト">
         <!-- Two groups, because the four settings are two kinds of thing: the
              first pair only touches the source line, the second pair the whole
              display. Laid out as four identical rows they read as one list of

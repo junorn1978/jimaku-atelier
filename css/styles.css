@@ -64,6 +64,10 @@
     --color-surface-1:     #1d1d20;   /* header, control panel, dialogs */
     --color-surface-2:     #27272b;   /* inputs, inset tracks */
     --color-surface-3:     #323238;   /* hover states, raised segments */
+    /* Menus and panels that open over the card. A step lighter than it, as
+       macOS draws anything raised in dark mode: same as the card, a menu over
+       it was told apart by a hairline alone. */
+    --color-surface-popover: #2c2c2e;
     --color-border:        rgba(255, 255, 255, 0.08);   /* hairline */
     --color-border-strong: rgba(255, 255, 255, 0.16);
     --color-text:          rgba(255, 255, 255, 0.88);
@@ -180,6 +184,8 @@
     --color-surface-1:     #FBF3DF;
     --color-surface-2:     #F4E8CC;
     --color-surface-3:     #ECDDB9;
+    /* The card's own cream: on a light surface the shadow raises a menu. */
+    --color-surface-popover: var(--color-surface-1);
     --color-border:        rgba(94, 62, 30, 0.14);
     --color-border-strong: rgba(94, 62, 30, 0.26);
     --color-text:          #3E2B1F;

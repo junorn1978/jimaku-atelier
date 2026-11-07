@@ -281,6 +281,11 @@ export function wireSubtitlePresets(row) {
     return item;
   });
   grid.append(...builtIns);
+  /* The grid keeps room for the longest style's list (three to a row, as in
+     the CSS), so the menu does not change height with the outline switch. */
+  const perOutline = {};
+  for (const p of PRESETS) perOutline[outlineOf(p)] = (perOutline[outlineOf(p)] ?? 0) + 1;
+  grid.style.setProperty('--preset-rows', String(Math.ceil(Math.max(...Object.values(perOutline)) / 3)));
 
   const slots = CUSTOM_SLOTS.map((id, index) => {
     const item = document.createElement('button');

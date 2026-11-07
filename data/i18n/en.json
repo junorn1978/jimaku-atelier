@@ -213,7 +213,7 @@
   "color.presets":          "Quick colors",
   "style.showSource":       "Show source",
   "style.group.source":     "Source",
-  "style.displayMenu":      "Display",
+  "style.displayMenu":      "Layout",
   "style.overflow":         "Subtitle lines",
   "style.overflow.normal":  "Unlimited",
   "style.overflow.shrink":  "2 lines (scroll)",

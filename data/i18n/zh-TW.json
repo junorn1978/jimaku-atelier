@@ -213,7 +213,7 @@
   "color.presets":          "快捷色",
   "style.showSource":       "顯示原文",
   "style.group.source":     "原文",
-  "style.displayMenu":      "顯示",
+  "style.displayMenu":      "版面",
   "style.overflow":         "翻譯字幕行數",
   "style.overflow.normal":  "無限制",
   "style.overflow.shrink":  "2行 捲動",

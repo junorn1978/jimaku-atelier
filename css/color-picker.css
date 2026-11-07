@@ -87,7 +87,7 @@
     padding: var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    background: var(--color-surface-1);
+    background: var(--color-surface-popover);
     box-shadow: var(--shadow-overlay);
     /* transform-origin is set by positionPopover() to the trigger's centre */
     transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out);
