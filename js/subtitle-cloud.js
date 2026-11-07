@@ -167,13 +167,12 @@ const VAR_PREFIX = { source: '--sub-source', target1: '--sub-target1', target2: 
  * subtitle window receives them.
  */
 export function syncCloudFromVars(style, doc = document) {
-  const rimWidth = parseFloat(style.getPropertyValue('--sub-rim-w'));
   for (const line of CLOUD_LINES) {
     const p = VAR_PREFIX[line];
     updateCloudFilters(line, {
       size:  parseFloat(style.getPropertyValue(`${p}-size`)),
       width: parseFloat(style.getPropertyValue(`${p}-bubble-w`)),
-      rimWidth,
+      rimWidth: parseFloat(style.getPropertyValue(`${p}-rim-w`)),
       cloud: style.getPropertyValue(`${p}-stroke`).trim(),
       rim:   style.getPropertyValue(`${p}-rim`).trim(),
     }, doc);

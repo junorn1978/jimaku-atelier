@@ -241,6 +241,8 @@ function getStyleFor(key) {
     strokeSize:  `${settings[`sub${cap}StrokeW`]}px`,
     rimColor:    settings[`sub${cap}Rim`],
     bubbleSize:  settings[`sub${cap}BubbleW`],
+    /* subRimW is the source line's (js/store.js). */
+    rimWidth:    settings[key === 'source' ? 'subRimW' : `sub${cap}RimW`],
   };
 }
 
@@ -298,6 +300,8 @@ function publish() {
           showSource: settings.subShowSource !== false,
           sourceSingleLine: settings.subSourceSingleLine === true,
           outline:    isCloudOutline(settings.subOutline) ? settings.subOutline : 'stroke',
+          /* The source line's; each line's own is in its style below. Kept
+             for an overlay page from before the lines had their own. */
           rimWidth:   settings.subRimW,
           deco,
           langs: {
@@ -538,7 +542,8 @@ async function executeAutoSetup() {
 const STYLE_KEYS = [
   'subAlign', 'subOverflow', 'subShowSource', 'subSourceSingleLine',
   'subSourcePrefix', 'subSourceSuffix', 'subOutline',
-  'subSourceRim', 'subTarget1Rim', 'subTarget2Rim', 'subRimW',
+  'subSourceRim', 'subTarget1Rim', 'subTarget2Rim',
+  'subRimW', 'subTarget1RimW', 'subTarget2RimW',
   'sourceLangId', 'target1LangId', 'target2LangId',
   'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor',  'subSourceStroke',  'subSourceStrokeW',  'subSourceSize',

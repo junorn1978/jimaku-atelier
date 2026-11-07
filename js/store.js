@@ -37,7 +37,8 @@ const PER_CHANNEL = new Set([
   'useSttTranslations',
   'sourceLangId', 'target1LangId', 'target2LangId',
   'subAlign', 'subBg', 'subOverflow', 'subShowSource', 'subSourceSingleLine', 'subClearIdleSec',
-  'subOutline', 'subRimW', 'subSourceRim', 'subTarget1Rim', 'subTarget2Rim',
+  'subOutline', 'subRimW', 'subTarget1RimW', 'subTarget2RimW', 'subRimLinked',
+  'subSourceRim', 'subTarget1Rim', 'subTarget2Rim',
   'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor', 'subSourceStroke', 'subSourceStrokeW', 'subSourceSize',
   'subSourcePrefix', 'subSourceSuffix',
@@ -204,10 +205,16 @@ const _defaults = Object.freeze({
      cloud sizes and the rim. Each style keeps its own widths
      (sub*StrokeW for the plain outline, sub*BubbleW for the cloud), so
      switching back and forth finds both as they were. Cloud and rim widths
-     are steps of 0–15 that scale with the font size; the rim's is one value
-     for all three lines. */
+     are steps of 0–15 that scale with the font size.
+     Each line has its own rim width; subRimW is the source line's, the name
+     kept from when it was one value for all three. While subRimLinked is on
+     the two translation lines follow it (js/ui-languages.js keeps them equal),
+     so every reader just takes each line's own value. */
   subOutline:         'stroke',  // 'stroke' | 'bubble' | 'gooey'
   subRimW:            3,
+  subTarget1RimW:     3,
+  subTarget2RimW:     3,
+  subRimLinked:       true,
   subSourceRim:       '#FFFFFF',
   subTarget1Rim:      '#FFFFFF',
   subTarget2Rim:      '#FFFFFF',
@@ -286,8 +293,10 @@ const _defaults = Object.freeze({
   obsScenePresets:    {},
 
   /* The user's own colour presets (js/subtitle-presets.js): three slots, each
-     null or { outline, rimW?, src, t1, t2 } of { color, stroke, w, rim } —
-     the shape of a built-in preset, w being the width of its own style. Shared by both windows, like the scene link that can pick them;
+     null or { outline, rimW?, src, t1, t2 } of { color, stroke, w, rim, rimW? } —
+     the shape of a built-in preset, w being the width of its own style. A
+     line's rimW is its own rim width; the top-level one (the source line's)
+     stands in for all three in slots saved before the lines had their own. Shared by both windows, like the scene link that can pick them;
      each window applies a slot to its own lines. Replaced whole. */
   subCustomPresets:   [null, null, null],
 });

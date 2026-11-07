@@ -47,7 +47,9 @@ const LINES = [['Source', 'src'], ['Target1', 't1'], ['Target2', 't2']];
 
 const line = (color, stroke, w) => ({ color, stroke, w });
 /* stroke is the cloud's colour, w its size, rim the ring around it; the
-   set's rimW is the ring's width, shared by its three lines. */
+   set's rimW is the ring's width for all three lines, unless a line carries
+   its own (rimWOf). The built-in sets share one; a saved slot keeps each
+   line's. */
 const cloud = (color, stroke, w, rim) => ({ color, stroke, w, rim });
 
 /* `default` is the store's own defaults — "back to how it was". */
@@ -92,8 +94,15 @@ const isCloud = (preset) => outlineOf(preset) !== 'stroke';
    cloud styles share theirs. */
 const widthKey = (preset, name) => `sub${name}${isCloud(preset) ? 'BubbleW' : 'StrokeW'}`;
 
-const KEYS = ['subOutline', 'subRimW', ...LINES.flatMap(([name]) =>
-  [`sub${name}Color`, `sub${name}Stroke`, `sub${name}StrokeW`, `sub${name}BubbleW`, `sub${name}Rim`])];
+/* Each line's rim-width setting; the source line's is subRimW (js/store.js). */
+const rimKey = (name) => name === 'Source' ? 'subRimW' : `sub${name}RimW`;
+
+/* A line's rim width in a preset: its own, or the set's shared one. */
+const rimWOf = (preset, slot) =>
+  Number.isFinite(preset[slot]?.rimW) ? preset[slot].rimW : preset.rimW;
+
+const KEYS = ['subOutline', ...LINES.flatMap(([name]) =>
+  [`sub${name}Color`, `sub${name}Stroke`, `sub${name}StrokeW`, `sub${name}BubbleW`, `sub${name}Rim`, rimKey(name)])];
 
 /** The user's slots, by id; their index is their place in subCustomPresets. */
 export const CUSTOM_SLOTS = ['custom1', 'custom2', 'custom3'];
@@ -142,12 +151,21 @@ export function applyPreset(id) {
 function apply(preset) {
   const cloudSet = isCloud(preset);
   settings.subOutline = outlineOf(preset);
-  if (cloudSet) settings.subRimW = preset.rimW;
+  /* The rim link goes first, and on only when the set's three rims are equal:
+     while it is on, the translation lines follow the source line's width
+     (js/ui-languages.js), which would undo a set whose rims differ. */
+  if (cloudSet) {
+    const rims = LINES.map(([, slot]) => rimWOf(preset, slot));
+    settings.subRimLinked = rims.every(w => w === rims[0]);
+  }
   for (const [name, slot] of LINES) {
     settings[`sub${name}Color`]   = preset[slot].color;
     settings[`sub${name}Stroke`]  = preset[slot].stroke;
     settings[widthKey(preset, name)] = preset[slot].w;
-    if (cloudSet) settings[`sub${name}Rim`] = preset[slot].rim;
+    if (cloudSet) {
+      settings[`sub${name}Rim`] = preset[slot].rim;
+      settings[rimKey(name)]    = rimWOf(preset, slot);
+    }
   }
 }
 
@@ -158,12 +176,15 @@ function currentPreset() {
   return {
     outline,
     rimW: Number(settings.subRimW),
-    ...Object.fromEntries(LINES.map(([name, slot]) => [slot, cloud(
-      String(settings[`sub${name}Color`]).toUpperCase(),
-      String(settings[`sub${name}Stroke`]).toUpperCase(),
-      Number(settings[widthKey({ outline }, name)]),
-      String(settings[`sub${name}Rim`]).toUpperCase(),
-    )])),
+    ...Object.fromEntries(LINES.map(([name, slot]) => [slot, {
+      ...cloud(
+        String(settings[`sub${name}Color`]).toUpperCase(),
+        String(settings[`sub${name}Stroke`]).toUpperCase(),
+        Number(settings[widthKey({ outline }, name)]),
+        String(settings[`sub${name}Rim`]).toUpperCase(),
+      ),
+      rimW: Number(settings[rimKey(name)]),
+    }])),
   };
 }
 
@@ -177,8 +198,8 @@ function saveCustom(index) {
 function matches(preset) {
   const cloudSet = isCloud(preset);
   return outlineOf({ outline: settings.subOutline }) === outlineOf(preset)
-    && (!cloudSet || Number(settings.subRimW) === preset.rimW)
     && LINES.every(([name, slot]) =>
+      (!cloudSet || Number(settings[rimKey(name)]) === rimWOf(preset, slot)) &&
       String(settings[`sub${name}Color`]).toUpperCase()  === preset[slot].color &&
       String(settings[`sub${name}Stroke`]).toUpperCase() === preset[slot].stroke &&
       Number(settings[widthKey(preset, name)])           === preset[slot].w &&

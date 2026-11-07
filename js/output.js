@@ -23,7 +23,10 @@ const id = (v) => v;
 const _cssVarMap = {
   subAlign:          ['--sub-align',           id],
   subBg:             ['--sub-bg',              id],
-  subRimW:           ['--sub-rim-w',           id],
+  /* Each line's rim width; subRimW is the source line's (js/store.js). */
+  subRimW:           ['--sub-source-rim-w',    id],
+  subTarget1RimW:    ['--sub-target1-rim-w',   id],
+  subTarget2RimW:    ['--sub-target2-rim-w',   id],
 
   subSourceColor:    ['--sub-source-color',    id],
   subSourceStroke:   ['--sub-source-stroke',   id],
@@ -56,7 +59,7 @@ function applyVar(key, value) {
 
 /* The keys the cloud filters are drawn from (js/subtitle-cloud.js reads
    them back off the root's custom properties). */
-const CLOUD_KEYS = ['subRimW', ...['Source', 'Target1', 'Target2']
+const CLOUD_KEYS = ['subRimW', 'subTarget1RimW', 'subTarget2RimW', ...['Source', 'Target1', 'Target2']
   .flatMap(line => ['Stroke', 'BubbleW', 'Size', 'Rim'].map(part => `sub${line}${part}`))];
 
 /* On the display for css/subtitle-display.css (and the subtitle window, which

@@ -98,7 +98,38 @@ function styleCells(prefix) {
           <div class="slider-group outline-cloud-only">
             <input type="range" min="${STROKE_MIN}" max="${BUBBLE_MAX}" data-bind="${key('BubbleW')}">
             <output class="slider-value"></output>
+          </div>
+          <!-- The rim width; the source line's setting is subRimW (js/store.js).
+               The translation lines' follow it while the link is on
+               (wireRimLink). -->
+          <div class="slider-group outline-cloud-only${prefix === 'source' ? '' : ' rim-follower'}">
+            <input type="range" min="0" max="${BUBBLE_MAX}" data-bind="${prefix === 'source' ? 'subRimW' : key('RimW')}">
+            <output class="slider-value"></output>
           </div>`;
+}
+
+/* The rim link (the matrix's rim column): while it is on, the translation
+   lines' rim widths are kept equal to the source line's, and their sliders are
+   disabled to show they are following. Kept equal in the store rather than
+   resolved on read, so every reader — this window, the subtitle window, the
+   OBS overlay, the presets — just takes each line's own value. Turning it on
+   copies the source line's width over; turning it off leaves each where it
+   is, so nothing jumps. */
+function wireRimLink(container) {
+  const followers = container.querySelectorAll('.rim-follower input');
+  const follow = () => {
+    if (!settings.subRimLinked) return;
+    for (const key of ['subTarget1RimW', 'subTarget2RimW']) {
+      if (settings[key] !== settings.subRimW) settings[key] = settings.subRimW;
+    }
+  };
+  const paint = () => {
+    for (const input of followers) input.disabled = !!settings.subRimLinked;
+  };
+  subscribe('subRimW', follow);
+  subscribe('subRimLinked', () => { follow(); paint(); });
+  follow();
+  paint();
 }
 
 /**
@@ -201,18 +232,11 @@ export function mountLanguagesTab(container) {
       <div class="lang-top">
       <div class="lang-matrix">
         <div class="lang-matrix-head">
-          <!-- The show-source toggle sits in the header's empty corner: its
-               label above the recognition label, the switch above the
-               recognition select. Beside the select it widened the whole
-               language column by its own width on every row. The two halves
-               are in different grid cells, so they are tied with for/id. -->
-          <span><label for="lang-show-source" class="lang-show-source-label" data-i18n="style.showSource">原文を表示</label></span>
-          <span class="lang-matrix-corner">
-            <label class="toggle toggle-compact">
-              <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
-              <span class="toggle-track"><span class="toggle-thumb"></span></span>
-            </label>
-          </span>
+          <!-- The corner over the label and language columns is empty: the
+               show-source switch moved into the display menu, at the head of
+               the source settings it governs. -->
+          <span></span>
+          <span></span>
           <span data-i18n="style.textColor">文字色</span>
           <!-- Under a cloud outline (js/subtitle-cloud.js) the outline
                colour fills the cloud, a rim colour joins it in the same cell,
@@ -225,6 +249,26 @@ export function mountLanguagesTab(container) {
           <span>
             <span class="outline-stroke-only" data-i18n="style.strokeWidth">縁取り幅</span>
             <span class="outline-cloud-only" data-i18n="style.bubbleSize">バブル</span>
+          </span>
+          <!-- Each line's rim width, under the cloud styles only. The link
+               beside the header ties the two translation lines to the source
+               line's, the way a linked width and height move together: on, they
+               show the source line's value and cannot be dragged on their own;
+               off, each is its own. A checkbox under the icon, so it binds like
+               any other switch. -->
+          <span class="outline-cloud-only rim-head">
+            <span data-i18n="style.rimWidth">外枠</span>
+            <label class="rim-link" data-i18n-title="style.rimLink" title="原文に合わせる">
+              <input type="checkbox" class="visually-hidden" data-bind="subRimLinked"
+                     data-i18n-aria-label="style.rimLink" aria-label="原文に合わせる">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path class="rim-link-on" d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path class="rim-link-on" d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                <path class="rim-link-off" d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path class="rim-link-off" d="M5.17 11.75l-1.71 1.71a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                <path class="rim-link-off" d="M8 2v3M2 8h3M16 22v-3M22 16h-3"/>
+              </svg>
+            </label>
           </span>
         </div>
 
@@ -449,9 +493,8 @@ export function mountLanguagesTab(container) {
         <div class="sub-preset-menu" id="sub-preset-menu" popover
              data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
           <!-- The outline setting itself, and the switch between the two lists
-               of sets below (js/subtitle-presets.js). Beside it, under the
-               cloud styles, the rim width: one value for all three lines, so it
-               belongs to the style rather than to a row of the matrix. -->
+               of sets below (js/subtitle-presets.js). The rim width that sat
+               beside it is each line's own now, in the matrix. -->
           <div class="sub-outline-bar">
             <div class="seg-switch sub-outline-switch" role="group"
                  data-i18n-aria-label="style.outline" aria-label="縁取りの種類">
@@ -459,13 +502,6 @@ export function mountLanguagesTab(container) {
               <label><input type="radio" name="subOutline" value="bubble" data-bind="subOutline"><span data-i18n="style.outline.bubble">バブル</span></label>
               <label><input type="radio" name="subOutline" value="gooey" data-bind="subOutline"><span data-i18n="style.outline.gooey">もこもこ</span></label>
             </div>
-            <label class="sub-rim-width outline-cloud-only">
-              <span data-i18n="style.rimWidth">外枠</span>
-              <span class="slider-group">
-                <input type="range" min="0" max="${BUBBLE_MAX}" data-bind="subRimW">
-                <output class="slider-value"></output>
-              </span>
-            </label>
           </div>
           <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
           <div class="sub-preset-grid"></div>
@@ -473,31 +509,39 @@ export function mountLanguagesTab(container) {
           <div class="sub-preset-mine"></div>
         </div>
 
-        <!-- The source line's settings and the two that act on the whole
-             display (alignment, chroma-key background), behind a button beside
-             the themes rather than as a standing card beside the matrix: they
-             are set once and judged by looking, and the card took the width
-             the matrix needs. Same button, same menu dress as the themes, so
-             the row has one way of opening things. More settings will join
-             this menu. -->
+        <!-- The display menu: the source line's switch and settings, and the
+             two that act on the whole display (alignment, chroma-key
+             background), behind a button beside the themes rather than as a
+             standing card beside the matrix: they are set once and judged by
+             looking, and the card took the width the matrix needs. Same
+             button, same menu dress as the themes, so the row has one way of
+             opening things. More settings will join this menu, which is why
+             it is named for the display rather than the source line. -->
         <button type="button" class="btn sub-source-btn" popovertarget="sub-source-menu">
-          <span data-i18n="style.group.source">原文</span>
+          <span data-i18n="style.displayMenu">表示</span>
           <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
         </button>
         <div class="sub-source-menu lang-extras" id="sub-source-menu" popover
-             data-i18n-aria-label="style.group.source" aria-label="原文">
+             data-i18n-aria-label="style.displayMenu" aria-label="表示">
         <!-- Two groups, because the four settings are two kinds of thing: the
              first pair only touches the source line, the second pair the whole
              display. Laid out as four identical rows they read as one list of
              unrelated odds and ends.
              The source group is headed once, so its row labels drop the
-             repeated "source" word. It dims while the source line is hidden
-             (CSS :has() on the matrix toggle) but stays editable, so it can be
-             set up before the line is turned on.
+             repeated "source" word. Its heading carries the show-source switch,
+             the way a settings group is switched on from its own header; the
+             rows under it dim while the line is hidden (CSS :has()) but stay
+             editable, so they can be set up before the line is turned on.
              A two-state picker rather than a bare toggle: it names both states
              instead of leaving one implied. -->
         <div class="lang-extras-group lang-extras-source">
-        <span class="lang-extras-heading" data-i18n="style.group.source">原文</span>
+        <label class="lang-extras-heading">
+          <span data-i18n="style.showSource">原文を表示</span>
+          <span class="toggle toggle-compact">
+            <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </span>
+        </label>
         <span class="lang-extras-label" data-i18n="style.sourceLines">行数</span>
         <div class="seg-switch" role="group">
           <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
@@ -631,6 +675,7 @@ export function mountLanguagesTab(container) {
   wireSecretInputs(container);
   wireSubtitlePresets(container.querySelector('.sub-preset-row'));
   wireDeco(container);
+  wireRimLink(container);
   setupAdvanced(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);

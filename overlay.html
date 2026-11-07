@@ -275,7 +275,8 @@
         updateCloudFilters(line, {
           size:  parseFloat(style.fontSize),
           width: Number(style.bubbleSize),
-          rimWidth: Number(rimWidth),
+          /* The line's own; the shared one from an app from before. */
+          rimWidth: Number(style.rimWidth ?? rimWidth),
           cloud: style.strokeColor,
           rim:   style.rimColor,
         });

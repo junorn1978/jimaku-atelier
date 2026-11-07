@@ -248,7 +248,7 @@
     column-gap: var(--space-3);
     row-gap: var(--space-1);
     align-items: center;
-    transition: opacity 150ms ease;
+    > * { transition: opacity 150ms ease; }
 
     .seg-switch { width: 100%; }
     .seg-switch label { flex: 1; }
@@ -260,16 +260,26 @@
   }
 
   /* The source line is hidden, so these settings currently do nothing. Dimmed
-     rather than disabled: they stay editable for setting up in advance. */
-  .lang-grid:has(#lang-show-source:not(:checked)) .lang-extras-source {
+     rather than disabled: they stay editable for setting up in advance. The
+     heading holds the switch that brings them back, so it stays lit. */
+  .lang-extras-source:has(#lang-show-source:not(:checked)) > :not(.lang-extras-heading) {
     opacity: 0.45;
   }
 
+  /* The group's title with its show-source switch at the far end, like a
+     settings group switched on from its own header. The whole row is the
+     switch's label, so the title is a click target too. */
   .lang-extras-heading {
     grid-column: 1 / -1;
-    font-size: var(--text-xs);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding-bottom: var(--space-1);
+    font-size: var(--text-sm);
     font-weight: 600;
-    color: var(--color-text-dim);
+    color: var(--color-text);
+    cursor: pointer;
   }
 
   /* Whole-display pair on one row, each control at its natural width and the
@@ -334,21 +344,57 @@
   .lang-matrix-head,
   .lang-matrix-row { display: contents; }
 
+  /* Under a cloud style each line's rim width is a seventh column, the same
+     length as the other two sliders. Only then: a hidden cell takes no grid
+     cell, but a seventh track would still leave its gap at the row's end. */
+  :root:not([data-sub-outline="stroke"]) .lang-matrix {
+    grid-template-columns:
+      max-content max-content max-content max-content
+      calc(100px + var(--space-2) + 28px) calc(100px + var(--space-2) + 28px)
+      calc(100px + var(--space-2) + 28px);
+  }
+
+  /* The rim header with its link button beside the label. */
+  .rim-head {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  /* An icon toggle: a closed link while the translation lines follow the
+     source line's rim, a broken one while each has its own. Lit when on,
+     like the panel's other pressed buttons. */
+  .rim-link {
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-dim);
+    cursor: pointer;
+
+    &:hover { background: var(--color-surface-2); color: var(--color-text); }
+    &:has(input:checked) {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+    &:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+
+    .rim-link-off { display: none; }
+    &:has(input:not(:checked)) {
+      .rim-link-on  { display: none; }
+      .rim-link-off { display: inline; }
+    }
+  }
+
+  /* A translation line's rim while it follows the source line's: shown, so
+     the value it is drawn with stays readable, but plainly not its own. */
+  .rim-follower:has(input:disabled) { opacity: 0.45; }
+
   .lang-matrix-head > span {
     font-size: var(--text-xs);
     font-weight: 600;
     color: var(--color-text-dim);
-  }
-
-  .lang-show-source-label {
-    cursor: pointer;
-    white-space: nowrap;
-  }
-
-  /* The show-source toggle, above the select column. */
-  .lang-matrix-corner {
-    display: flex;
-    align-items: center;
   }
 
   /* The outline colour cell and the width header mean one thing under the
@@ -446,17 +492,6 @@
       align-items: center;
       gap: var(--space-4);
       margin-bottom: var(--space-1);
-    }
-
-    .sub-rim-width {
-      display: flex;
-      align-items: center;
-      gap: var(--space-2);
-      font-size: var(--text-sm);
-      color: var(--color-text-dim);
-      white-space: nowrap;
-
-      .slider-group { width: calc(100px + var(--space-2) + 28px); }
     }
 
     .sub-preset-head {
