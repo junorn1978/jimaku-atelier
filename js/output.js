@@ -22,6 +22,7 @@ const id = (v) => v;
 /* setting key → [css var name, value formatter] */
 const _cssVarMap = {
   subAlign:          ['--sub-align',           id],
+  subLineGap:        ['--sub-line-gap',        px],
   subBg:             ['--sub-bg',              id],
   /* Each line's rim width; subRimW is the source line's (js/store.js). */
   subRimW:           ['--sub-source-rim-w',    id],

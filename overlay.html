@@ -395,6 +395,12 @@
             document.getElementById('container').style.textAlign = data.alignment;
           }
 
+          /* The gap between the lines; an app from before it sends none and
+             the stylesheet's stays. */
+          if (Number.isFinite(data.lineGap)) {
+            document.getElementById('container').style.gap = `${data.lineGap}px`;
+          }
+
           if (data.overflow) {
             applyOverflow(t1El, data.overflow);
             applyOverflow(t2El, data.overflow);

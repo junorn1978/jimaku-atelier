@@ -36,7 +36,7 @@ const PER_CHANNEL = new Set([
   'micDeviceId', 'micDeviceLabel', 'segmentMode', 'sttEngine', 'customSttUrl',
   'useSttTranslations',
   'sourceLangId', 'target1LangId', 'target2LangId',
-  'subAlign', 'subBg', 'subOverflow', 'subShowSource', 'subSourceSingleLine', 'subClearIdleSec',
+  'subAlign', 'subLineGap', 'subBg', 'subOverflow', 'subShowSource', 'subSourceSingleLine', 'subClearIdleSec',
   'subOutline', 'subRimW', 'subTarget1RimW', 'subTarget2RimW', 'subRimLinked',
   'subSizeLinked', 'subStrokeWLinked', 'subBubbleWLinked',
   'subSourceStrokeRimW', 'subTarget1StrokeRimW', 'subTarget2StrokeRimW', 'subStrokeRimLinked',
@@ -188,6 +188,10 @@ const _defaults = Object.freeze({
 
   // --- Subtitle style ---
   subAlign:           'center',
+  /* px between the subtitle lines (source, translation 1, translation 2):
+     the gap of the display's column, in the app, the subtitle window and
+     overlay.html alike. */
+  subLineGap:         8,
   subBg:              '#0E1016', // the app window's background, following the theme while left at a theme default (js/theme.js); the subtitle window is fixed #00FF00
   subOverflow:        'normal',  // 'normal' | 'shrink' (max 2 lines)
   subShowSource:      true,

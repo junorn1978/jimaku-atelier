@@ -204,6 +204,7 @@
   "style.align.center":     "中",
   "style.align.right":      "右",
   "style.bg":               "背景色",
+  "style.lineGap":          "行間距",
 
   "color.title":            "調色盤",
   "color.open":             "選擇顏色",

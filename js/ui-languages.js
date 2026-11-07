@@ -643,6 +643,18 @@ export function mountLanguagesTab(container) {
           </button>
         </span>
         </div>
+
+        <!-- The space between the three lines, on a row of its own under the
+             pair: a slider wants more width than half the row. Same slider
+             and readout as the matrix's. -->
+        <div class="lang-extras-pair lang-extras-gap">
+        <span class="lang-extras-label" data-i18n="style.lineGap">行の間隔</span>
+        <div class="slider-group">
+          <input type="range" min="0" max="40" data-bind="subLineGap"
+                 data-i18n-aria-label="style.lineGap" aria-label="行の間隔">
+          <output class="slider-value"></output>
+        </div>
+        </div>
         </div>
         </div>
       </section>

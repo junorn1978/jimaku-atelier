@@ -48,7 +48,8 @@
     align-items: center;
     justify-content: flex-start;
     padding: var(--space-5);
-    gap: var(--space-2);
+    /* Between the lines: the user's line gap (js/output.js). */
+    gap: var(--sub-line-gap, var(--space-2));
     min-height: 0;
     /* Output, not text to copy: a stray drag would paint the selection
        highlight onto what OBS captures. Covers the subtitle window too. */

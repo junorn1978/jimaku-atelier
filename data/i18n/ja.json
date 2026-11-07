@@ -204,6 +204,7 @@
   "style.align.center":     "中央",
   "style.align.right":      "右",
   "style.bg":               "背景色",
+  "style.lineGap":          "行の間隔",
 
   "color.title":            "カラーパレット",
   "color.open":             "色を選ぶ",

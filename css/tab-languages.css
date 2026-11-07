@@ -296,6 +296,15 @@
     gap: var(--space-2);
   }
 
+  /* The line gap takes the display group's whole width, its slider the
+     length of the matrix's. */
+  .lang-extras-gap {
+    flex-basis: 100%;
+    justify-content: space-between;
+
+    .slider-group { width: calc(100px + var(--space-2) + 28px); }
+  }
+
   .lang-extras-label {
     color: var(--color-text-dim);
     font-size: var(--text-md);

@@ -298,6 +298,7 @@ function publish() {
           target1:    latestTarget1,
           target2:    latestTarget2,
           alignment:  settings.subAlign,
+          lineGap:    settings.subLineGap,
           overflow:   settings.subOverflow,
           showSource: settings.subShowSource !== false,
           sourceSingleLine: settings.subSourceSingleLine === true,
@@ -542,7 +543,7 @@ async function executeAutoSetup() {
 /* ============ init ============ */
 
 const STYLE_KEYS = [
-  'subAlign', 'subOverflow', 'subShowSource', 'subSourceSingleLine',
+  'subAlign', 'subLineGap', 'subOverflow', 'subShowSource', 'subSourceSingleLine',
   'subSourcePrefix', 'subSourceSuffix', 'subOutline',
   'subSourceRim', 'subTarget1Rim', 'subTarget2Rim',
   'subRimW', 'subTarget1RimW', 'subTarget2RimW',

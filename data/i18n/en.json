@@ -204,6 +204,7 @@
   "style.align.center":     "Center",
   "style.align.right":      "Right",
   "style.bg":               "Background",
+  "style.lineGap":          "Line spacing",
 
   "color.title":            "Color palette",
   "color.open":             "Pick a color",
