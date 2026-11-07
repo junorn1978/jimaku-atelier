@@ -163,49 +163,79 @@
      controls. Rows are display:contents so every cell joins this grid and the
      columns line up down the table. The two slider tracks are fixed lengths;
      everything else is sized by its control. */
-  /* Matrix on the left, whole-display settings in the space it leaves. When
-     the window narrows, the matrix scrolls inside itself, so the right-hand
-     block keeps its width. */
+  /* The matrix's row. The source-line settings that used to share it moved
+     into a menu on the presets row (.sub-source-menu). When the window
+     narrows, the matrix scrolls inside itself. */
   .lang-top {
     display: flex;
-    /* Children stretch (the default) so the divider on .lang-extras runs the
-       full height of the row rather than only as far as its own four rows;
-       each side packs its own rows at the top with align-content. */
     gap: var(--space-4);
     min-width: 0;
-    /* The pair is centred as one block in the card, not each side on its own:
-       on a wide window it otherwise hugs the left edge with the slack all on
-       the right. `safe` falls back to the start edge if it ever overflows,
-       rather than pushing the matrix's labels off the left. */
+    /* Centred in the card: on a wide window it otherwise hugs the left edge
+       with the slack all on the right. `safe` falls back to the start edge if
+       it ever overflows, rather than pushing the matrix's labels off the
+       left. */
     justify-content: safe center;
   }
 
-  /* Two groups stacked in one well: the source-line settings (a heading and
-     two label/control rows), then the whole-display pair sharing one row.
-     Sized by content — this block is narrow by design and must not steal
-     width from the matrix. */
-  .lang-extras {
+  /* The source-line menu (js/ui-languages.js): the themes button's twin
+     beside it, and the themes menu's dress, position and timing. Two groups
+     inside — the source line's settings, then the whole-display pair under a
+     hairline. Bounded so the symbol boxes and the corner buttons share one
+     comfortable width instead of stretching to their intrinsic size. */
+  .sub-source-btn {
     flex-shrink: 0;
-    display: flex;
+    anchor-name: --sub-source-btn;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    height: var(--preset-chip-h);
+    white-space: nowrap;
+
+    &:has(+ .sub-source-menu:popover-open) {
+      background: var(--color-accent-soft);
+      color: var(--color-accent-hover);
+    }
+  }
+
+  .sub-source-menu {
+    position-anchor: --sub-source-btn;
+    position-area: top span-right;
+    position-try-fallbacks: flip-inline;
+    inset: auto;
+    margin: 0 0 var(--space-2);
+    padding: var(--space-3);
+    /* English's alignment/background row is the widest content (~352px);
+       below this it wraps onto two lines. */
+    width: 380px;
+    display: none;
     flex-direction: column;
     gap: var(--space-2);
-    /* Bounded so no child with a large intrinsic width drags the block wide
-       and squeezes the matrix. Measured against the card's 1150px cap: the
-       widest content is English's display row at ~352px, and with the matrix's
-       swatches at 40px the matrix leaves ~359px — 7px of slack. A longer
-       English label pushes that row onto two lines; dropping the "Align"
-       label (the icons speak for themselves) buys back ~40px if it does. */
-    max-width: 360px;
+    background: var(--color-surface-1);
+    color: var(--color-text);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-popover);
 
-    /* Enclosed as a recessed well rather than divided off by a hairline: these
-       settings arrived from another tab and are a different kind of thing
-       from the per-line matrix beside them, so the boundary should read as "a
-       separate group" rather than "the next column". Same treatment as
-       .format-help — the app's existing boxed sub-region, not a new one. */
-    padding: var(--space-2) var(--space-3);
-    background: color-mix(in oklab, var(--color-bg) 45%, var(--color-surface-1));
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    opacity: 0;
+    transform: scale(0.97);
+    transform-origin: bottom left;
+    transition:
+      opacity   100ms var(--ease-out),
+      transform 100ms var(--ease-out),
+      overlay   100ms allow-discrete,
+      display   100ms allow-discrete;
+
+    &:popover-open {
+      display: flex;
+      opacity: 1;
+      transform: none;
+      transition-duration: 150ms;
+
+      @starting-style {
+        opacity: 0;
+        transform: scale(0.97);
+      }
+    }
   }
 
   /* Source group: heading across the top, then label | control rows. The
@@ -231,7 +261,7 @@
 
   /* The source line is hidden, so these settings currently do nothing. Dimmed
      rather than disabled: they stay editable for setting up in advance. */
-  .lang-top:has(#lang-show-source:not(:checked)) .lang-extras-source {
+  .lang-grid:has(#lang-show-source:not(:checked)) .lang-extras-source {
     opacity: 0.45;
   }
 

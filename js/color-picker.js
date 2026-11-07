@@ -259,12 +259,30 @@ function close({ restoreFocus = false } = {}) {
   if (restoreFocus) previous?.focus();
 }
 
+/* A trigger inside a popover (the source-line menu's background colour) needs
+   the palette inside that popover too. Left in <body>, it is drawn under the
+   popover's top layer, and a click on it counts as outside the popover and
+   light-dismisses it. Inside, it rides the popover's layer, and is closed with
+   it. Every other trigger gets it back in <body>. */
+const watchedHosts = new WeakSet();
+
+function mountBeside(trigger) {
+  const host = trigger.closest('[popover]') ?? document.body;
+  if (elements.root.parentElement !== host) host.append(elements.root);
+  if (host === document.body || watchedHosts.has(host)) return;
+  watchedHosts.add(host);
+  host.addEventListener('toggle', (event) => {
+    if (event.newState === 'closed' && elements.root.parentElement === host) close();
+  });
+}
+
 function open(input, trigger) {
   if (activeInput === input) { close(); return; }   /* second click closes */
 
   activeTrigger?.setAttribute('aria-expanded', 'false');
   activeInput = input;
   activeTrigger = trigger;
+  mountBeside(trigger);
   hsv = hexToHsv(input.value);
 
   renderPresets();

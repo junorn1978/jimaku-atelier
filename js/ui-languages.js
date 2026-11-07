@@ -432,11 +432,60 @@ export function mountLanguagesTab(container) {
         </div>
       </div>
 
-      <!-- The settings you judge against the output, filling the space the
-           matrix leaves: the source line's symbols and one-line limit,
-           alignment, background. They belong beside the colours rather than a
-           tab away, because they are adjusted the same way — by looking. -->
-      <section class="lang-extras">
+      </div>
+
+      <!-- The colour presets (js/subtitle-presets.js), under both the matrix
+           and the display settings, since a preset sets every line's colours
+           at once. Two buttons: the default set, which is the way back, and
+           the themes menu — every built-in set and the user's three saved
+           ones. Both are filled in by js/subtitle-presets.js. -->
+      <section class="sub-preset-row" aria-labelledby="sub-preset-label">
+        <span class="lang-field-label" id="sub-preset-label" data-i18n="style.preset">配色</span>
+        <button type="button" class="sub-preset-default" data-preset="default"></button>
+        <button type="button" class="btn sub-preset-themes" popovertarget="sub-preset-menu">
+          <span data-i18n="style.preset.themes">テーマ</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+        </button>
+        <div class="sub-preset-menu" id="sub-preset-menu" popover
+             data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
+          <!-- The outline setting itself, and the switch between the two lists
+               of sets below (js/subtitle-presets.js). Beside it, under the
+               cloud styles, the rim width: one value for all three lines, so it
+               belongs to the style rather than to a row of the matrix. -->
+          <div class="sub-outline-bar">
+            <div class="seg-switch sub-outline-switch" role="group"
+                 data-i18n-aria-label="style.outline" aria-label="縁取りの種類">
+              <label><input type="radio" name="subOutline" value="stroke" data-bind="subOutline"><span data-i18n="style.outline.stroke">縁取り</span></label>
+              <label><input type="radio" name="subOutline" value="bubble" data-bind="subOutline"><span data-i18n="style.outline.bubble">バブル</span></label>
+              <label><input type="radio" name="subOutline" value="gooey" data-bind="subOutline"><span data-i18n="style.outline.gooey">もこもこ</span></label>
+            </div>
+            <label class="sub-rim-width outline-cloud-only">
+              <span data-i18n="style.rimWidth">外枠</span>
+              <span class="slider-group">
+                <input type="range" min="0" max="${BUBBLE_MAX}" data-bind="subRimW">
+                <output class="slider-value"></output>
+              </span>
+            </label>
+          </div>
+          <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
+          <div class="sub-preset-grid"></div>
+          <span class="sub-preset-head" data-i18n="style.preset.custom.head">マイテーマ</span>
+          <div class="sub-preset-mine"></div>
+        </div>
+
+        <!-- The source line's settings and the two that act on the whole
+             display (alignment, chroma-key background), behind a button beside
+             the themes rather than as a standing card beside the matrix: they
+             are set once and judged by looking, and the card took the width
+             the matrix needs. Same button, same menu dress as the themes, so
+             the row has one way of opening things. More settings will join
+             this menu. -->
+        <button type="button" class="btn sub-source-btn" popovertarget="sub-source-menu">
+          <span data-i18n="style.group.source">原文</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+        </button>
+        <div class="sub-source-menu lang-extras" id="sub-source-menu" popover
+             data-i18n-aria-label="style.group.source" aria-label="原文">
         <!-- Two groups, because the four settings are two kinds of thing: the
              first pair only touches the source line, the second pair the whole
              display. Laid out as four identical rows they read as one list of
@@ -529,46 +578,6 @@ export function mountLanguagesTab(container) {
         </span>
         </div>
         </div>
-      </section>
-      </div>
-
-      <!-- The colour presets (js/subtitle-presets.js), under both the matrix
-           and the display settings, since a preset sets every line's colours
-           at once. Two buttons: the default set, which is the way back, and
-           the themes menu — every built-in set and the user's three saved
-           ones. Both are filled in by js/subtitle-presets.js. -->
-      <section class="sub-preset-row" aria-labelledby="sub-preset-label">
-        <span class="lang-field-label" id="sub-preset-label" data-i18n="style.preset">配色</span>
-        <button type="button" class="sub-preset-default" data-preset="default"></button>
-        <button type="button" class="btn sub-preset-themes" popovertarget="sub-preset-menu">
-          <span data-i18n="style.preset.themes">テーマ</span>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
-        </button>
-        <div class="sub-preset-menu" id="sub-preset-menu" popover
-             data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
-          <!-- The outline setting itself, and the switch between the two lists
-               of sets below (js/subtitle-presets.js). Beside it, under the
-               cloud styles, the rim width: one value for all three lines, so it
-               belongs to the style rather than to a row of the matrix. -->
-          <div class="sub-outline-bar">
-            <div class="seg-switch sub-outline-switch" role="group"
-                 data-i18n-aria-label="style.outline" aria-label="縁取りの種類">
-              <label><input type="radio" name="subOutline" value="stroke" data-bind="subOutline"><span data-i18n="style.outline.stroke">縁取り</span></label>
-              <label><input type="radio" name="subOutline" value="bubble" data-bind="subOutline"><span data-i18n="style.outline.bubble">バブル</span></label>
-              <label><input type="radio" name="subOutline" value="gooey" data-bind="subOutline"><span data-i18n="style.outline.gooey">もこもこ</span></label>
-            </div>
-            <label class="sub-rim-width outline-cloud-only">
-              <span data-i18n="style.rimWidth">外枠</span>
-              <span class="slider-group">
-                <input type="range" min="0" max="${BUBBLE_MAX}" data-bind="subRimW">
-                <output class="slider-value"></output>
-              </span>
-            </label>
-          </div>
-          <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
-          <div class="sub-preset-grid"></div>
-          <span class="sub-preset-head" data-i18n="style.preset.custom.head">マイテーマ</span>
-          <div class="sub-preset-mine"></div>
         </div>
       </section>
 
