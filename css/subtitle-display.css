@@ -125,10 +125,14 @@
       &[hidden] { display: none; }
     }
 
+    /* filter: the plain outline's rim, a ring outside the stroke in the
+       rim colour (js/subtitle-cloud.js); `none` while the line has none
+       (js/output.js). The cloud styles' filters below replace it. */
     .source {
       color: var(--sub-source-color);
       font-size: var(--sub-source-size);
       -webkit-text-stroke: var(--sub-source-stroke-w) var(--sub-source-stroke);
+      filter: var(--sub-source-stroke-filter, none);
 
       &:empty::before {
         -webkit-text-stroke: var(--sub-source-stroke-w) var(--sub-source-stroke);
@@ -138,6 +142,7 @@
       color: var(--sub-target1-color);
       font-size: var(--sub-target1-size);
       -webkit-text-stroke: var(--sub-target1-stroke-w) var(--sub-target1-stroke);
+      filter: var(--sub-target1-stroke-filter, none);
 
       &:empty::before {
         -webkit-text-stroke: var(--sub-target1-stroke-w) var(--sub-target1-stroke);
@@ -147,6 +152,7 @@
       color: var(--sub-target2-color);
       font-size: var(--sub-target2-size);
       -webkit-text-stroke: var(--sub-target2-stroke-w) var(--sub-target2-stroke);
+      filter: var(--sub-target2-stroke-filter, none);
 
       &:empty::before {
         -webkit-text-stroke: var(--sub-target2-stroke-w) var(--sub-target2-stroke);

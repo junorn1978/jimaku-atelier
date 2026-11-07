@@ -142,9 +142,9 @@
   }
 
   /* --- language controls: source side | translation side --- */
-  /* One column, as wide as the matrix and the display settings beside it and
-     centred in the card, so the rows under them (presets, offline pack) start
-     at the matrix's left edge and end at the well's right one. Those rows are
+  /* One column, as wide as the matrix and set against the card's left edge
+     like the panel's other tabs, so the rows under it (presets, offline pack)
+     start at the matrix's left edge and end at its right one. Those rows are
      contained so they never widen it; on a narrow window it shrinks to the
      card and the matrix scrolls inside itself.
      No gap here: each row under the matrix owns its separator's spacing.
@@ -153,7 +153,7 @@
   .lang-grid {
     display: grid;
     grid-template-columns: minmax(0, max-content);
-    justify-content: safe center;
+    justify-content: start;
     align-content: start;
     height: 100%;
     min-height: 0;
@@ -170,11 +170,6 @@
     display: flex;
     gap: var(--space-4);
     min-width: 0;
-    /* Centred in the card: on a wide window it otherwise hugs the left edge
-       with the slack all on the right. `safe` falls back to the start edge if
-       it ever overflows, rather than pushing the matrix's labels off the
-       left. */
-    justify-content: safe center;
   }
 
   /* The source-line menu (js/ui-languages.js): the themes button's twin
@@ -318,7 +313,8 @@
        28px readout. */
     grid-template-columns:
       max-content max-content max-content max-content
-      calc(100px + var(--space-2) + 28px) calc(100px + var(--space-2) + 28px);
+      calc(100px + var(--space-2) + 28px) calc(100px + var(--space-2) + 28px)
+      calc(100px + var(--space-2) + 28px);
     column-gap: var(--space-4);
     row-gap: var(--space-2);
     align-items: center;
@@ -326,7 +322,7 @@
     /* Rows stay packed at the top now that .lang-top stretches its children to
        a common height for the divider. */
     align-content: start;
-    /* A 6-column table cannot collapse without losing the column comparison it
+    /* A 7-column table cannot collapse without losing the column comparison it
        exists for, so in a narrow window it scrolls inside itself rather than
        widening the card. */
     overflow-x: auto;
@@ -344,27 +340,17 @@
   .lang-matrix-head,
   .lang-matrix-row { display: contents; }
 
-  /* Under a cloud style each line's rim width is a seventh column, the same
-     length as the other two sliders. Only then: a hidden cell takes no grid
-     cell, but a seventh track would still leave its gap at the row's end. */
-  :root:not([data-sub-outline="stroke"]) .lang-matrix {
-    grid-template-columns:
-      max-content max-content max-content max-content
-      calc(100px + var(--space-2) + 28px) calc(100px + var(--space-2) + 28px)
-      calc(100px + var(--space-2) + 28px);
-  }
-
-  /* The rim header with its link button beside the label. */
-  .rim-head {
+  /* A slider column's header with its link button beside the label. */
+  .link-head {
     display: inline-flex;
     align-items: center;
     gap: var(--space-1);
   }
 
   /* An icon toggle: a closed link while the translation lines follow the
-     source line's rim, a broken one while each has its own. Lit when on,
+     source line's value, a broken one while each has its own. Lit when on,
      like the panel's other pressed buttons. */
-  .rim-link {
+  .link-toggle {
     display: inline-grid;
     place-items: center;
     width: 20px;
@@ -380,16 +366,16 @@
     }
     &:has(input:focus-visible) { box-shadow: var(--focus-ring); }
 
-    .rim-link-off { display: none; }
+    .link-off { display: none; }
     &:has(input:not(:checked)) {
-      .rim-link-on  { display: none; }
-      .rim-link-off { display: inline; }
+      .link-on  { display: none; }
+      .link-off { display: inline; }
     }
   }
 
-  /* A translation line's rim while it follows the source line's: shown, so
-     the value it is drawn with stays readable, but plainly not its own. */
-  .rim-follower:has(input:disabled) { opacity: 0.45; }
+  /* A translation line's slider while it follows the source line's: shown,
+     so the value it is drawn with stays readable, but plainly not its own. */
+  .lang-matrix .slider-group:has(input:disabled) { opacity: 0.45; }
 
   .lang-matrix-head > span {
     font-size: var(--text-xs);
@@ -397,11 +383,12 @@
     color: var(--color-text-dim);
   }
 
-  /* The outline colour cell and the width header mean one thing under the
-     plain outline and another under the cloud styles (js/subtitle-cloud.js);
-     the root carries which (js/output.js). Under a cloud the cell holds two
-     swatches, cloud and rim, without their hex readouts, so the column keeps
-     about its usual width. */
+  /* The width and rim columns hold one slider per style, and the headers
+     name the plain outline or the cloud (js/subtitle-cloud.js); the root
+     carries which (js/output.js). The outline cell holds two swatches in
+     every style, outline (or cloud) and rim, without their hex readouts, so
+     the column keeps about its usual width and the table is the same seven
+     columns whichever style is on. */
   :root[data-sub-outline="stroke"] .outline-cloud-only,
   :root:not([data-sub-outline="stroke"]) .outline-stroke-only { display: none; }
 
@@ -411,7 +398,7 @@
     gap: var(--space-2);
   }
 
-  :root:not([data-sub-outline="stroke"]) .outline-colors .color-value { display: none; }
+  .outline-colors .color-value { display: none; }
 
   /* --- colour presets: one row under the matrix and the display settings --- */
 
@@ -602,8 +589,9 @@
 
     /* A cloud set: the name keeps the plain preview (cloud colour as its
        outline) — a rim drawn around it at this size fused the letters into
-       an unreadable blob — and the rim shows as the dots' outer ring. */
-    .is-cloud {
+       an unreadable blob — and the rim shows as the dots' outer ring. A
+       plain set with a rim (a saved slot) shows its rim the same way. */
+    .is-cloud, .has-rim {
       .sub-preset-dots {
         gap: 7px;
 

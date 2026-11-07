@@ -1,9 +1,10 @@
 /**
  * @file subtitle-presets.js
  * @description Colour presets for the subtitle lines: one click writes a whole
- * set of text colours, outline colours and outline widths into the settings —
- * and the outline style, since the cloud outlines (js/subtitle-cloud.js) have
- * sets of their own, which also carry each line's rim colour.
+ * set of text colours, outline colours and widths, and rims into the settings —
+ * and the outline style, plain or one of the clouds (js/subtitle-cloud.js).
+ * Every set has the same shape whatever its style (see `line`); the style
+ * only decides which width settings its numbers go to.
  *
  * A preset is data, not CSS. Applying one only writes the same settings keys
  * the Languages tab's matrix writes, so everything downstream — the output
@@ -35,7 +36,7 @@
  * style included; they are listed under both styles. The scene
  * link can pick them too; an empty slot picked there leaves the colours as
  * they are. Modelled on the sister project's マイテーマ, which keeps colours
- * only; these keep the outline width as well, since the built-in sets here do.
+ * only; these keep the widths and rims as well, since the built-in sets here do.
  */
 
 import { settings, subscribe } from './store.js';
@@ -45,79 +46,107 @@ import { isCloudOutline } from './subtitle-cloud.js';
 /* [settings-key middle part, preset slot] for each subtitle line. */
 const LINES = [['Source', 'src'], ['Target1', 't1'], ['Target2', 't2']];
 
-const line = (color, stroke, w) => ({ color, stroke, w });
-/* stroke is the cloud's colour, w its size, rim the ring around it; the
-   set's rimW is the ring's width for all three lines, unless a line carries
-   its own (rimWOf). The built-in sets share one; a saved slot keeps each
-   line's. */
-const cloud = (color, stroke, w, rim) => ({ color, stroke, w, rim });
+/* One shape for every set, whatever its outline: each line's text colour,
+   its outline colour (the cloud's, under a cloud style), the outline's width,
+   and the rim around the outline — its colour and width. The widths are in
+   the outline's own units (px for the plain stroke and its rim, the 0–15
+   steps for a cloud and its rim, js/subtitle-cloud.js). A rim width of 0 is
+   no rim, and a line without one needs no rim colour (null). */
+const line = (color, stroke, w, rim = null, rimW = 0) => ({ color, stroke, w, rim, rimW });
 
 /* `default` is the store's own defaults — "back to how it was". */
 export const PRESETS = [
-  { id: 'default',   src: line('#FFFFFF', '#000000', 4), t1: line('#FFFFFF', '#000000', 4), t2: line('#FFFFFF', '#000000', 4) },
-  { id: 'standard',  src: line('#FFFFFF', '#000000', 4), t1: line('#FFE873', '#000000', 4), t2: line('#9FD4FF', '#000000', 4) },
-  { id: 'game',      src: line('#FFFFFF', '#0A0F2C', 6), t1: line('#FFD400', '#0A0F2C', 6), t2: line('#4FE3FF', '#0A0F2C', 6) },
-  { id: 'cute',      src: line('#FFFFFF', '#5A1E3C', 4), t1: line('#FF8FB1', '#5A1E3C', 4), t2: line('#B79CFF', '#5A1E3C', 4) },
-  { id: 'pastel',    src: line('#7A2E55', '#FFFFFF', 5), t1: line('#9B3F8A', '#FFFFFF', 5), t2: line('#4B4BA8', '#FFFFFF', 5) },
-  { id: 'imp',       src: line('#FFFFFF', '#241A2E', 5), t1: line('#CDA8FF', '#241A2E', 5), t2: line('#FF7EB9', '#241A2E', 5) },
-  { id: 'berrymilk', src: line('#FFFFFF', '#C8336F', 5), t1: line('#FFC2DA', '#A82A5E', 5), t2: line('#FFF1A8', '#A82A5E', 5) },
-  { id: 'contrast',  src: line('#FFFFFF', '#000000', 7), t1: line('#FFFF00', '#000000', 7), t2: line('#7FDBFF', '#000000', 7) },
-  { id: 'retro',     src: line('#F3E6C8', '#3B2414', 5), t1: line('#F2B45A', '#3B2414', 5), t2: line('#E89A7C', '#3B2414', 5) },
+  { id: 'default',   outline: 'stroke',
+    src: line('#FFFFFF', '#000000', 4), t1: line('#FFFFFF', '#000000', 4), t2: line('#FFFFFF', '#000000', 4) },
+  { id: 'standard',  outline: 'stroke',
+    src: line('#FFFFFF', '#000000', 4), t1: line('#FFE873', '#000000', 4), t2: line('#9FD4FF', '#000000', 4) },
+  { id: 'game',      outline: 'stroke',
+    src: line('#FFFFFF', '#0A0F2C', 6), t1: line('#FFD400', '#0A0F2C', 6), t2: line('#4FE3FF', '#0A0F2C', 6) },
+  { id: 'cute',      outline: 'stroke',
+    src: line('#FFFFFF', '#5A1E3C', 4), t1: line('#FF8FB1', '#5A1E3C', 4), t2: line('#B79CFF', '#5A1E3C', 4) },
+  { id: 'pastel',    outline: 'stroke',
+    src: line('#7A2E55', '#FFFFFF', 5), t1: line('#9B3F8A', '#FFFFFF', 5), t2: line('#4B4BA8', '#FFFFFF', 5) },
+  { id: 'imp',       outline: 'stroke',
+    src: line('#FFFFFF', '#241A2E', 5), t1: line('#CDA8FF', '#241A2E', 5), t2: line('#FF7EB9', '#241A2E', 5) },
+  { id: 'berrymilk', outline: 'stroke',
+    src: line('#FFFFFF', '#C8336F', 5), t1: line('#FFC2DA', '#A82A5E', 5), t2: line('#FFF1A8', '#A82A5E', 5) },
+  { id: 'contrast',  outline: 'stroke',
+    src: line('#FFFFFF', '#000000', 7), t1: line('#FFFF00', '#000000', 7), t2: line('#7FDBFF', '#000000', 7) },
+  { id: 'retro',     outline: 'stroke',
+    src: line('#F3E6C8', '#3B2414', 5), t1: line('#F2B45A', '#3B2414', 5), t2: line('#E89A7C', '#3B2414', 5) },
 
-  { id: 'bubbleSticker',  outline: 'bubble', rimW: 4,
-    src: cloud('#FF4FA3', '#FFFFFF', 1, '#FA5151'), t1: cloud('#38BDF8', '#FFFFFF', 1, '#28C1DF'), t2: cloud('#CD9AFD', '#FFFFFF', 1, '#CD9AFD') },
-  { id: 'bubbleLavender', outline: 'bubble', rimW: 7,
-    src: cloud('#1A1A1A', '#C1B6FF', 11, '#C8337A'), t1: cloud('#1A1A1A', '#B4CBFF', 11, '#C8337A'), t2: cloud('#1A1A1A', '#F2A7C9', 11, '#C8337A') },
-  { id: 'bubbleCandy',    outline: 'bubble', rimW: 3,
-    src: cloud('#FFFFFF', '#FF7FB0', 6, '#FFFFFF'), t1: cloud('#FFFFFF', '#B58CFF', 6, '#FFFFFF'), t2: cloud('#FFFFFF', '#FF9E6B', 6, '#FFFFFF') },
-  { id: 'bubbleSoda',     outline: 'bubble', rimW: 8,
-    src: cloud('#0B2545', '#8FD3FF', 6, '#FFFFFF'), t1: cloud('#0B2545', '#BFE6FF', 6, '#FFFFFF'), t2: cloud('#0B2545', '#FFD6E8', 6, '#FFFFFF') },
-  { id: 'bubbleLemon',    outline: 'bubble', rimW: 6,
-    src: cloud('#3B2414', '#FFE27A', 6, '#E07A2E'), t1: cloud('#3B2414', '#FFF3B0', 6, '#E07A2E'), t2: cloud('#3B2414', '#FFC9A3', 6, '#E07A2E') },
-  { id: 'bubbleNight',    outline: 'bubble', rimW: 4,
-    src: cloud('#FFFFFF', '#2A2350', 6, '#B79CFF'), t1: cloud('#FFE873', '#2A2350', 6, '#B79CFF'), t2: cloud('#9FD4FF', '#2A2350', 6, '#B79CFF') },
+  { id: 'bubbleSticker',  outline: 'bubble',
+    src: line('#FF4FA3', '#FFFFFF', 1, '#FA5151', 4), t1: line('#38BDF8', '#FFFFFF', 1, '#28C1DF', 4), t2: line('#CD9AFD', '#FFFFFF', 1, '#CD9AFD', 4) },
+  { id: 'bubbleLavender', outline: 'bubble',
+    src: line('#1A1A1A', '#C1B6FF', 11, '#C8337A', 7), t1: line('#1A1A1A', '#B4CBFF', 11, '#C8337A', 7), t2: line('#1A1A1A', '#F2A7C9', 11, '#C8337A', 7) },
+  { id: 'bubbleCandy',    outline: 'bubble',
+    src: line('#FFFFFF', '#FF7FB0', 6, '#FFFFFF', 3), t1: line('#FFFFFF', '#B58CFF', 6, '#FFFFFF', 3), t2: line('#FFFFFF', '#FF9E6B', 6, '#FFFFFF', 3) },
+  { id: 'bubbleSoda',     outline: 'bubble',
+    src: line('#0B2545', '#8FD3FF', 6, '#FFFFFF', 8), t1: line('#0B2545', '#BFE6FF', 6, '#FFFFFF', 8), t2: line('#0B2545', '#FFD6E8', 6, '#FFFFFF', 8) },
+  { id: 'bubbleLemon',    outline: 'bubble',
+    src: line('#3B2414', '#FFE27A', 6, '#E07A2E', 6), t1: line('#3B2414', '#FFF3B0', 6, '#E07A2E', 6), t2: line('#3B2414', '#FFC9A3', 6, '#E07A2E', 6) },
+  { id: 'bubbleNight',    outline: 'bubble',
+    src: line('#FFFFFF', '#2A2350', 6, '#B79CFF', 4), t1: line('#FFE873', '#2A2350', 6, '#B79CFF', 4), t2: line('#9FD4FF', '#2A2350', 6, '#B79CFF', 4) },
 
-  { id: 'gooeyPeach', outline: 'gooey', rimW: 8,
-    src: cloud('#4A1F12', '#FFB38A', 6, '#FFFFFF'), t1: cloud('#4A1F12', '#FFD0A8', 6, '#FFFFFF'), t2: cloud('#4A1F12', '#FFC2D4', 6, '#FFFFFF') },
-  { id: 'gooeyGrape', outline: 'gooey', rimW: 6,
-    src: cloud('#FFFFFF', '#7B4FC9', 6, '#F5D0FF'), t1: cloud('#FFFFFF', '#9A6BE0', 6, '#F5D0FF'), t2: cloud('#FFFFFF', '#C25AA8', 6, '#F5D0FF') },
-  { id: 'gooeyInk',   outline: 'gooey', rimW: 8,
-    src: cloud('#FFFFFF', '#1C1C24', 4, '#FFD400'), t1: cloud('#FFE873', '#1C1C24', 4, '#FFD400'), t2: cloud('#9FD4FF', '#1C1C24', 4, '#FFD400') },
+  { id: 'gooeyPeach', outline: 'gooey',
+    src: line('#4A1F12', '#FFB38A', 6, '#FFFFFF', 8), t1: line('#4A1F12', '#FFD0A8', 6, '#FFFFFF', 8), t2: line('#4A1F12', '#FFC2D4', 6, '#FFFFFF', 8) },
+  { id: 'gooeyGrape', outline: 'gooey',
+    src: line('#FFFFFF', '#7B4FC9', 6, '#F5D0FF', 6), t1: line('#FFFFFF', '#9A6BE0', 6, '#F5D0FF', 6), t2: line('#FFFFFF', '#C25AA8', 6, '#F5D0FF', 6) },
+  { id: 'gooeyInk',   outline: 'gooey',
+    src: line('#FFFFFF', '#1C1C24', 4, '#FFD400', 8), t1: line('#FFE873', '#1C1C24', 4, '#FFD400', 8), t2: line('#9FD4FF', '#1C1C24', 4, '#FFD400', 8) },
 ];
 
-/** A preset's outline style; sets from before there was a choice are plain. */
+/** A preset's outline style; a slot saved before there was a choice is plain. */
 export const outlineOf = (preset) => isCloudOutline(preset?.outline) ? preset.outline : 'stroke';
 
 const isCloud = (preset) => outlineOf(preset) !== 'stroke';
 
-/* Which setting a preset's w goes to: the plain outline keeps its widths, the
-   cloud styles share theirs. */
+/* The settings a set's widths go to: each style keeps its own outline and rim
+   widths (js/store.js), so a set writes its own style's and leaves the
+   other's as they were. The cloud's source-line rim is subRimW. */
 const widthKey = (preset, name) => `sub${name}${isCloud(preset) ? 'BubbleW' : 'StrokeW'}`;
-
-/* Each line's rim-width setting; the source line's is subRimW (js/store.js). */
-const rimKey = (name) => name === 'Source' ? 'subRimW' : `sub${name}RimW`;
-
-/* A line's rim width in a preset: its own, or the set's shared one. */
-const rimWOf = (preset, slot) =>
-  Number.isFinite(preset[slot]?.rimW) ? preset[slot].rimW : preset.rimW;
+const rimKey = (preset, name) => isCloud(preset)
+  ? (name === 'Source' ? 'subRimW' : `sub${name}RimW`)
+  : `sub${name}StrokeRimW`;
 
 const KEYS = ['subOutline', ...LINES.flatMap(([name]) =>
-  [`sub${name}Color`, `sub${name}Stroke`, `sub${name}StrokeW`, `sub${name}BubbleW`, `sub${name}Rim`, rimKey(name)])];
+  [`sub${name}Color`, `sub${name}Stroke`, `sub${name}Rim`,
+   widthKey({}, name), widthKey({ outline: 'bubble' }, name),
+   rimKey({}, name), rimKey({ outline: 'bubble' }, name)])];
 
 /** The user's slots, by id; their index is their place in subCustomPresets. */
 export const CUSTOM_SLOTS = ['custom1', 'custom2', 'custom3'];
 
 const isHex = (v) => typeof v === 'string' && /^#[0-9A-F]{6}$/.test(v);
 
-/* A saved slot, or null when it is empty or no longer the right shape. A
-   cloud slot needs its rims; a plain one saved before rims existed has none. */
+/* The version of a slot saved in the shape above (currentPreset). */
+const SAVED_VERSION = 2;
+
+/* A saved slot in the shape above, or null when it is empty or no longer
+   makes sense. A slot from before the shape (no v) is read the way it was
+   written: a cloud slot's rim width was the set's (rimW), unless the line
+   carried its own; a plain slot had no rim — the rimW it kept was the
+   cloud's, which is not the plain outline's rim. */
+function fromSaved(saved) {
+  if (!saved) return null;
+  const lines = {};
+  for (const [, slot] of LINES) {
+    const l = saved[slot];
+    if (!isHex(l?.color) || !isHex(l?.stroke) || !Number.isFinite(l?.w)) return null;
+    const rimW = saved.v >= SAVED_VERSION ? l.rimW
+      : !isCloud(saved) ? 0
+      : Number.isFinite(l.rimW) ? l.rimW : saved.rimW;
+    if (!Number.isFinite(rimW)) return null;
+    const rim = isHex(l.rim) ? l.rim : null;
+    if (rimW > 0 && !rim) return null;
+    lines[slot] = line(l.color, l.stroke, l.w, rim, rimW);
+  }
+  return { outline: outlineOf(saved), ...lines };
+}
+
 function customPreset(index) {
-  const saved = settings.subCustomPresets?.[index];
-  const ok = saved && LINES.every(([, slot]) =>
-    isHex(saved[slot]?.color) && isHex(saved[slot]?.stroke) && Number.isFinite(saved[slot]?.w)
-    && (!isCloud(saved) || isHex(saved[slot]?.rim)))
-    && (!isCloud(saved) || Number.isFinite(saved.rimW));
-  return ok ? { ...saved, id: CUSTOM_SLOTS[index] } : null;
+  const preset = fromSaved(settings.subCustomPresets?.[index]);
+  return preset && { ...preset, id: CUSTOM_SLOTS[index] };
 }
 
 /* A built-in preset or a filled slot; undefined for an unknown id or an
@@ -146,26 +175,24 @@ export function applyPreset(id) {
   return !!preset;
 }
 
-/* A plain set leaves the rims and the cloud sizes alone, and a cloud set the
-   plain outline widths: neither is part of the other's look. */
+/* A set writes its own style's widths and leaves the other style's alone:
+   neither is part of the other's look. A line without a rim leaves the rim
+   colour alone too, having none to give. */
 function apply(preset) {
-  const cloudSet = isCloud(preset);
   settings.subOutline = outlineOf(preset);
-  /* The rim link goes first, and on only when the set's three rims are equal:
-     while it is on, the translation lines follow the source line's width
-     (js/ui-languages.js), which would undo a set whose rims differ. */
-  if (cloudSet) {
-    const rims = LINES.map(([, slot]) => rimWOf(preset, slot));
-    settings.subRimLinked = rims.every(w => w === rims[0]);
-  }
+  /* The links go first, each on only when the set's three values are equal:
+     while one is on, the translation lines follow the source line's value
+     (js/ui-languages.js), which would undo a set whose lines differ. */
+  const equal = (part) => LINES.every(([, slot]) => preset[slot][part] === preset.src[part]);
+  settings[isCloud(preset) ? 'subBubbleWLinked' : 'subStrokeWLinked'] = equal('w');
+  settings[isCloud(preset) ? 'subRimLinked' : 'subStrokeRimLinked'] = equal('rimW');
   for (const [name, slot] of LINES) {
-    settings[`sub${name}Color`]   = preset[slot].color;
-    settings[`sub${name}Stroke`]  = preset[slot].stroke;
-    settings[widthKey(preset, name)] = preset[slot].w;
-    if (cloudSet) {
-      settings[`sub${name}Rim`] = preset[slot].rim;
-      settings[rimKey(name)]    = rimWOf(preset, slot);
-    }
+    const l = preset[slot];
+    settings[`sub${name}Color`]  = l.color;
+    settings[`sub${name}Stroke`] = l.stroke;
+    settings[widthKey(preset, name)] = l.w;
+    settings[rimKey(preset, name)]   = l.rimW;
+    if (l.rim) settings[`sub${name}Rim`] = l.rim;
   }
 }
 
@@ -174,17 +201,15 @@ function apply(preset) {
 function currentPreset() {
   const outline = outlineOf({ outline: settings.subOutline });
   return {
+    v: SAVED_VERSION,
     outline,
-    rimW: Number(settings.subRimW),
-    ...Object.fromEntries(LINES.map(([name, slot]) => [slot, {
-      ...cloud(
-        String(settings[`sub${name}Color`]).toUpperCase(),
-        String(settings[`sub${name}Stroke`]).toUpperCase(),
-        Number(settings[widthKey({ outline }, name)]),
-        String(settings[`sub${name}Rim`]).toUpperCase(),
-      ),
-      rimW: Number(settings[rimKey(name)]),
-    }])),
+    ...Object.fromEntries(LINES.map(([name, slot]) => [slot, line(
+      String(settings[`sub${name}Color`]).toUpperCase(),
+      String(settings[`sub${name}Stroke`]).toUpperCase(),
+      Number(settings[widthKey({ outline }, name)]),
+      String(settings[`sub${name}Rim`]).toUpperCase(),
+      Number(settings[rimKey({ outline }, name)]),
+    )])),
   };
 }
 
@@ -194,16 +219,17 @@ function saveCustom(index) {
   settings.subCustomPresets = next;
 }
 
-/* The rims count only for a cloud set; a plain one never shows them. */
+/* A rim's colour counts only where the line has a rim to show it. */
 function matches(preset) {
-  const cloudSet = isCloud(preset);
   return outlineOf({ outline: settings.subOutline }) === outlineOf(preset)
-    && LINES.every(([name, slot]) =>
-      (!cloudSet || Number(settings[rimKey(name)]) === rimWOf(preset, slot)) &&
-      String(settings[`sub${name}Color`]).toUpperCase()  === preset[slot].color &&
-      String(settings[`sub${name}Stroke`]).toUpperCase() === preset[slot].stroke &&
-      Number(settings[widthKey(preset, name)])           === preset[slot].w &&
-      (!cloudSet || String(settings[`sub${name}Rim`]).toUpperCase() === preset[slot].rim));
+    && LINES.every(([name, slot]) => {
+      const l = preset[slot];
+      return String(settings[`sub${name}Color`]).toUpperCase()  === l.color
+        && String(settings[`sub${name}Stroke`]).toUpperCase() === l.stroke
+        && Number(settings[widthKey(preset, name)]) === l.w
+        && Number(settings[rimKey(preset, name)])   === l.rimW
+        && (!(l.rimW > 0) || String(settings[`sub${name}Rim`]).toUpperCase() === l.rim);
+    });
 }
 
 /* The inside of a preset button: three dots for the three lines — each the
@@ -211,12 +237,15 @@ function matches(preset) {
    the look as much as the fill (the pastel set is dark text on white) — then
    the name, drawn in the preset's second line (the first is white in most of
    them). So every button previews itself. A cloud set adds its rim to the
-   dots, which also marks a cloud slot among the plain ones. An empty slot
+   dots, which also marks a cloud slot among the plain ones; so does a plain
+   slot saved with a rim. An empty slot
    has no colours, and its name says so. */
 function paintItem(item, preset, name) {
   item.disabled = !preset;
   item.classList.toggle('is-empty', !preset);
   item.classList.toggle('is-cloud', !!preset && isCloud(preset));
+  item.classList.toggle('has-rim', !!preset && !isCloud(preset)
+    && LINES.some(([, slot]) => preset[slot].rimW > 0));
   item.style.setProperty('--p-color', preset?.t1.color ?? '');
   item.style.setProperty('--p-stroke', preset?.t1.stroke ?? '');
   item.style.setProperty('--p-rim', preset?.t1.rim ?? '');

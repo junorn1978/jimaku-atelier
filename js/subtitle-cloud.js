@@ -117,6 +117,29 @@ const filterMarkup = (outline, line) => `
     <feMerge><feMergeNode in="rimC"/><feMergeNode in="cloudC"/><feMergeNode in="SourceGraphic"/></feMerge>
   </filter>`;
 
+/* The plain outline's rim (settings sub*StrokeRimW): the stroked text grown
+   once more, as the cloud's rim is grown from the cloud, and laid under it.
+   The stroke itself stays -webkit-text-stroke, as sharp as ever; only the
+   ring outside it comes from here. Grown round the same way as the bubble
+   (an octagon of three dilations, its corners softened by a blur cut at
+   half), since a single square dilation squares off every curve. Only lines
+   with a rim wear it (js/output.js writes `none` otherwise), so a plain
+   outline without one is drawn exactly as before. */
+export const strokeRimFilterId = (line) => `sub-stroke-${line}`;
+
+const strokeRimMarkup = (line) => `
+  <filter id="${strokeRimFilterId(line)}" x="-5%" y="-60%" width="110%" height="220%" color-interpolation-filters="sRGB">
+    <feMorphology in="SourceAlpha" operator="dilate" data-k="1 0.41" result="d1"/>
+    <feMorphology in="SourceAlpha" operator="dilate" data-k="0.41 1" result="d2"/>
+    <feMorphology in="SourceAlpha" operator="dilate" data-k="0.71 0.71" result="d3"/>
+    <feMerge result="du"><feMergeNode in="d1"/><feMergeNode in="d2"/><feMergeNode in="d3"/></feMerge>
+    <feGaussianBlur in="du" data-blur="rim" result="rb"/>
+    <feComponentTransfer in="rb" result="rim">${CUT_HALF}</feComponentTransfer>
+    <feFlood data-flood="rim" result="rf"/>
+    <feComposite in="rf" in2="rim" operator="in" result="rimC"/>
+    <feMerge><feMergeNode in="rimC"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>`;
+
 /** Add every style's filter for the three lines to this document, once. */
 export function installCloudFilters(doc = document) {
   if (doc.getElementById(cloudFilterId(CLOUD_OUTLINES[0], CLOUD_LINES[0]))) return;
@@ -124,8 +147,25 @@ export function installCloudFilters(doc = document) {
   svg.setAttribute('aria-hidden', 'true');
   svg.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden';
   svg.innerHTML = `<defs>${CLOUD_OUTLINES.flatMap(outline =>
-    CLOUD_LINES.map(line => filterMarkup(outline, line))).join('')}</defs>`;
+    CLOUD_LINES.map(line => filterMarkup(outline, line))).join('')}${
+    CLOUD_LINES.map(strokeRimMarkup).join('')}</defs>`;
   doc.body.prepend(svg);
+}
+
+/**
+ * Point one line's plain-outline rim at its width (px past the stroke) and
+ * colour.
+ */
+export function updateStrokeRim(line, { width, rim }, doc = document) {
+  const filter = doc.getElementById(strokeRimFilterId(line));
+  if (!filter) return;
+  const w = Math.max(0, Number(width) || 0);
+  filter.querySelectorAll('[data-k]').forEach((el) => {
+    const [kx, ky] = el.dataset.k.split(' ').map(Number);
+    el.setAttribute('radius', `${(w * kx).toFixed(2)} ${(w * ky).toFixed(2)}`);
+  });
+  filter.querySelector('[data-blur="rim"]').setAttribute('stdDeviation', Math.max(0.5, w * 0.25).toFixed(2));
+  if (rim) filter.querySelector('[data-flood="rim"]').setAttribute('flood-color', rim);
 }
 
 /**
@@ -174,6 +214,10 @@ export function syncCloudFromVars(style, doc = document) {
       width: parseFloat(style.getPropertyValue(`${p}-bubble-w`)),
       rimWidth: parseFloat(style.getPropertyValue(`${p}-rim-w`)),
       cloud: style.getPropertyValue(`${p}-stroke`).trim(),
+      rim:   style.getPropertyValue(`${p}-rim`).trim(),
+    }, doc);
+    updateStrokeRim(line, {
+      width: parseFloat(style.getPropertyValue(`${p}-stroke-rim-w`)),
       rim:   style.getPropertyValue(`${p}-rim`).trim(),
     }, doc);
   }

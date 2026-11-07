@@ -155,7 +155,7 @@
        above it in the document. -->
   <script type="module">
     import { keepTailVisible, setupCinemaScroll } from './js/subtitle-render.js';
-    import { installCloudFilters, updateCloudFilters, isCloudOutline } from './js/subtitle-cloud.js';
+    import { installCloudFilters, updateCloudFilters, updateStrokeRim, strokeRimFilterId, isCloudOutline } from './js/subtitle-cloud.js';
     import { mountSubtitleDeco, decoSlotName, DECO_DATA_REALM, DECO_SIDES } from './js/subtitle-deco.js';
 
     installCloudFilters();
@@ -266,10 +266,19 @@
     }
 
     /* cloud: a filter draws the outline (js/subtitle-cloud.js), so the
-       stroke is taken off and the filters fed this line's numbers. */
+       stroke is taken off and the filters fed this line's numbers. The
+       plain outline keeps its stroke and wears the rim filter only while it
+       has a rim; the line, which shrinks to its text here, pads itself for
+       the ring as it does for a cloud. The cloud filters are set in the
+       stylesheet, so an inline filter is cleared under a cloud. */
     function applyStyle(el, line, style, cloud, rimWidth) {
       if (!style) return;
       if (style.color) el.style.color = style.color;
+      const strokeRim = cloud ? 0 : Number(style.strokeRimWidth) || 0;
+      el.style.filter = strokeRim > 0 ? `url(#${strokeRimFilterId(line)})` : '';
+      el.style.paddingInline = strokeRim > 0
+        ? `${strokeRim + (parseFloat(style.strokeSize) || 0)}px` : '';
+      if (strokeRim > 0) updateStrokeRim(line, { width: strokeRim, rim: style.rimColor });
       if (cloud) {
         el.style.webkitTextStroke = '0';
         updateCloudFilters(line, {

@@ -38,6 +38,8 @@ const PER_CHANNEL = new Set([
   'sourceLangId', 'target1LangId', 'target2LangId',
   'subAlign', 'subBg', 'subOverflow', 'subShowSource', 'subSourceSingleLine', 'subClearIdleSec',
   'subOutline', 'subRimW', 'subTarget1RimW', 'subTarget2RimW', 'subRimLinked',
+  'subSizeLinked', 'subStrokeWLinked', 'subBubbleWLinked',
+  'subSourceStrokeRimW', 'subTarget1StrokeRimW', 'subTarget2StrokeRimW', 'subStrokeRimLinked',
   'subSourceRim', 'subTarget1Rim', 'subTarget2Rim',
   'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor', 'subSourceStroke', 'subSourceStrokeW', 'subSourceSize',
@@ -215,6 +217,21 @@ const _defaults = Object.freeze({
   subTarget1RimW:     3,
   subTarget2RimW:     3,
   subRimLinked:       true,
+  /* The same link for the font sizes and the two outline widths (the
+     matrix's other slider columns): on, the translation lines take the source
+     line's value. On by default, the three lines' defaults being equal; see
+     LINKS for settings saved before the links existed. */
+  subSizeLinked:      true,
+  subStrokeWLinked:   true,
+  subBubbleWLinked:   true,
+  /* The plain outline's rim: a second ring outside the stroke, in the same
+     rim colour the clouds use, drawn by js/subtitle-cloud.js's stroke filter.
+     Its widths are its own, like the stroke's (px, not the clouds' steps),
+     and 0 — no rim — by default, so the plain outline looks as it always did. */
+  subSourceStrokeRimW:  0,
+  subTarget1StrokeRimW: 0,
+  subTarget2StrokeRimW: 0,
+  subStrokeRimLinked:   true,
   subSourceRim:       '#FFFFFF',
   subTarget1Rim:      '#FFFFFF',
   subTarget2Rim:      '#FFFFFF',
@@ -225,7 +242,7 @@ const _defaults = Object.freeze({
   subSourceColor:     '#FFFFFF',
   subSourceStroke:    '#000000',
   subSourceStrokeW:   4,
-  subSourceSize:      24,
+  subSourceSize:      22,
 
   // Wrapping symbols placed around the recognised (STT) source text.
   subSourcePrefix:    '【  ',     // left symbol, e.g. '【'
@@ -324,6 +341,27 @@ function _write(storageKey, obj) {
   }
 }
 
+/** Each slider link of the matrix and the three lines' settings it ties, the
+ *  source line's first (js/ui-languages.js keeps the other two equal to it). */
+export const LINKS = {
+  subRimLinked:     ['subRimW', 'subTarget1RimW', 'subTarget2RimW'],
+  subSizeLinked:    ['subSourceSize', 'subTarget1Size', 'subTarget2Size'],
+  subStrokeWLinked: ['subSourceStrokeW', 'subTarget1StrokeW', 'subTarget2StrokeW'],
+  subBubbleWLinked: ['subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW'],
+  subStrokeRimLinked: ['subSourceStrokeRimW', 'subTarget1StrokeRimW', 'subTarget2StrokeRimW'],
+};
+
+/* A link never switched by the user starts on, which would pull the
+   translation lines to the source line's value at once. Settings saved before
+   the links existed may hold three different values on purpose; for those the
+   link reads as off until it is switched, so nothing changes under them. */
+function _unlinkDiffering(data, saved) {
+  for (const [link, keys] of Object.entries(LINKS)) {
+    if (link in saved) continue;
+    if (keys.some(k => data[k] !== data[keys[0]])) data[link] = false;
+  }
+}
+
 function _load() {
   const shared = _read(STORAGE_KEY) || {};
   const data = { ..._defaults, ...shared };
@@ -337,6 +375,9 @@ function _load() {
       _write(CH2_STORAGE_KEY, own);
     }
     for (const key of PER_CHANNEL) data[key] = key in own ? own[key] : _defaults[key];
+    _unlinkDiffering(data, own);
+  } else {
+    _unlinkDiffering(data, shared);
   }
   return data;
 }

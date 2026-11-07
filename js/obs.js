@@ -243,6 +243,8 @@ function getStyleFor(key) {
     bubbleSize:  settings[`sub${cap}BubbleW`],
     /* subRimW is the source line's (js/store.js). */
     rimWidth:    settings[key === 'source' ? 'subRimW' : `sub${cap}RimW`],
+    /* The plain outline's rim, px past the stroke (js/subtitle-cloud.js). */
+    strokeRimWidth: settings[`sub${cap}StrokeRimW`],
   };
 }
 
@@ -544,6 +546,7 @@ const STYLE_KEYS = [
   'subSourcePrefix', 'subSourceSuffix', 'subOutline',
   'subSourceRim', 'subTarget1Rim', 'subTarget2Rim',
   'subRimW', 'subTarget1RimW', 'subTarget2RimW',
+  'subSourceStrokeRimW', 'subTarget1StrokeRimW', 'subTarget2StrokeRimW',
   'sourceLangId', 'target1LangId', 'target2LangId',
   'subSourceBubbleW', 'subTarget1BubbleW', 'subTarget2BubbleW',
   'subSourceColor',  'subSourceStroke',  'subSourceStrokeW',  'subSourceSize',

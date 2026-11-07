@@ -116,8 +116,13 @@
        the new row pushed it 4px under; the rest is room so it no longer
        touches. */
     --control-panel-h: 320px;
-    --panel-measure:   1200px;    /* widest the card grows to before it centres
-                                     itself in the window */
+    /* Widest the card grows to before it centres itself in the window. Sized
+       to its content rather than the window: the Languages tab's matrix under
+       a cloud style (its widest, seven columns: ~920px in English and
+       Japanese, whose labels are the longest) plus the card's padding, which
+       also holds the toolbar (~900px). Wider only left an empty band at the
+       right of the matrix under a toolbar that spans the card. */
+    --panel-measure:   976px;
     --radius-sm:       6px;
     --radius-md:       10px;
     --radius-lg:       16px;
@@ -145,7 +150,7 @@
     --sub-source-color:      #FFFFFF;
     --sub-source-stroke:     #000000;
     --sub-source-stroke-w:   4px;
-    --sub-source-size:       24px;
+    --sub-source-size:       22px;
 
     --sub-target1-color:     #FFFFFF;
     --sub-target1-stroke:    #000000;

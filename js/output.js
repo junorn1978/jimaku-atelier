@@ -12,7 +12,7 @@
 
 import { settings, subscribe } from './store.js';
 import { setupCinemaScroll } from './subtitle-render.js';
-import { installCloudFilters, syncCloudFromVars, isCloudOutline } from './subtitle-cloud.js';
+import { installCloudFilters, syncCloudFromVars, isCloudOutline, strokeRimFilterId } from './subtitle-cloud.js';
 import { mountSubtitleDeco, decoFromSettings, DECO_KEYS } from './subtitle-deco.js';
 
 const root = document.documentElement;
@@ -27,6 +27,11 @@ const _cssVarMap = {
   subRimW:           ['--sub-source-rim-w',    id],
   subTarget1RimW:    ['--sub-target1-rim-w',   id],
   subTarget2RimW:    ['--sub-target2-rim-w',   id],
+  /* The plain outline's rim, in px past the stroke (js/subtitle-cloud.js);
+     applyStrokeRim also writes the filter each line wears for it. */
+  subSourceStrokeRimW:  ['--sub-source-stroke-rim-w',  id],
+  subTarget1StrokeRimW: ['--sub-target1-stroke-rim-w', id],
+  subTarget2StrokeRimW: ['--sub-target2-stroke-rim-w', id],
 
   subSourceColor:    ['--sub-source-color',    id],
   subSourceStroke:   ['--sub-source-stroke',   id],
@@ -60,7 +65,17 @@ function applyVar(key, value) {
 /* The keys the cloud filters are drawn from (js/subtitle-cloud.js reads
    them back off the root's custom properties). */
 const CLOUD_KEYS = ['subRimW', 'subTarget1RimW', 'subTarget2RimW', ...['Source', 'Target1', 'Target2']
-  .flatMap(line => ['Stroke', 'BubbleW', 'Size', 'Rim'].map(part => `sub${line}${part}`))];
+  .flatMap(line => ['Stroke', 'BubbleW', 'Size', 'Rim', 'StrokeRimW'].map(part => `sub${line}${part}`))];
+
+/* A line wears the plain outline's rim filter only while it has a rim, so a
+   plain outline without one goes through no filter at all. A --sub-*
+   property like the rest, so the subtitle window receives it with them. */
+const STROKE_RIM_LINES = { subSourceStrokeRimW: 'source', subTarget1StrokeRimW: 'target1', subTarget2StrokeRimW: 'target2' };
+function applyStrokeRim(key, value) {
+  const line = STROKE_RIM_LINES[key];
+  root.style.setProperty(`--sub-${line}-stroke-filter`,
+    Number(value) > 0 ? `url(#${strokeRimFilterId(line)})` : 'none');
+}
 
 /* On the display for css/subtitle-display.css (and the subtitle window, which
    mirrors it), and on the root for the panel, whose colour and width columns
@@ -121,6 +136,10 @@ export function initOutputBinding() {
     subscribe(key, (val) => applyVar(key, val));
   }
   for (const key of CLOUD_KEYS) subscribe(key, () => syncCloudFromVars(root.style));
+  for (const key of Object.keys(STROKE_RIM_LINES)) {
+    applyStrokeRim(key, settings[key]);
+    subscribe(key, (val) => applyStrokeRim(key, val));
+  }
   subscribe('subOutline', applyOutline);
   subscribe('subOverflow', applyOverflow);
   subscribe('subShowSource', applyShowSource);

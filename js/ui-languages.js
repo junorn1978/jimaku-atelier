@@ -33,7 +33,7 @@
  */
 
 import { getAllLanguages } from './languages.js';
-import { settings, subscribe } from './store.js';
+import { settings, subscribe, LINKS } from './store.js';
 import { applyTo, t } from './i18n.js';
 import { isChrome } from './env.js';
 import { setupLanguagePackButton, isCloudOnly } from './language-pack.js';
@@ -79,7 +79,7 @@ function styleCells(prefix) {
               <button type="button" class="color-swatch" data-color-trigger></button>
               <output class="color-value"></output>
             </span>
-            <span class="color-cell outline-cloud-only">
+            <span class="color-cell">
               <input type="color" class="visually-hidden" data-bind="${key('Rim')}" list="palette-text">
               <button type="button" class="color-swatch" data-color-trigger></button>
               <output class="color-value"></output>
@@ -99,37 +99,68 @@ function styleCells(prefix) {
             <input type="range" min="${STROKE_MIN}" max="${BUBBLE_MAX}" data-bind="${key('BubbleW')}">
             <output class="slider-value"></output>
           </div>
-          <!-- The rim width; the source line's setting is subRimW (js/store.js).
-               The translation lines' follow it while the link is on
-               (wireRimLink). -->
-          <div class="slider-group outline-cloud-only${prefix === 'source' ? '' : ' rim-follower'}">
+          <!-- The rim width, one per style like the widths before it: px past
+               the stroke for the plain outline, steps for the clouds. The
+               cloud's source line setting is subRimW (js/store.js). -->
+          <div class="slider-group outline-stroke-only">
+            <input type="range" min="0" max="${STROKE_MAX}" data-bind="${key('StrokeRimW')}">
+            <output class="slider-value"></output>
+          </div>
+          <div class="slider-group outline-cloud-only">
             <input type="range" min="0" max="${BUBBLE_MAX}" data-bind="${prefix === 'source' ? 'subRimW' : key('RimW')}">
             <output class="slider-value"></output>
           </div>`;
 }
 
-/* The rim link (the matrix's rim column): while it is on, the translation
-   lines' rim widths are kept equal to the source line's, and their sliders are
-   disabled to show they are following. Kept equal in the store rather than
-   resolved on read, so every reader — this window, the subtitle window, the
-   OBS overlay, the presets — just takes each line's own value. Turning it on
-   copies the source line's width over; turning it off leaves each where it
-   is, so nothing jumps. */
-function wireRimLink(container) {
-  const followers = container.querySelectorAll('.rim-follower input');
-  const follow = () => {
-    if (!settings.subRimLinked) return;
-    for (const key of ['subTarget1RimW', 'subTarget2RimW']) {
-      if (settings[key] !== settings.subRimW) settings[key] = settings.subRimW;
-    }
-  };
-  const paint = () => {
-    for (const input of followers) input.disabled = !!settings.subRimLinked;
-  };
-  subscribe('subRimW', follow);
-  subscribe('subRimLinked', () => { follow(); paint(); });
-  follow();
-  paint();
+/* A slider column's header: its name, and the link that ties the two
+   translation lines to the source line's value, the way a linked width and
+   height move together. A checkbox under the icon, so it binds like any other
+   switch. */
+const LINK_ICON = `
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path class="link-on" d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path class="link-on" d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                <path class="link-off" d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path class="link-off" d="M5.17 11.75l-1.71 1.71a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                <path class="link-off" d="M8 2v3M2 8h3M16 22v-3M22 16h-3"/>
+              </svg>`;
+
+function linkHead(labelKey, linkKey, extraClass = '') {
+  return `
+          <span class="link-head ${extraClass}">
+            <span data-i18n="${labelKey}"></span>
+            <label class="link-toggle" data-i18n-title="style.linkToSource" title="原文に合わせる">
+              <input type="checkbox" class="visually-hidden" data-bind="${linkKey}"
+                     data-i18n-aria-label="style.linkToSource" aria-label="原文に合わせる">${LINK_ICON}
+            </label>
+          </span>`;
+}
+
+/* The slider links (store.js LINKS): while one is on, the translation lines'
+   values are kept equal to the source line's, and their sliders are disabled
+   to show they are following. Kept equal in the store rather than resolved on
+   read, so every reader — this window, the subtitle window, the OBS overlay,
+   the presets — just takes each line's own value. Turning a link on copies
+   the source line's value over; turning it off leaves each where it is, so
+   nothing jumps. */
+function wireLinks(container) {
+  for (const [link, [base, ...followers]] of Object.entries(LINKS)) {
+    const inputs = followers.flatMap(key =>
+      [...container.querySelectorAll(`input[data-bind="${key}"]`)]);
+    const follow = () => {
+      if (!settings[link]) return;
+      for (const key of followers) {
+        if (settings[key] !== settings[base]) settings[key] = settings[base];
+      }
+    };
+    const paint = () => {
+      for (const input of inputs) input.disabled = !!settings[link];
+    };
+    subscribe(base, follow);
+    subscribe(link, () => { follow(); paint(); });
+    follow();
+    paint();
+  }
 }
 
 /**
@@ -238,37 +269,26 @@ export function mountLanguagesTab(container) {
           <span></span>
           <span></span>
           <span data-i18n="style.textColor">文字色</span>
-          <!-- Under a cloud outline (js/subtitle-cloud.js) the outline
-               colour fills the cloud, a rim colour joins it in the same cell,
-               and the width sizes the cloud: the two headers say so. -->
+          <!-- Two colours per line in every style: the outline (or, under a
+               cloud outline, js/subtitle-cloud.js, the cloud) and the rim
+               around it. The width sizes the stroke or the cloud: the headers
+               say which. -->
           <span>
-            <span class="outline-stroke-only" data-i18n="style.strokeColor">縁取り色</span>
+            <span class="outline-stroke-only" data-i18n="style.strokeColors">縁取り / 外枠</span>
             <span class="outline-cloud-only" data-i18n="style.bubbleColors">バブル / 外枠</span>
           </span>
-          <span data-i18n="style.fontSize">サイズ</span>
+          <!-- Each slider column's header carries a link (linkHead): on, the
+               translation lines take the source line's value. The width
+               column holds one per outline style, as each keeps its own
+               widths, and so does the rim column. -->
+          ${linkHead('style.fontSize', 'subSizeLinked')}
           <span>
-            <span class="outline-stroke-only" data-i18n="style.strokeWidth">縁取り幅</span>
-            <span class="outline-cloud-only" data-i18n="style.bubbleSize">バブル</span>
+            ${linkHead('style.strokeWidth', 'subStrokeWLinked', 'outline-stroke-only')}
+            ${linkHead('style.bubbleSize', 'subBubbleWLinked', 'outline-cloud-only')}
           </span>
-          <!-- Each line's rim width, under the cloud styles only. The link
-               beside the header ties the two translation lines to the source
-               line's, the way a linked width and height move together: on, they
-               show the source line's value and cannot be dragged on their own;
-               off, each is its own. A checkbox under the icon, so it binds like
-               any other switch. -->
-          <span class="outline-cloud-only rim-head">
-            <span data-i18n="style.rimWidth">外枠</span>
-            <label class="rim-link" data-i18n-title="style.rimLink" title="原文に合わせる">
-              <input type="checkbox" class="visually-hidden" data-bind="subRimLinked"
-                     data-i18n-aria-label="style.rimLink" aria-label="原文に合わせる">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path class="rim-link-on" d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path class="rim-link-on" d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                <path class="rim-link-off" d="M18.84 12.25l1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                <path class="rim-link-off" d="M5.17 11.75l-1.71 1.71a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                <path class="rim-link-off" d="M8 2v3M2 8h3M16 22v-3M22 16h-3"/>
-              </svg>
-            </label>
+          <span>
+            ${linkHead('style.rimWidth', 'subStrokeRimLinked', 'outline-stroke-only')}
+            ${linkHead('style.rimWidth', 'subRimLinked', 'outline-cloud-only')}
           </span>
         </div>
 
@@ -625,6 +645,7 @@ export function mountLanguagesTab(container) {
         </div>
       </section>
 
+
       <!-- Offline recognition pack, the one row left under the matrix once the
            engine moved into it. Chrome-only, and behind the experimental switch
            in the settings dialog, so for most people this row does not exist.
@@ -675,7 +696,7 @@ export function mountLanguagesTab(container) {
   wireSecretInputs(container);
   wireSubtitlePresets(container.querySelector('.sub-preset-row'));
   wireDeco(container);
-  wireRimLink(container);
+  wireLinks(container);
   setupAdvanced(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);
