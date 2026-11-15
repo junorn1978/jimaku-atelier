@@ -10,8 +10,7 @@
  *  - holding the audio back for a moment and replaying it, so the recogniser
  *    can finish what it already heard before its session is torn down.
  *
- * Measured on stream audio through a virtual cable (track-buffer-test,
- * 2026-09-28): a session restarted on a live track is listening again ~20ms
+ * Measured on stream audio (2026-09-28): a session restarted on a live track is listening again ~20ms
  * after abort(), against ~110ms when the recogniser opens the mic itself.
  *
  * Browser-side processing (echo cancellation, noise suppression, auto gain) is
@@ -110,8 +109,7 @@ async function openTabStream() {
        windows), not the whole system's: Chrome's dialog then offers "share
        application audio" where it otherwise offers system audio. A desktop
        app (Discord, a media player) is heard without everything else that
-       plays. Tested with a media player on Chrome 155 and Edge, Windows,
-       2026-10-09; browsers without it ignore the option. */
+       plays. Tested on Chrome 155 and Edge, Windows, 2026-10-09; browsers without it ignore the option. */
     windowAudio:        'window',
     /* Ticks the audio box up front on the window and screen panes, where it
        otherwise starts unticked (the tab pane ticks it already) — sharing
@@ -145,7 +143,7 @@ async function openStream(deviceId) {
 }
 
 /* Edge's recogniser only accepts a 16kHz track; 48kHz mono yields nothing.
-   (Measured in the hamham extension, 2026-09-27.) Chrome takes the native rate.
+   (Measured 2026-09-27.) Chrome takes the native rate.
    A custom STT server is sent 16kHz too (docs/custom-stt.html): the browser does
    the resampling, so the worklet only has to convert to 16-bit. */
 const EDGE_SAMPLE_RATE = 16000;
@@ -153,15 +151,11 @@ const STT_SAMPLE_RATE  = 16000;
 
 /* The pause detector's denoiser (see audio-worklet.js). Fetched once and
    handed to each worklet as bytes; without it the detector reads the raw
-   level. localStorage 'rtl-pause-denoise' = 'false' turns it off, for
-   comparing the two on the same input. */
+   level. */
 const RNNOISE_URL = new URL('./vendor/rnnoise.wasm', import.meta.url);
-const DENOISE_KEY = 'rtl-pause-denoise';
 let rnnoiseBytes = null;
 
 function loadRnnoise() {
-  try { if (localStorage.getItem(DENOISE_KEY) === 'false') return Promise.resolve(null); }
-  catch { /* storage blocked: keep the default */ }
   rnnoiseBytes ??= fetch(RNNOISE_URL)
     .then(r => (r.ok ? r.arrayBuffer() : null))
     .catch(() => null)
@@ -170,28 +164,26 @@ function loadRnnoise() {
 }
 
 /* The microphone (or the shared tab's clone) through the worklet into a track
-   of its own. On failure the
-   context is closed; the caller stops the microphone. */
+   of its own. On failure the context is closed; the caller stops the
+   microphone. */
 async function buildGraph(stream, { reportLevel = false, tap = false } = {}) {
   const ctx = new AudioContext(tap    ? { sampleRate: STT_SAMPLE_RATE }
                              : isEdge ? { sampleRate: EDGE_SAMPLE_RATE } : undefined);
-  let rnnoise;
   try {
     if (ctx.state === 'suspended') await ctx.resume();
-    [rnnoise] = await Promise.all([loadRnnoise(), ctx.audioWorklet.addModule(WORKLET_URL)]);
+    const [rnnoise] = await Promise.all([loadRnnoise(), ctx.audioWorklet.addModule(WORKLET_URL)]);
+    const node = new AudioWorkletNode(ctx, 'speech-input', {
+      outputChannelCount: [1],
+      processorOptions: { gateDb: PAUSE_GATE_DB, dropDb: PAUSE_DROP_DB, rnnoise, reportLevel, tap },
+    });
+    const dest = ctx.createMediaStreamDestination();
+    dest.channelCount = 1;
+    ctx.createMediaStreamSource(stream).connect(node).connect(dest);
+    return { ctx, node, dest };
   } catch (err) {
     ctx.close();
     throw err;
   }
-
-  const node = new AudioWorkletNode(ctx, 'speech-input', {
-    outputChannelCount: [1],
-    processorOptions: { gateDb: PAUSE_GATE_DB, dropDb: PAUSE_DROP_DB, rnnoise, reportLevel, tap },
-  });
-  const dest = ctx.createMediaStreamDestination();
-  dest.channelCount = 1;
-  ctx.createMediaStreamSource(stream).connect(node).connect(dest);
-  return { ctx, node, dest };
 }
 
 /**
@@ -267,7 +259,7 @@ export async function openAudioInput({ deviceId = '', onPause, onShortPause, onS
 /**
  * A level meter on the picked device, for the level test in settings. The same
  * graph as recognition, so it reads the level the pause detector goes by —
- * denoised when that is on. Its track goes nowhere.
+ * denoised unless the denoiser failed to load. Its track goes nowhere.
  * @returns {Promise<{ read: () => number, readRaw: () => number, denoised: () => boolean,
  *   label: string, fellBack: boolean, close: Function }>}
  *   read() is the detector's level in dBFS, readRaw() the microphone's, both

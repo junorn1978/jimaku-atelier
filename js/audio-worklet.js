@@ -8,9 +8,9 @@
  *  - catches up on what the queue costs in latency: plays it at SPEEDUP
  *    (WSOLA, pitch kept) and skips quiet stretches. Skipping alone is not
  *    enough — a speaker who never pauses leaves nothing to skip, and every
- *    session switch then adds another 0.5–0.8s for good (ported from the hamham
- *    extension, where 3 minutes of non-stop talk drifted from 0.23s to 1.89s
- *    behind with skipping only, and stayed at 0.13–0.21s with the speed-up);
+ *    session switch then adds another 0.5–0.8s for good (measured: 3 minutes
+ *    of non-stop talk drifted from 0.23s to 1.89s behind with skipping only,
+ *    and stayed at 0.13–0.21s with the speed-up);
  *  - detects pauses in what the recogniser is hearing, so speech.js can end a
  *    session where nobody is talking (or, for a custom STT server, tell the
  *    server) — judged on a denoised copy, so music in the background does not
@@ -27,13 +27,12 @@
  * main-thread timers.
  */
 
-/* Level tracking (ported from the hamham extension, tuned there on stream
-   audio with background music): quiet is the level below whichever is higher
-   — a fixed gate, or dropDb under the recent speech level. Both come in from
-   audio-input.js, which the level test shares them with. The speech level
-   follows speech with a time constant, not a per-block factor: a per-block
-   factor sinks it to the music's level within ~0.1s, and then nothing is ever
-   12dB below it. */
+/* Level tracking (tuned on stream audio with background music): quiet is the
+   level below whichever is higher — a fixed gate, or dropDb under the recent
+   speech level. Both come in from audio-input.js, which the level test shares
+   them with. The speech level follows speech with a time constant, not a
+   per-block factor: a per-block factor sinks it to the music's level within
+   ~0.1s, and then nothing is ever 12dB below it. */
 const LEVEL_SEC      = 0.05;   // RMS smoothing
 const SPEECH_SEC     = 1.5;    // speech-level tracking
 
@@ -55,7 +54,7 @@ const SKIP_GUARD_SEC = 0.1;
 const QUEUE_SEC      = 10;     // past this the oldest audio is lost
 
 /* More than TARGET_LAG_SEC queued: play at SPEEDUP until back within it.
-   1.25 is what the hamham extension measured recognition to still cope with,
+   1.25 is the fastest recognition was measured to still cope with,
    fast-talking streamers included. */
 const SPEEDUP        = 1.25;
 const TARGET_LAG_SEC = 0.15;
@@ -195,7 +194,7 @@ class InputProcessor extends AudioWorkletProcessor {
 
     /* Input and output each get their own state: the two differ by whatever
        is queued, and RNNoise carries history from frame to frame. Without the
-       wasm (not loaded, or turned off) the levels are read off the raw signal. */
+       wasm (failed to load) the levels are read off the raw signal. */
     this.inDenoise = this.outDenoise = null;
     if (rnnoise) {
       try {
@@ -205,6 +204,8 @@ class InputProcessor extends AudioWorkletProcessor {
       } catch (err) {
         this.port.postMessage({ type: 'denoise', on: false, error: String(err) });
       }
+    } else {
+      this.port.postMessage({ type: 'denoise', on: false, error: 'wasm not loaded' });
     }
     if (this.inDenoise) this.port.postMessage({ type: 'denoise', on: true });
 
@@ -447,12 +448,13 @@ class InputProcessor extends AudioWorkletProcessor {
 
   /* ---- probe (diagnostics) ----
      What the recogniser is actually fed, window by window: the output level
-     as is, the detector's (denoised) view of it, and how much audio the
-     catch-up threw away in the window. speech.js starts one at each session's
-     onaudiostart and it runs until the next one replaces it, so a session
-     fed speech that returned nothing shows as such end to end. Windows are
-     fine-grained for the first `fineSec`, where the start-up questions are,
-     and coarser after. */
+     as is (averaged over the window), the detector's (denoised) view of it
+     (its smoothed level at the window's end, what it was judging by just
+     then), and how much audio the catch-up threw away in the window.
+     speech.js starts one at each session's onaudiostart and it runs until
+     the next one replaces it, so a session fed speech that returned nothing
+     shows as such end to end. Windows are fine-grained for the first
+     `fineSec`, where the start-up questions are, and coarser after. */
   startProbe({ fineSec, fineMs, ms }) {
     this.probe = {
       fine:   Math.round(fineSec / this.blockSec),
@@ -490,7 +492,7 @@ class InputProcessor extends AudioWorkletProcessor {
   }
 
   /* Mean squares, smoothed like the detector's: raw over the same window, and
-     the one the detector goes by (denoised, when it is on). */
+     the one the detector goes by (denoised, unless the wasm failed to load). */
   reportLevel(block) {
     if (!this.reportEvery) return;
     let sum = 0;

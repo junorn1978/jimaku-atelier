@@ -332,7 +332,7 @@ function setupRecognition() {
 
      A cloud session is ended and restarted by us, at the speaker's pauses as
      reported by audio-input.js, instead of by the engine. Two things were
-     learned measuring this on stream audio (track-buffer-test, 2026-09-28):
+     learned measuring this on stream audio (2026-09-28):
 
      - Where a session ends is what loses words, not how long the restart takes.
        Cut mid-speech, 0.3–1s of the old session's tail is gone — audio the
@@ -365,8 +365,8 @@ function setupRecognition() {
   const ROTATE_CAP_MS     = 20000;   // no pause in sight: rotate anyway (with a drain)
   /* Talking, yet not a single result for this long: the session is dead (seen
      on Edge as a 7s session that returned nothing). Timed from onstart, so it
-     has to cover the cloud's whole startup: on a 1h50m cloud run (2026-10-03,
-     virtual cable) onstart → onsoundstart took 0.5–2s and onsoundstart → first
+     has to cover the cloud's whole startup: on a 1h50m cloud run (2026-10-03)
+     onstart → onsoundstart took 0.5–2s and onsoundstart → first
      result was under 1.5s in 99% of sessions — about 4.5s at the slow end.
      2000 was tried on that run and cut 25% of the sessions, nearly all of them
      before they had answered. Was 8000 (a healthy cloud session once took ~6s
@@ -857,7 +857,7 @@ async function startSpeech(lang) {
      there, opening the microphone here asks again. Both recognisers are started on
      this track, from the device picked in the mic panel (or the shared tab,
      while one is shared) — the on-device model hears it the same as the cloud one
-     (checked in the hamham extension). */
+     (verified). */
   usingCustom = settings.sttEngine === 'custom';
   try {
     input = await openInput();

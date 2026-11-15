@@ -856,8 +856,7 @@ function setupTranslatorEngine(container) {
 
   /* Targets whose model is still to be downloaded, first in line first. One
      click downloads one (see pendingTranslatorDownloads for why); the row
-     names the next one and how many are left, as the HamHam extension's
-     "次へ (N)" did. */
+     names the next one and how many are left ("次へ (N)"). */
   let queue = [];
   /* Only one check or download at a time; a language change meanwhile is
      remembered and checked again afterwards rather than dropped. */

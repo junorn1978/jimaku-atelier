@@ -16,7 +16,7 @@
  * is asked for on load.
  *
  * Next to it, the tab-audio button shares a browser tab's (or an app window's)
- * audio, or ends the share — the hamham extension's design. Not an entry in
+ * audio, or ends the share. Not an entry in
  * the device list: picking it would put up the dialog listing every tab and
  * window at once, which is a different kind of act from picking a microphone,
  * and as a button the share being on is visible at a glance. While it is on,
