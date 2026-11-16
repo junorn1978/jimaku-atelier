@@ -143,11 +143,27 @@ async function openStream(deviceId) {
 }
 
 /* Edge's recogniser only accepts a 16kHz track; 48kHz mono yields nothing.
-   (Measured 2026-09-27.) Chrome takes the native rate.
+   (Measured 2026-09-27.) Chrome takes the native rate — the context's, which
+   follows the default output device, not the microphone. Chrome forwards that
+   rate untouched and its recogniser hears nothing above 48kHz (measured
+   2026-11-16; Google's speech service documents 8000–48000), so a rate outside
+   that range is brought to 48kHz, and one inside it is left alone.
    A custom STT server is sent 16kHz too (docs/custom-stt.html): the browser does
    the resampling, so the worklet only has to convert to 16-bit. */
-const EDGE_SAMPLE_RATE = 16000;
-const STT_SAMPLE_RATE  = 16000;
+const EDGE_SAMPLE_RATE  = 16000;
+const STT_SAMPLE_RATE   = 16000;
+const CHROME_MIN_RATE   = 8000;
+const CHROME_MAX_RATE   = 48000;
+
+/* The context the graph runs in, at the rate the recogniser can take. */
+function createContext(tap) {
+  if (tap)    return new AudioContext({ sampleRate: STT_SAMPLE_RATE });
+  if (isEdge) return new AudioContext({ sampleRate: EDGE_SAMPLE_RATE });
+  const ctx = new AudioContext();
+  if (ctx.sampleRate >= CHROME_MIN_RATE && ctx.sampleRate <= CHROME_MAX_RATE) return ctx;
+  ctx.close();
+  return new AudioContext({ sampleRate: CHROME_MAX_RATE });
+}
 
 /* The pause detector's denoiser (see audio-worklet.js). Fetched once and
    handed to each worklet as bytes; without it the detector reads the raw
@@ -167,8 +183,7 @@ function loadRnnoise() {
    of its own. On failure the context is closed; the caller stops the
    microphone. */
 async function buildGraph(stream, { reportLevel = false, tap = false } = {}) {
-  const ctx = new AudioContext(tap    ? { sampleRate: STT_SAMPLE_RATE }
-                             : isEdge ? { sampleRate: EDGE_SAMPLE_RATE } : undefined);
+  const ctx = createContext(tap);
   try {
     if (ctx.state === 'suspended') await ctx.resume();
     const [rnnoise] = await Promise.all([loadRnnoise(), ctx.audioWorklet.addModule(WORKLET_URL)]);
