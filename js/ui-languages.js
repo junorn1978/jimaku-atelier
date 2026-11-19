@@ -343,7 +343,7 @@ export function mountLanguagesTab(container) {
               <option value="gtx" data-i18n="lang.engine.gtx">Google 翻訳</option>
               <option value="translator" id="engine-translator-option" data-i18n="lang.engine.translator">ブラウザ翻訳</option>
               <option value="prompt" id="engine-prompt-option" data-i18n="lang.engine.prompt">ブラウザ AI</option>
-              <option value="plamo" id="engine-plamo-option" data-i18n="lang.engine.plamo">PLaMo 翻訳（GPU）</option>
+              <option value="plamo" id="engine-plamo-option" data-i18n="lang.engine.plamo">AI 翻訳（PLaMo 3・GPU）</option>
               <option value="link" hidden disabled data-i18n="lang.advanced.link">翻訳サーバー</option>
             </select>
             <!-- Stands in for the picker while the recognition server
