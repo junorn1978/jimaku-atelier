@@ -44,8 +44,6 @@ import { isPromptSupported, getPromptAvailability,
          isPromptLangSupported } from './translate-prompt.js';
 import { isTranslatorSupported, prepareTranslators,
          pendingTranslatorDownloads, downloadTranslator } from './translate-translator.js';
-import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, deleteHymt,
-         HYMT_SIZE } from './translate-hymt.js';
 import { getPlamoSupport, loadPlamo, unloadPlamo } from './translate-plamo.js';
 import { PLAMO_MODELS, getPlamoModel, plamoModelBytes, formatBytes,
          getPlamoStatus, downloadPlamo, deletePlamo } from './plamo-store.js';
@@ -200,9 +198,6 @@ const COMPACT_STATUS = {
   'lang.engine.prompt.ready':            ['lang.engine.status.ready',          'ok'],
   'lang.engine.prompt.failed':           ['lang.engine.status.failed',         'error'],
   'lang.engine.prompt.langUnsupported':  ['lang.engine.status.langUnsupported', 'error'],
-  'lang.engine.hymt.ready':              ['lang.engine.status.ready',          'ok'],
-  'lang.engine.hymt.needDownload':       ['lang.engine.status.needDownload',   'info'],
-  'lang.engine.hymt.failed':             ['lang.engine.status.failed',         'error'],
   'lang.engine.plamo.ready':             ['lang.engine.status.ready',          'ok'],
   'lang.engine.plamo.needDownload':      ['lang.engine.status.needDownload',   'info'],
   'lang.engine.plamo.partial':           ['lang.engine.status.needDownload',   'info'],
@@ -348,7 +343,6 @@ export function mountLanguagesTab(container) {
               <option value="gtx" data-i18n="lang.engine.gtx">Google 翻訳</option>
               <option value="translator" id="engine-translator-option" data-i18n="lang.engine.translator">ブラウザ翻訳</option>
               <option value="prompt" id="engine-prompt-option" data-i18n="lang.engine.prompt">ブラウザ AI</option>
-              <option value="hymt" id="engine-hymt-option" data-i18n="lang.engine.hymt">AI 翻訳（GPU）</option>
               <option value="plamo" id="engine-plamo-option" data-i18n="lang.engine.plamo">PLaMo 翻訳（GPU）</option>
               <option value="link" hidden disabled data-i18n="lang.advanced.link">翻訳サーバー</option>
             </select>
@@ -374,10 +368,6 @@ export function mountLanguagesTab(container) {
                    offered here instead of fetched on the pick. -->
               <button type="button" class="btn" id="engine-translator-download" data-i18n="lang.engine.translator.download" hidden>ダウンロード</button>
               <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>${statusChip('prompt')}
-              <!-- HY-MT asks before its first download (over a gigabyte), so
-                   its row carries a button beside the status line. -->
-              <p class="manual-status" id="engine-hymt-status" role="status" aria-live="polite" hidden></p>${statusChip('hymt')}
-              <button type="button" class="btn" id="engine-hymt-download" data-i18n="lang.engine.hymt.download" hidden>ダウンロード</button>
               <!-- PLaMo: the size picker shows on the pick, since it decides
                    what the download button fetches. The credit is the
                    license's "Built with PLaMo" notice (art. 4), linked to
@@ -390,23 +380,21 @@ export function mountLanguagesTab(container) {
               <!-- Labelled from code: "download" or "resume". -->
               <button type="button" class="btn" id="engine-plamo-download" hidden></button>
               <!-- The options only mean something to a loaded model, so they
-                   show with the delete button rather than on the pick. One
-                   popover for both GPU engines: the glossary is shared. -->
+                   show with the delete button rather than on the pick. -->
               <button type="button" class="btn ai-options-btn" id="engine-ai-options"
                       popovertarget="popover-ai-options"
-                      data-i18n="lang.engine.hymt.options" hidden>AI 翻訳オプション</button>
+                      data-i18n="lang.engine.plamo.options" hidden>AI 翻訳オプション</button>
               <div class="help-popover ai-options-popover" id="popover-ai-options" popover>
                 <section class="advanced-section ai-glossary">
-                  <h4 class="advanced-title" data-i18n="lang.engine.hymt.glossary.title">用語の訳し方</h4>
-                  <p class="advanced-desc" data-i18n="lang.engine.hymt.glossary.desc"></p>
+                  <h4 class="advanced-title" data-i18n="lang.engine.plamo.glossary.title">用語の訳し方</h4>
+                  <p class="advanced-desc" data-i18n="lang.engine.plamo.glossary.desc"></p>
                   <div class="filter-list-wrap">
-                    <div class="filter-list" id="hymt-glossary-list"></div>
-                    <button type="button" class="btn filter-add" id="hymt-glossary-add" data-i18n="filter.add">+ 追加</button>
+                    <div class="filter-list" id="ai-glossary-list"></div>
+                    <button type="button" class="btn filter-add" id="ai-glossary-add" data-i18n="filter.add">+ 追加</button>
                   </div>
                 </section>
               </div>
-              <button type="button" class="btn" id="engine-hymt-delete" data-i18n="lang.engine.hymt.delete" hidden>モデルを削除</button>
-              <button type="button" class="btn" id="engine-plamo-delete" data-i18n="lang.engine.hymt.delete" hidden>モデルを削除</button>
+              <button type="button" class="btn" id="engine-plamo-delete" data-i18n="lang.engine.plamo.delete" hidden>モデルを削除</button>
               <a class="plamo-credit" id="engine-plamo-credit" target="_blank" rel="noopener" hidden>Built with PLaMo</a>
               <!-- While the translation server is on, the picker beside has
                    nothing selected; this says where the lines go instead.
@@ -741,8 +729,8 @@ export function mountLanguagesTab(container) {
   setupTranslatorEngine(container);
   setupPromptEngine(container);
   const aiOptions = setupAiOptions(container);
-  setupHymtEngine(container, aiOptions);
   setupPlamoEngine(container, aiOptions);
+  dropRetiredHymtCache();
 }
 
 /* The advanced popover's two switches are views of existing settings rather
@@ -1033,7 +1021,7 @@ function setupPromptEngine(container) {
   ['sourceLangId', 'target1LangId', 'target2LangId', 'translationMode'].forEach(key => subscribe(key, renderMessage));
 
   /* An engine that cannot run says so on its option, as the Translator and
-     HY-MT ones do: the menu is where the engine is looked for, and a disabled
+     PLaMo ones do: the menu is where the engine is looked for, and a disabled
      option can never be picked to bring its status line up. The sentence
      saying why rides along as the option's tooltip. */
   const OPTION_KEYS = {
@@ -1158,12 +1146,10 @@ function setupPromptEngine(container) {
   }).catch(() => disable('lang.engine.prompt.unavailable', true));
 }
 
-/* The options popover of the GPU engines (HY-MT, PLaMo): for now only the
-   glossary, which both read from settings.hymtGlossary. One button and one
-   popover for both, so the list is never rendered twice and left stale in
-   one of them. The button shows while the picked engine reports a loaded
-   model: each engine calls the returned setter with its own name, and only
-   the picked engine's report counts.
+/* The PLaMo engine's options popover: for now only the glossary
+   (settings.hymtGlossary). The button shows while the picked engine reports
+   a loaded model: the engine calls the returned setter with its own name,
+   and only the picked engine's report counts.
 
    Each term is for one target language — the same name is written one way
    in Chinese and another in English, and both in one prompt would leave
@@ -1174,18 +1160,18 @@ function setupAiOptions(container) {
   const popover = container.querySelector('#popover-ai-options');
   if (!btn || !popover) return () => {};
 
-  wirePairList(popover.querySelector('#hymt-glossary-list'), popover.querySelector('#hymt-glossary-add'), {
+  wirePairList(popover.querySelector('#ai-glossary-list'), popover.querySelector('#ai-glossary-add'), {
     key:      'hymtGlossary',
-    empty:    'lang.engine.hymt.glossary.empty',
-    sourcePh: 'lang.engine.hymt.glossary.source.ph',
-    targetPh: 'lang.engine.hymt.glossary.target.ph',
+    empty:    'lang.engine.plamo.glossary.empty',
+    sourcePh: 'lang.engine.plamo.glossary.source.ph',
+    targetPh: 'lang.engine.plamo.glossary.target.ph',
     langOptions:
       `<option value="" data-i18n="lang.choose">言語を選択</option>` +
       getAllLanguages().map(l => `<option value="${l.id}" data-i18n="lang.name.${l.id}">${escapeAttr(l.label)}</option>`).join(''),
     defaultLang: () => [settings.target1LangId, settings.target2LangId].find(id => id && id !== 'none') ?? '',
   });
 
-  const ready = { hymt: false, plamo: false };
+  const ready = { plamo: false };
   const sync = () => {
     btn.hidden = !ready[settings.translationMode];
     if (btn.hidden && popover.matches(':popover-open')) popover.hidePopover();
@@ -1194,115 +1180,13 @@ function setupAiOptions(container) {
   return (engine, on) => { ready[engine] = on; sync(); };
 }
 
-/* In-browser HY-MT engine (js/translate-hymt.js). WebGPU only: without it the
-   option stays disabled. Picking it loads the model from the browser's cache
-   when it is there (a few seconds); the first download is over a gigabyte, so
-   that waits for the button beside the status line instead of starting on
-   the pick. Picking another engine releases the model and its GPU memory;
-   the delete button beside a loaded model also removes it from the cache. */
-function setupHymtEngine(container, setOptionsReady) {
-  const option = container.querySelector('#engine-hymt-option');
-  const status = container.querySelector('#engine-hymt-status');
-  const downloadBtn = container.querySelector('#engine-hymt-download');
-  const deleteBtn   = container.querySelector('#engine-hymt-delete');
-  if (!option || !status || !downloadBtn || !deleteBtn) return;
-
-  /* Kept as a key plus its {s} value so a UI language switch can re-render. */
-  let messageKey = null;
-  let slot = '';
-  const show = engineStatusLine(container, 'hymt');
-  const render = () => {
-    show(messageKey ? t(messageKey).replace('{s}', slot) : '', messageKey);
-  };
-  const setMessage = (key, value = '') => { messageKey = key; slot = value; render(); };
-  subscribe('uiLang', render);
-
-  /* Download while the model is not in the cache; the options and delete
-     once it is loaded from there. */
-  const showButton = (which) => {
-    downloadBtn.hidden = which !== 'download';
-    deleteBtn.hidden   = which !== 'delete';
-    setOptionsReady('hymt', which === 'delete');
-  };
-
-  let dtype = null;
-
-  /* Bumped on every pick, every switch away and every delete, so a load or
-     cache check that finishes after the user has moved on stays out of the
-     row. */
-  let generation = 0;
-
-  const offerDownload = () => {
-    setMessage('lang.engine.hymt.needDownload', HYMT_SIZE[dtype]);
-    showButton('download');
-  };
-
-  const load = async (mine) => {
-    showButton(null);
-    setMessage('lang.engine.hymt.preparing');
-    const result = await loadHymt(dtype, (loaded, total) => {
-      if (mine === generation) setMessage('lang.engine.hymt.downloading', `${Math.floor(loaded / total * 100)}%`);
-    });
-    if (mine !== generation) return;
-    if (result.ok) { setMessage('lang.engine.hymt.ready'); showButton('delete'); return; }
-    if (result.reason === 'cancelled') return;
-    setMessage('lang.engine.hymt.failed');
-    showButton('download');
-  };
-
-  const activate = async () => {
-    const mine = ++generation;
-    const cached = await isHymtDownloaded(dtype);
-    if (mine !== generation) return;
-    if (cached) load(mine);
-    else offerDownload();
-  };
-
-  const deactivate = () => {
-    generation++;
-    showButton(null);
-    setMessage(null);
-    unloadHymt();
-  };
-
-  /* The click is the consent to download: it is only offered once the cache
-     has been checked and found empty, or after a failed attempt. */
-  downloadBtn.addEventListener('click', () => load(generation));
-
-  /* Deleting keeps the engine picked and goes back to offering the download,
-     so getting the model again is the same one click as the first time. */
-  deleteBtn.addEventListener('click', async () => {
-    if (!confirm(t('lang.engine.hymt.deleteConfirm').replace('{s}', HYMT_SIZE[dtype]))) return;
-    generation++;
-    showButton(null);
-    setMessage('lang.engine.hymt.deleting');
-    await deleteHymt();
-    if (settings.translationMode === 'hymt') offerDownload();
-    else setMessage(null);
-  });
-
-  /* Disabled until the WebGPU check resolves, without stranding a restored
-     selection: it only falls back once the engine is known to be unusable. */
-  option.disabled = true;
-
-  getHymtSupport().then((support) => {
-    if (!support.ok) {
-      /* On the option itself, like the Translator engine's (see there). */
-      option.dataset.i18n = 'lang.engine.hymt.unsupported';
-      option.textContent = t(option.dataset.i18n);
-      if (settings.translationMode === 'hymt') settings.translationMode = 'gtx';
-      return;
-    }
-    dtype = support.dtype;
-    option.disabled = false;
-    subscribe('translationMode', (mode) => (mode === 'hymt' ? activate() : deactivate()));
-    if (settings.translationMode === 'hymt') activate();
-  });
-}
-
 /* In-browser PLaMo engine (js/translate-plamo.js, files in js/plamo-store.js).
    Needs WebGPU with shader-f16; without it the option stays disabled.
-   Shaped like HY-MT above, with three differences:
+   Picking it loads the model when its files are already downloaded; the
+   first download is over a gigabyte, so it waits for the button beside the
+   status line instead of starting on the pick. Picking another engine
+   releases the model and its GPU memory; the delete button beside a loaded
+   model also removes its files. Beyond that:
    - The download is the store's own (OPFS, resumable), so its progress, a
      broken-off download ("continue") and a download running in another tab
      each have a message of their own. Switching away stops the download;
@@ -1889,4 +1773,24 @@ def translate():
 
 if __name__ == '__main__':
     app.run(port=5000)`;
+}
+
+/* HY-MT (Tencent HY-MT1.5 through Transformers.js) was removed in v1.40.0:
+   its license excludes the EU, the UK and South Korea outright, output
+   included, which a stream with viewers there cannot keep to. A browser that
+   had downloaded it still holds 1.2-1.4 GB in the Cache API; this gives the
+   space back. Only its files are touched, and a cache left empty by that is
+   dropped. Once nothing is left it costs one cache listing per load. */
+function dropRetiredHymtCache() {
+  if (!('caches' in self)) return;
+  (async () => {
+    for (const name of await caches.keys()) {
+      const cache = await caches.open(name);
+      const keys  = await cache.keys();
+      const hymt  = keys.filter(req => req.url.includes('HY-MT1.5'));
+      if (!hymt.length) continue;
+      await Promise.all(hymt.map(req => cache.delete(req)));
+      if (hymt.length === keys.length) await caches.delete(name);
+    }
+  })().catch(() => { /* storage blocked: nothing to give back */ });
 }

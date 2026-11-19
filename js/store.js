@@ -164,13 +164,12 @@ const _defaults = Object.freeze({
   // --- Translation engine ---
   /* 'gtx' is Google translate-pa translateHtml, not translate_a/single —
      a historical name kept because it is stored; see translate-gtx.js. */
-  translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'hymt' | 'plamo' | 'link'
+  translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'plamo' | 'link'
   customTranslateUrl: '',
-  /* Terms the on-device engines are told how to translate: HY-MT through
-     its terminology template (js/translate-hymt.js), PLaMo through its
-     glossary field (js/translate-plamo.js). Each term applies only when
-     translating into its own language. The key keeps HY-MT's name because
-     it is stored. */
+  /* Terms the PLaMo engine is told how to translate, through its glossary
+     field (js/translate-plamo.js). Each term applies only when translating
+     into its own language. The key is named after the HY-MT engine it was
+     first written for (removed in v1.40.0) and kept because it is stored. */
   hymtGlossary:       [],        // [{ source: 'スバル', target: '大空昴', lang: 'zh-TW' }]
   /* PLaMo 3 Translate size (js/plamo-store.js): 2B reads better, 0.8B is a
      third of the download and of the GPU memory. */
@@ -391,6 +390,9 @@ function _load() {
   } else {
     _unlinkDiffering(data, shared);
   }
+  /* The HY-MT engine was removed in v1.40.0; a window left on it starts on
+     the default engine instead of one that no longer exists. */
+  if (data.translationMode === 'hymt') data.translationMode = _defaults.translationMode;
   return data;
 }
 

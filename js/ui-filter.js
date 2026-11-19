@@ -259,7 +259,7 @@ function renderBlacklist(listEl) {
   applyTo(listEl);
 }
 
-/* The replacement rules' list. The HY-MT glossary (ui-languages.js) is the
+/* The replacement rules' list. The PLaMo glossary (ui-languages.js) is the
    same source → target list over another setting, with its own wording. */
 const FILTER_LIST = {
   key:      'filterRules',

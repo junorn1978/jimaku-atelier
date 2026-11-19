@@ -12,7 +12,7 @@
  * Hugging Face answers this page's origin with CORS and honours Range on the
  * redirect target (checked 2026-11-17 from junorn1978.github.io).
  *
- * Why OPFS and not the Cache API HY-MT goes through: the 2B weights are one
+ * Why OPFS and not the Cache API: the 2B weights are one
  * 1.6 GB file. A cache entry is all or nothing, so a download broken off at
  * 90% would start over. Here each file is stored as fixed 32 MB parts, one
  * OPFS file per part — createWritable() only swaps a file in on close(), so
@@ -21,7 +21,7 @@
  *   Layout: plamo/<model>/<file>.part0000, .part0001, …
  *
  * Origins are separate stores: the GitHub Pages build and a localhost run
- * each download their own copy, as with HY-MT.
+ * each download their own copy.
  *
  * License: PLaMo Community License (docs/plamo/). Commercial use needs prior
  * registration with PFN and annual revenue of at most 1 billion yen; offering

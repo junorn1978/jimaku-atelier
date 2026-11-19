@@ -976,7 +976,7 @@
     max-width: none;
   }
 
-  /* GPU engine options (HY-MT, PLaMo): for now only the glossary (the replacement tab's source →
+  /* PLaMo engine options: for now only the glossary (the replacement tab's source →
      target rows), in a popover that opens upward over the preview like the
      advanced one beside it. Only the glossary list scrolls once it outgrows
      the popover. */

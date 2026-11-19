@@ -6,8 +6,7 @@
  * settings.translationMode === 'plamo'. Ported from the sister project's
  * extension, where it measured 0.2–0.5s per line on an RTX 20-series card.
  *
- * What it has over HY-MT beside it: native fields for preceding context and
- * a glossary, which the prompt format carries as structure rather than as
+ * Why this model: it has native fields for preceding context and a glossary, which the prompt format carries as structure rather than as
  * instructions the model may echo back.
  *
  * From outside, none of it vendored:
@@ -15,7 +14,7 @@
  *     versions, imported only when the engine first loads. ONNX Runtime
  *     fetches its WebAssembly (~27 MB) from beside its own module there.
  *   - The model, downloaded ahead into OPFS by js/plamo-store.js.
- * Transformers.js, which HY-MT goes through, is not used: it has no PLaMo 3
+ * Transformers.js is not used: it has no PLaMo 3
  * architecture, and this conversion's attention takes seqlens_k /
  * total_sequence_length inputs of its own. So the decoding loop is written
  * here: tokenise → PFML3 prompt → greedy decoding, KV cache kept on the GPU.
@@ -25,7 +24,7 @@
  *     other variant to fall back on.
  *   - Single-threaded WASM: GitHub Pages sends no COOP/COEP, so the page is
  *     not cross-origin isolated. The heavy work is on the GPU either way.
- *   - One model, one generation at a time, latest-wins like HY-MT: a new
+ *   - One model, one generation at a time, latest-wins: a new
  *     request stops the one in flight at its next token.
  *   - Context window 2048 tokens (the model's sliding window, which the
  *     conversion does not mask past). One subtitle line and the line before
@@ -40,7 +39,7 @@
 
 import { isDebugEnabled } from './logger.js';
 import { getPlamoModel, getPlamoStatus, readPlamoFile } from './plamo-store.js';
-import { matchTerms } from './translate-hymt.js';
+import { settings } from './store.js';
 
 const ORT_URL        = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.30.0/dist/ort.webgpu.min.mjs';
 const TOKENIZERS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/tokenizers@0.2.0/dist/tokenizers.min.mjs';
@@ -48,6 +47,19 @@ const TOKENIZERS_URL = 'https://cdn.jsdelivr.net/npm/@huggingface/tokenizers@0.2
 const STOP_TOKENS    = new Set([1, 16]); /* <|plamo:bos|>, <|plamo:tag|> — generation_config's eos */
 const MAX_NEW_TOKENS = 256;
 const CONTEXT_LIMIT  = 2048;
+
+/* Glossary entries (settings.hymtGlossary, edited in the options popover of
+   ui-languages.js) for this target language whose source occurs in the line,
+   ignoring case. Entries with either side left blank, or no language picked,
+   are still being filled in and are skipped. */
+function matchTerms(text, targetLangId) {
+  const rules = Array.isArray(settings.hymtGlossary) ? settings.hymtGlossary : [];
+  const haystack = text.toLowerCase();
+  return rules
+    .filter(r => r?.lang === targetLangId)
+    .map(r => ({ source: String(r.source ?? '').trim(), target: String(r.target ?? '').trim() }))
+    .filter(r => r.source && r.target && haystack.includes(r.source.toLowerCase()));
+}
 
 let libs    = null;   /* { ort, Tokenizer } once imported */
 let engine  = null;   /* { value, session, tokenizer, vocab, layers, kvHeads, headDim } */
