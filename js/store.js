@@ -164,12 +164,20 @@ const _defaults = Object.freeze({
   // --- Translation engine ---
   /* 'gtx' is Google translate-pa translateHtml, not translate_a/single —
      a historical name kept because it is stored; see translate-gtx.js. */
-  translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'hymt' | 'link'
+  translationMode:    'gtx',     // 'gtx' | 'translator' | 'prompt' | 'hymt' | 'plamo' | 'link'
   customTranslateUrl: '',
-  /* Terms the HY-MT engine is told how to translate, through the model's own
-     terminology template (js/translate-hymt.js). Each term applies only
-     when translating into its own language. */
+  /* Terms the on-device engines are told how to translate: HY-MT through
+     its terminology template (js/translate-hymt.js), PLaMo through its
+     glossary field (js/translate-plamo.js). Each term applies only when
+     translating into its own language. The key keeps HY-MT's name because
+     it is stored. */
   hymtGlossary:       [],        // [{ source: 'スバル', target: '大空昴', lang: 'zh-TW' }]
+  /* PLaMo 3 Translate size (js/plamo-store.js): 2B reads better, 0.8B is a
+     third of the download and of the GPU memory. */
+  plamoModel:         'plamo-3-translate-2b',
+  /* Agreed to the PLaMo Community License in the dialog before the first
+     download. Asked once per browser, not per model. */
+  plamoLicenseAccepted: false,
   /* The Prompt API engine is archived rather than deleted: measured on Chrome
      150 it costs ~800ms per line per target and its output is unreliable
      outside en/ja/es/de/fr. It only joins the engine picker when this is on,

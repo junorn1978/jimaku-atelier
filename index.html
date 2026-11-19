@@ -436,6 +436,43 @@
     </div>
   </dialog>
 
+  <!-- Asked before the first PLaMo download (js/ui-languages.js,
+       setupPlamoEngine): confirm() cannot carry the registration form and
+       license links. The links' href follows the UI language there. -->
+  <dialog class="app-dialog" id="dialog-plamo-license">
+    <div class="dialog-header">
+      <h2>PLaMo Community License</h2>
+      <button type="button" class="icon-btn" data-close-dialog data-i18n-title="dialog.close"
+              data-i18n-aria-label="dialog.close" title="閉じる" aria-label="閉じる">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="dialog-body plamo-license-body">
+      <p data-i18n="lang.engine.plamo.license.intro"></p>
+      <ul>
+        <li data-i18n="lang.engine.plamo.license.age"></li>
+        <li data-i18n="lang.engine.plamo.license.personal"></li>
+        <li><span data-i18n="lang.engine.plamo.license.commercial"></span>
+          <a href="https://forms.gle/mTL8tBLrMYXKNZD56" target="_blank" rel="noopener noreferrer"
+             data-i18n="lang.engine.plamo.license.register"></a></li>
+        <li data-i18n="lang.engine.plamo.license.prohibited"></li>
+      </ul>
+      <p class="plamo-license-note" data-i18n="lang.engine.plamo.license.converted"></p>
+      <p>
+        <a data-plamo-license-local href="docs/plamo/LICENSE.en.txt" target="_blank" rel="noopener"
+           data-i18n="lang.engine.plamo.license.full"></a> ·
+        <a data-plamo-license-official href="https://plamo.preferredai.jp/info/plamo-community-license-en"
+           target="_blank" rel="noopener noreferrer" data-i18n="lang.engine.plamo.license.official"></a>
+      </p>
+      <div class="plamo-license-actions">
+        <button type="button" class="btn" data-close-dialog data-i18n="lang.engine.plamo.license.cancel">キャンセル</button>
+        <button type="button" class="btn primary" id="plamo-license-agree" data-i18n="lang.engine.plamo.license.agree">同意してダウンロード</button>
+      </div>
+    </div>
+  </dialog>
+
   <!-- Quick colours for the in-page palette (js/color-picker.js reads these
        through each input's `list`). Declared here so the sets can be edited
        without touching code; the subtitle set is the one carried over from the

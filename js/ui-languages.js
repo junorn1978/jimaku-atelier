@@ -34,7 +34,7 @@
 
 import { getAllLanguages } from './languages.js';
 import { settings, subscribe, LINKS } from './store.js';
-import { applyTo, t } from './i18n.js';
+import { applyTo, t, getLanguage } from './i18n.js';
 import { isChrome } from './env.js';
 import { setupLanguagePackButton, isCloudOnly } from './language-pack.js';
 import { wireSecretInputs } from './ui-secret-input.js';
@@ -46,6 +46,9 @@ import { isTranslatorSupported, prepareTranslators,
          pendingTranslatorDownloads, downloadTranslator } from './translate-translator.js';
 import { getHymtSupport, isHymtDownloaded, loadHymt, unloadHymt, deleteHymt,
          HYMT_SIZE } from './translate-hymt.js';
+import { getPlamoSupport, loadPlamo, unloadPlamo } from './translate-plamo.js';
+import { PLAMO_MODELS, getPlamoModel, plamoModelBytes, formatBytes,
+         getPlamoStatus, downloadPlamo, deletePlamo } from './plamo-store.js';
 import { wirePairList } from './ui-filter.js';
 import { wireHoverTip } from './hover-tip.js';
 import { wireSubtitlePresets } from './subtitle-presets.js';
@@ -200,6 +203,12 @@ const COMPACT_STATUS = {
   'lang.engine.hymt.ready':              ['lang.engine.status.ready',          'ok'],
   'lang.engine.hymt.needDownload':       ['lang.engine.status.needDownload',   'info'],
   'lang.engine.hymt.failed':             ['lang.engine.status.failed',         'error'],
+  'lang.engine.plamo.ready':             ['lang.engine.status.ready',          'ok'],
+  'lang.engine.plamo.needDownload':      ['lang.engine.status.needDownload',   'info'],
+  'lang.engine.plamo.partial':           ['lang.engine.status.needDownload',   'info'],
+  'lang.engine.plamo.busy':              ['lang.engine.status.needDownload',   'warn'],
+  'lang.engine.plamo.failed':            ['lang.engine.status.failed',         'error'],
+  'lang.engine.plamo.downloadFailed':    ['lang.engine.status.failed',         'error'],
 };
 
 /**
@@ -340,6 +349,7 @@ export function mountLanguagesTab(container) {
               <option value="translator" id="engine-translator-option" data-i18n="lang.engine.translator">ブラウザ翻訳</option>
               <option value="prompt" id="engine-prompt-option" data-i18n="lang.engine.prompt">ブラウザ AI</option>
               <option value="hymt" id="engine-hymt-option" data-i18n="lang.engine.hymt">AI 翻訳（GPU）</option>
+              <option value="plamo" id="engine-plamo-option" data-i18n="lang.engine.plamo">PLaMo 翻訳（GPU）</option>
               <option value="link" hidden disabled data-i18n="lang.advanced.link">翻訳サーバー</option>
             </select>
             <!-- Stands in for the picker while the recognition server
@@ -368,13 +378,25 @@ export function mountLanguagesTab(container) {
                    its row carries a button beside the status line. -->
               <p class="manual-status" id="engine-hymt-status" role="status" aria-live="polite" hidden></p>${statusChip('hymt')}
               <button type="button" class="btn" id="engine-hymt-download" data-i18n="lang.engine.hymt.download" hidden>ダウンロード</button>
+              <!-- PLaMo: the size picker shows on the pick, since it decides
+                   what the download button fetches. The credit is the
+                   license's "Built with PLaMo" notice (art. 4), linked to
+                   the license itself. -->
+              <p class="manual-status" id="engine-plamo-status" role="status" aria-live="polite" hidden></p>${statusChip('plamo')}
+              <select class="select select-compact plamo-model-select" id="engine-plamo-model" data-bind="plamoModel"
+                      data-i18n-aria-label="lang.engine.plamo.model" aria-label="PLaMo モデル" hidden>
+                ${PLAMO_MODELS.map(m => `<option value="${m.value}">${m.label}</option>`).join('')}
+              </select>
+              <!-- Labelled from code: "download" or "resume". -->
+              <button type="button" class="btn" id="engine-plamo-download" hidden></button>
               <!-- The options only mean something to a loaded model, so they
-                   show with the delete button rather than on the pick. -->
-              <button type="button" class="btn hymt-options-btn" id="engine-hymt-options"
-                      popovertarget="popover-hymt-options"
+                   show with the delete button rather than on the pick. One
+                   popover for both GPU engines: the glossary is shared. -->
+              <button type="button" class="btn ai-options-btn" id="engine-ai-options"
+                      popovertarget="popover-ai-options"
                       data-i18n="lang.engine.hymt.options" hidden>AI 翻訳オプション</button>
-              <div class="help-popover hymt-options-popover" id="popover-hymt-options" popover>
-                <section class="advanced-section hymt-glossary">
+              <div class="help-popover ai-options-popover" id="popover-ai-options" popover>
+                <section class="advanced-section ai-glossary">
                   <h4 class="advanced-title" data-i18n="lang.engine.hymt.glossary.title">用語の訳し方</h4>
                   <p class="advanced-desc" data-i18n="lang.engine.hymt.glossary.desc"></p>
                   <div class="filter-list-wrap">
@@ -384,6 +406,8 @@ export function mountLanguagesTab(container) {
                 </section>
               </div>
               <button type="button" class="btn" id="engine-hymt-delete" data-i18n="lang.engine.hymt.delete" hidden>モデルを削除</button>
+              <button type="button" class="btn" id="engine-plamo-delete" data-i18n="lang.engine.hymt.delete" hidden>モデルを削除</button>
+              <a class="plamo-credit" id="engine-plamo-credit" target="_blank" rel="noopener" hidden>Built with PLaMo</a>
               <!-- While the translation server is on, the picker beside has
                    nothing selected; this says where the lines go instead.
                    Picking an engine turns the server off. -->
@@ -716,7 +740,9 @@ export function mountLanguagesTab(container) {
   markCloudOnlySources(container);
   setupTranslatorEngine(container);
   setupPromptEngine(container);
-  setupHymtEngine(container);
+  const aiOptions = setupAiOptions(container);
+  setupHymtEngine(container, aiOptions);
+  setupPlamoEngine(container, aiOptions);
 }
 
 /* The advanced popover's two switches are views of existing settings rather
@@ -1132,26 +1158,23 @@ function setupPromptEngine(container) {
   }).catch(() => disable('lang.engine.prompt.unavailable', true));
 }
 
-/* In-browser HY-MT engine (js/translate-hymt.js). WebGPU only: without it the
-   option stays disabled. Picking it loads the model from the browser's cache
-   when it is there (a few seconds); the first download is over a gigabyte, so
-   that waits for the button beside the status line instead of starting on
-   the pick. Picking another engine releases the model and its GPU memory;
-   the delete button beside a loaded model also removes it from the cache. */
-function setupHymtEngine(container) {
-  const option = container.querySelector('#engine-hymt-option');
-  const status = container.querySelector('#engine-hymt-status');
-  const downloadBtn = container.querySelector('#engine-hymt-download');
-  const deleteBtn   = container.querySelector('#engine-hymt-delete');
-  const optionsBtn  = container.querySelector('#engine-hymt-options');
-  const options     = container.querySelector('#popover-hymt-options');
-  if (!option || !status || !downloadBtn || !deleteBtn || !optionsBtn || !options) return;
+/* The options popover of the GPU engines (HY-MT, PLaMo): for now only the
+   glossary, which both read from settings.hymtGlossary. One button and one
+   popover for both, so the list is never rendered twice and left stale in
+   one of them. The button shows while the picked engine reports a loaded
+   model: each engine calls the returned setter with its own name, and only
+   the picked engine's report counts.
 
-  /* Each term is for one target language — the same name is written one way
-     in Chinese and another in English, and both in one prompt would leave
-     the model to guess. The picker offers the target pickers' languages; a
-     new row starts on the first line's target (or the second's). */
-  wirePairList(options.querySelector('#hymt-glossary-list'), options.querySelector('#hymt-glossary-add'), {
+   Each term is for one target language — the same name is written one way
+   in Chinese and another in English, and both in one prompt would leave
+   the model to guess. The picker offers the target pickers' languages; a
+   new row starts on the first line's target (or the second's). */
+function setupAiOptions(container) {
+  const btn     = container.querySelector('#engine-ai-options');
+  const popover = container.querySelector('#popover-ai-options');
+  if (!btn || !popover) return () => {};
+
+  wirePairList(popover.querySelector('#hymt-glossary-list'), popover.querySelector('#hymt-glossary-add'), {
     key:      'hymtGlossary',
     empty:    'lang.engine.hymt.glossary.empty',
     sourcePh: 'lang.engine.hymt.glossary.source.ph',
@@ -1161,6 +1184,28 @@ function setupHymtEngine(container) {
       getAllLanguages().map(l => `<option value="${l.id}" data-i18n="lang.name.${l.id}">${escapeAttr(l.label)}</option>`).join(''),
     defaultLang: () => [settings.target1LangId, settings.target2LangId].find(id => id && id !== 'none') ?? '',
   });
+
+  const ready = { hymt: false, plamo: false };
+  const sync = () => {
+    btn.hidden = !ready[settings.translationMode];
+    if (btn.hidden && popover.matches(':popover-open')) popover.hidePopover();
+  };
+  subscribe('translationMode', sync);
+  return (engine, on) => { ready[engine] = on; sync(); };
+}
+
+/* In-browser HY-MT engine (js/translate-hymt.js). WebGPU only: without it the
+   option stays disabled. Picking it loads the model from the browser's cache
+   when it is there (a few seconds); the first download is over a gigabyte, so
+   that waits for the button beside the status line instead of starting on
+   the pick. Picking another engine releases the model and its GPU memory;
+   the delete button beside a loaded model also removes it from the cache. */
+function setupHymtEngine(container, setOptionsReady) {
+  const option = container.querySelector('#engine-hymt-option');
+  const status = container.querySelector('#engine-hymt-status');
+  const downloadBtn = container.querySelector('#engine-hymt-download');
+  const deleteBtn   = container.querySelector('#engine-hymt-delete');
+  if (!option || !status || !downloadBtn || !deleteBtn) return;
 
   /* Kept as a key plus its {s} value so a UI language switch can re-render. */
   let messageKey = null;
@@ -1177,8 +1222,7 @@ function setupHymtEngine(container) {
   const showButton = (which) => {
     downloadBtn.hidden = which !== 'download';
     deleteBtn.hidden   = which !== 'delete';
-    optionsBtn.hidden  = which !== 'delete';
-    if (optionsBtn.hidden && options.matches(':popover-open')) options.hidePopover();
+    setOptionsReady('hymt', which === 'delete');
   };
 
   let dtype = null;
@@ -1253,6 +1297,204 @@ function setupHymtEngine(container) {
     option.disabled = false;
     subscribe('translationMode', (mode) => (mode === 'hymt' ? activate() : deactivate()));
     if (settings.translationMode === 'hymt') activate();
+  });
+}
+
+/* In-browser PLaMo engine (js/translate-plamo.js, files in js/plamo-store.js).
+   Needs WebGPU with shader-f16; without it the option stays disabled.
+   Shaped like HY-MT above, with three differences:
+   - The download is the store's own (OPFS, resumable), so its progress, a
+     broken-off download ("continue") and a download running in another tab
+     each have a message of their own. Switching away stops the download;
+     the parts already written stay.
+   - Two sizes, picked beside the status line. Changing it while the engine
+     is picked starts over with that size: its own download state, its own
+     load; the other size's files stay until deleted.
+   - The first download waits for the PLaMo Community License dialog
+     (index.html, #dialog-plamo-license), agreed to once per browser. */
+function setupPlamoEngine(container, setOptionsReady) {
+  const option      = container.querySelector('#engine-plamo-option');
+  const status      = container.querySelector('#engine-plamo-status');
+  const modelSelect = container.querySelector('#engine-plamo-model');
+  const downloadBtn = container.querySelector('#engine-plamo-download');
+  const deleteBtn   = container.querySelector('#engine-plamo-delete');
+  const credit      = container.querySelector('#engine-plamo-credit');
+  const dialog      = document.getElementById('dialog-plamo-license');
+  if (!option || !status || !modelSelect || !downloadBtn || !deleteBtn || !credit) return;
+
+  let messageKey = null;
+  let slot = '';
+  let downloadKey = 'lang.engine.plamo.download';
+  const show = engineStatusLine(container, 'plamo');
+  const render = () => {
+    show(messageKey ? t(messageKey).replace('{s}', slot) : '', messageKey);
+    downloadBtn.textContent = t(downloadKey);
+  };
+  const setMessage = (key, value = '') => { messageKey = key; slot = value; render(); };
+
+  /* The license copy in the UI language where there is one (ja), English
+     otherwise; the dialog's links follow the same rule. */
+  const licenseLang = () => (getLanguage() === 'ja' ? 'ja' : 'en');
+  const syncLicenseLinks = () => {
+    const local = `docs/plamo/LICENSE.${licenseLang()}.txt`;
+    credit.href = local;
+    dialog?.querySelectorAll('[data-plamo-license-local]').forEach(a => { a.href = local; });
+    dialog?.querySelectorAll('[data-plamo-license-official]').forEach(a => {
+      a.href = `https://plamo.preferredai.jp/info/plamo-community-license-${licenseLang()}`;
+    });
+  };
+  subscribe('uiLang', () => { render(); syncLicenseLinks(); });
+  syncLicenseLinks();
+  render();
+
+  /* 'download' | 'delete' | null — the button beside the status line. */
+  const showButton = (which) => {
+    downloadBtn.hidden = which !== 'download';
+    deleteBtn.hidden   = which !== 'delete';
+    setOptionsReady('plamo', which === 'delete' && messageKey === 'lang.engine.plamo.ready');
+  };
+  const showPicked = (on) => { modelSelect.hidden = !on; credit.hidden = !on; };
+
+  const model  = () => getPlamoModel(settings.plamoModel);
+  const sizeOf = () => formatBytes(plamoModelBytes(model()));
+
+  /* Bumped on every pick, switch away, size change and delete, so whatever
+     finishes after the user has moved on stays out of the row. */
+  let generation = 0;
+  let downloadAbort = null;
+
+  const stopDownload = () => { downloadAbort?.abort(); downloadAbort = null; };
+
+  const offerDownload = (downloaded) => {
+    if (downloaded > 0) {
+      downloadKey = 'lang.engine.plamo.resume';
+      setMessage('lang.engine.plamo.partial', `${formatBytes(downloaded)} / ${sizeOf()}`);
+    } else {
+      downloadKey = 'lang.engine.plamo.download';
+      setMessage('lang.engine.plamo.needDownload', sizeOf());
+    }
+    showButton('download');
+  };
+
+  const load = async (mine) => {
+    showButton(null);
+    setMessage('lang.engine.plamo.preparing');
+    const result = await loadPlamo(model().value);
+    if (mine !== generation) return;
+    if (result.ok) { setMessage('lang.engine.plamo.ready'); showButton('delete'); return; }
+    if (result.reason === 'cancelled') return;
+    if (result.reason === 'notDownloaded') { activate(); return; }
+    /* Delete is the way out of a model that will not load: the next
+       download fetches every part afresh. */
+    setMessage('lang.engine.plamo.failed');
+    showButton('delete');
+  };
+
+  const download = async (mine) => {
+    stopDownload();
+    const ctrl = new AbortController();
+    downloadAbort = ctrl;
+    showButton(null);
+    setMessage('lang.engine.plamo.downloading', '');
+    try {
+      await downloadPlamo(model().value, {
+        signal: ctrl.signal,
+        onProgress: (done, total) => {
+          if (mine !== generation) return;
+          setMessage('lang.engine.plamo.downloading',
+            `${formatBytes(done)} / ${formatBytes(total)} (${Math.floor(done / total * 100)}%)`);
+        },
+      });
+    } catch (err) {
+      if (mine !== generation || err?.name === 'AbortError') return;
+      if (err?.code === 'busy') { setMessage('lang.engine.plamo.busy'); showButton('download'); return; }
+      console.warn('[plamo] download failed:', err);
+      downloadKey = 'lang.engine.plamo.resume';
+      setMessage('lang.engine.plamo.downloadFailed');
+      showButton('download');
+      return;
+    } finally {
+      if (downloadAbort === ctrl) downloadAbort = null;
+    }
+    if (mine === generation) load(mine);
+  };
+
+  const activate = async () => {
+    const mine = ++generation;
+    stopDownload();
+    showPicked(true);
+    showButton(null);
+    setMessage(null);
+    const st = await getPlamoStatus(model().value).catch(() => ({ downloaded: 0, complete: false }));
+    if (mine !== generation) return;
+    if (st.complete) load(mine);
+    else offerDownload(st.downloaded);
+  };
+
+  const deactivate = () => {
+    generation++;
+    stopDownload();
+    showPicked(false);
+    showButton(null);
+    setMessage(null);
+    unloadPlamo();
+  };
+
+  /* Resolves true once the license has been agreed to, now or before. */
+  const askLicense = () => new Promise((resolve) => {
+    if (settings.plamoLicenseAccepted || !dialog) { resolve(!!settings.plamoLicenseAccepted); return; }
+    dialog.returnValue = '';
+    dialog.addEventListener('close', () => {
+      const ok = dialog.returnValue === 'agree';
+      if (ok) settings.plamoLicenseAccepted = true;
+      resolve(ok);
+    }, { once: true });
+    dialog.showModal();
+  });
+  dialog?.querySelector('#plamo-license-agree')?.addEventListener('click', () => dialog.close('agree'));
+
+  /* The click is the consent to download — and the first time, the dialog's
+     agree button is the consent to the license. */
+  downloadBtn.addEventListener('click', async () => {
+    const mine = generation;
+    if (!(await askLicense()) || mine !== generation) return;
+    download(mine);
+  });
+
+  deleteBtn.addEventListener('click', async () => {
+    const m = model();
+    if (!confirm(t('lang.engine.plamo.deleteConfirm').replace('{s}', `${m.label}, ${sizeOf()}`))) return;
+    const mine = ++generation;
+    showButton(null);
+    setMessage('lang.engine.plamo.deleting');
+    await unloadPlamo();
+    try { await deletePlamo(m.value); }
+    catch (err) {
+      if (mine !== generation) return;
+      setMessage(err?.code === 'busy' ? 'lang.engine.plamo.busy' : 'lang.engine.plamo.failed');
+      showButton('delete');
+      return;
+    }
+    if (mine !== generation) return;
+    if (settings.translationMode === 'plamo') activate();
+    else setMessage(null);
+  });
+
+  /* Disabled until the WebGPU check resolves, without stranding a restored
+     selection: it only falls back once the engine is known to be unusable. */
+  option.disabled = true;
+
+  getPlamoSupport().then((support) => {
+    if (!support.ok) {
+      option.dataset.i18n = 'lang.engine.plamo.unsupported';
+      option.textContent = t(option.dataset.i18n);
+      if (settings.translationMode === 'plamo') settings.translationMode = 'gtx';
+      return;
+    }
+    option.disabled = false;
+    subscribe('translationMode', (mode) => (mode === 'plamo' ? activate() : deactivate()));
+    subscribe('plamoModel', () => { if (settings.translationMode === 'plamo') activate(); });
+    if (settings.translationMode === 'plamo') activate();
   });
 }
 

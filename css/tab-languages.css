@@ -34,6 +34,20 @@
        button's label broke onto a second line inside the pill. */
     > .manual-status { flex: 1 1 auto; min-width: 0; }
     > .btn { flex-shrink: 0; white-space: nowrap; }
+
+    /* PLaMo's size picker: "2B" / "0.8B" need none of .select-compact's
+       150px. */
+    > .plamo-model-select { flex-shrink: 0; width: auto; min-width: 0; }
+
+    /* The license's "Built with PLaMo" notice, linked to the license. Quiet
+       like a footnote, but kept on one line: it is a required notice. */
+    > .plamo-credit {
+      flex-shrink: 0;
+      white-space: nowrap;
+      font-size: 0.8em;
+      color: var(--color-text-dim);
+      &:hover { color: var(--color-accent); }
+    }
   }
 
   /* A steady engine state as a chip (js/ui-languages.js, engineStatusLine):
@@ -962,14 +976,14 @@
     max-width: none;
   }
 
-  /* HY-MT options: for now only the glossary (the replacement tab's source →
+  /* GPU engine options (HY-MT, PLaMo): for now only the glossary (the replacement tab's source →
      target rows), in a popover that opens upward over the preview like the
      advanced one beside it. Only the glossary list scrolls once it outgrows
      the popover. */
-  .hymt-options-btn { anchor-name: --hymt-options-anchor; }
+  .ai-options-btn { anchor-name: --ai-options-anchor; }
 
-  .hymt-options-popover {
-    position-anchor: --hymt-options-anchor;
+  .ai-options-popover {
+    position-anchor: --ai-options-anchor;
     position-area: top span-right;
     position-try-fallbacks: flip-inline;
     margin: var(--space-2) 0;
@@ -982,7 +996,7 @@
       flex-direction: column;
     }
 
-    .hymt-glossary {
+    .ai-glossary {
       flex: 1 1 auto;
       min-height: 0;
     }

@@ -10,6 +10,21 @@
    ========================================= */
 
 @layer components {
+  /* --- PLaMo license (js/ui-languages.js, setupPlamoEngine) --- */
+  .plamo-license-body {
+    ul { margin: var(--space-2) 0; padding-left: 1.4em; }
+    li + li { margin-top: var(--space-1); }
+    a { color: var(--color-accent); }
+    .plamo-license-note { color: var(--color-text-dim); font-size: 0.9em; }
+  }
+
+  .plamo-license-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+
   /* --- dialog (native <dialog>) --- */
   .app-dialog {
     border: 1px solid var(--color-border);

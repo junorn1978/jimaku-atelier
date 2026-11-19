@@ -217,8 +217,9 @@ function buildPrompt(text, targetLangId) {
 
 /* Glossary entries for this target language whose source occurs in the line,
    ignoring case. Entries with either side left blank, or no language picked,
-   are still being filled in and are skipped. */
-function matchTerms(text, targetLangId) {
+   are still being filled in and are skipped. The PLaMo engine
+   (js/translate-plamo.js) shares the same list and asks through this too. */
+export function matchTerms(text, targetLangId) {
   const rules = Array.isArray(settings.hymtGlossary) ? settings.hymtGlossary : [];
   const haystack = text.toLowerCase();
   return rules
