@@ -115,7 +115,7 @@
   "lang.engine.plamo.license.register":"Open the registration form",
   "lang.engine.plamo.license.prohibited":"Don't use it for illegal activity, infringement, or spreading false information.",
   "lang.engine.plamo.license.converted":"The model is a community ONNX conversion (downloaded from Hugging Face), not an official Preferred Networks release. It is stored in this browser, and translating sends nothing online.",
-  "lang.engine.plamo.license.full":  "Read the full license",
+  "lang.engine.plamo.license.full":  "Read the full license (revised 2026-11-09)",
   "lang.engine.plamo.license.official":"Latest on the PFN site",
   "lang.engine.plamo.license.cancel":"Cancel",
   "lang.engine.plamo.license.agree": "Agree and download",

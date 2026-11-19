@@ -115,7 +115,7 @@
   "lang.engine.plamo.license.register":"前往登記表單",
   "lang.engine.plamo.license.prohibited":"不得用於違法、侵權或散布不實資訊。",
   "lang.engine.plamo.license.converted":"模型是社群轉換的 ONNX 版本（從 Hugging Face 下載），非 Preferred Networks 官方發布。下載後存在這個瀏覽器裡，翻譯時不會連網。",
-  "lang.engine.plamo.license.full":  "閱讀授權全文",
+  "lang.engine.plamo.license.full":  "閱讀授權全文（2026-11-09 修訂版）",
   "lang.engine.plamo.license.official":"官網最新版",
   "lang.engine.plamo.license.cancel":"取消",
   "lang.engine.plamo.license.agree": "同意並下載",

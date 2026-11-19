@@ -115,7 +115,7 @@
   "lang.engine.plamo.license.register":"登録フォームを開く",
   "lang.engine.plamo.license.prohibited":"違法行為、権利侵害、虚偽情報の拡散には使えません。",
   "lang.engine.plamo.license.converted":"モデルはコミュニティが変換した ONNX 版（Hugging Face からダウンロード）で、Preferred Networks の公式配布ではありません。このブラウザに保存され、翻訳時に通信はしません。",
-  "lang.engine.plamo.license.full":  "ライセンス全文を読む",
+  "lang.engine.plamo.license.full":  "ライセンス全文を読む（2026年11月9日改定版）",
   "lang.engine.plamo.license.official":"公式サイトの最新版",
   "lang.engine.plamo.license.cancel":"キャンセル",
   "lang.engine.plamo.license.agree": "同意してダウンロード",
