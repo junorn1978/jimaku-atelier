@@ -694,6 +694,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    min-height: 26px;   /* room for the servers pill on the same line */
     margin: 0 0 6px 4px;
     font-size: var(--text-sm);
     font-weight: 600;
@@ -751,6 +752,9 @@
      when there is nothing in it (Google). A written-out status takes the
      room and wraps; a chip keeps its size. */
   .group-row.engine-inline {
+    /* Not the old inline row's flex: 1 — in the card's column it made this
+       row swallow the card's spare height, dropping the chip to the middle. */
+    flex: none;
     justify-content: flex-start;
     flex-wrap: wrap;
     &:not(:has(> :not([hidden]):not(.help-popover))) { display: none; }
@@ -1088,7 +1092,10 @@
     position: absolute;
     top: 0;
     right: 0;
-    height: calc(var(--text-sm) * 1.5);
+    /* The headings' line is made tall enough for the outlined pill
+       (.group-title min-height), so its border is not clipped by the tab
+       panel's top edge. */
+    height: 26px;
     display: flex;
     align-items: center;
   }
