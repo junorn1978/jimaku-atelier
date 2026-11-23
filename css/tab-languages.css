@@ -656,27 +656,170 @@
      instructions live in a popover. */
   .lang-sub { min-width: 0; }
 
-  /* The engine row, last in the matrix. A row of its own kind — how to
-     translate, not a subtitle line — so it stands a step further from the
-     line rows than they do from each other. The picker takes the language
-     column's fixed width (.select-compact), so it lines up with the language
-     pickers above; the recognition server's longer stand-in label is cut by
-     the select itself. */
-  .lang-engine > * { margin-top: var(--space-1); }
+  /* --- Languages tab: two grouped cards (languages | engine) ---
+     The way grouped settings are laid out: a small heading above each card,
+     rows of "name on the left, control on the right" divided by hairlines,
+     the controls lining up down the right edge. Equal columns and equal card
+     heights, so the two groups weigh the same. Both cards share one surface,
+     a step lighter than the panel; colour is kept for state — the status dot,
+     the red delete, the dimmed "none" — not for telling the groups apart. */
+  .lang-layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    /* Three shared rows — headings, cards, footnotes — that each group
+       takes as a subgrid, so the two cards are always one height: the
+       engine card keeps the languages card's height when it has fewer rows
+       (Google), its rows at the top, and the footnote under it never
+       shortens it. */
+    grid-template-rows: auto auto auto;
+    column-gap: var(--space-4);
+    align-content: start;
+    max-width: 960px;
+    position: relative;   /* anchors .lang-tools on the headings' line */
+  }
 
-  /* Status line, engine buttons and the advanced button, across the four
-     appearance columns. Those columns are max-content, so without containment
-     a long status line (the unwrapped sentence is its max-content width) is
-     spread into them and widens the colour and slider columns of every row.
-     inline-size containment makes it contribute nothing: it takes the width
-     the line rows already set, and its status wraps inside that. */
-  .engine-detail {
-    grid-column: 3 / -1;
-    contain: inline-size;
+  .lang-group {
+    --group-surface: color-mix(in oklab, var(--color-surface-1) 94%, white);
+    :root[data-theme="light"] & { --group-surface: var(--fill-3); }
+
+    grid-row: span 3;
+    display: grid;
+    grid-template-rows: subgrid;
+    min-width: 0;
+  }
+
+  /* The heading sits outside the card, with its group's glyph in the same
+     dim colour. */
+  .group-title {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
+    gap: 6px;
+    margin: 0 0 6px 4px;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--color-text-dim);
+
+    svg { flex-shrink: 0; opacity: 0.85; }
+  }
+
+  .group-card {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    background: var(--group-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  /* One row: name on the left, control on the right. A min-height rather
+     than a height, so written-out progress can wrap without being cut. */
+  .group-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    min-height: 40px;
+    padding: 4px var(--space-3);
+    min-width: 0;
+
+    & + .group-row {
+      border-top: 1px solid color-mix(in oklab, var(--color-border) 70%, transparent);
+    }
+
+    > .lang-field-label { flex-shrink: 0; }
+  }
+
+  /* The language pickers take the card's room rather than .select-compact's
+     150px, which cut the longest names ("中国語（香港・書き言葉）"). One width
+     for all three, so their edges line up down the card. */
+  .lang-line-row select { width: min(19em, 62%); }
+
+  /* "Not translated" reads as off: the picker's value dims (colour only —
+     it is still the control that turns the line back on). */
+  .lang-line-row select:has(option[value="none"]:checked) { color: var(--color-text-faint); }
+
+  /* The offline pack row (experimental, usually absent): its heading and
+     button already sit inline in .col-head. */
+  .group-row.lang-sub > .col-head { flex: 1; }
+
+  /* Engine group. The picker takes the width the full engine names need,
+     which .select-compact's 150px cut off ("AI 翻訳（PLaMo…"). */
+  .lang-engine .engine-select { flex: 0 1 auto; width: auto; min-width: 0; max-width: 70%; }
+
+  /* Row 2: the state on the left, what the engine needs on the right. Gone
+     when there is nothing in it (Google). A written-out status takes the
+     room and wraps; a chip keeps its size. */
+  .group-row.engine-inline {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    &:not(:has(> :not([hidden]):not(.help-popover))) { display: none; }
+
+    > .manual-status:not(.visually-hidden) { flex: 1 1 12em; min-width: 0; margin: 0; }
+    > .plamo-model-select,
+    > .btn { margin-left: auto; }
+    /* Only the first of the right-hand controls takes the push. */
+    > .plamo-model-select ~ .btn { margin-left: 0; }
+  }
+
+  /* Row 3: the engine's settings, removing the model at the far end. Only a
+     loaded PLaMo model has either, so the row is usually gone. */
+  .group-row.engine-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    &:not(:has(> :not([hidden]):not(.help-popover))) { display: none; }
+    > .btn { flex-shrink: 0; margin-left: 0; }
+    > .text-btn { margin-left: auto; }
+  }
+
+  /* While the recognition server translates, there is no engine state. */
+  .lang-engine[data-stt-translates="true"] .group-row.engine-inline { display: none; }
+
+  /* Small print under the card. */
+  .group-foot {
+    margin: 4px 0 0 4px;
+    font-size: var(--text-xs);
+    color: var(--color-text-faint);
+    &:not(:has(> :not([hidden]))) { display: none; }
+
+    > .plamo-credit { color: inherit; &:hover { color: var(--color-accent); } }
+  }
+
+  /* A button that reads as a link: no fill, just its label. */
+  .text-btn,
+  .link-btn {
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    color: var(--color-accent-hover);
+    &:hover { text-decoration: underline; }
+    &.danger { color: var(--color-danger-text); }
+  }
+
+  /* --- Appearance tab: the line's language, read-only, and unused lines --- */
+  .lang-name {
+    font-size: var(--text-md);
+    color: var(--color-text);
+    white-space: nowrap;
+  }
+
+  /* A translation line set to "none" draws nothing: its controls give way to
+     a note across the appearance columns, linking to the Languages tab. */
+  .line-unused-note {
+    display: none;
+    grid-column: 3 / -1;
+    margin: 0;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--color-text-faint, var(--color-text-dim));
+  }
+
+  .lang-matrix-row.is-unused {
+    > :not(.lang-field-label, .lang-name, .line-unused-note) { display: none; }
+    > .line-unused-note { display: flex; }
+    > .lang-field-label,
+    > .lang-name { color: var(--color-text-faint, var(--color-text-dim)); }
   }
 
   /* --- custom URL format help (Languages tab) --- */
@@ -751,14 +894,6 @@
       padding: 3px 10px;
       font-size: var(--text-sm);
     }
-  }
-
-  /* Separator above the offline pack row, last under the matrix. Hidden with
-     the row, since the [hidden] rule takes the whole box. */
-  .sub-preset-row + .lang-sub {
-    margin-top: var(--space-3);
-    padding-top: var(--space-3);
-    border-top: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
   }
 
   /* Two small boxes for the characters wrapped around the recognised line.
@@ -945,28 +1080,44 @@
 
   /* --- advanced: servers of the user's own --- */
 
-  /* At the row's far end, wherever the engine's own
-     status line leaves it — a button that moved when that line appeared would
-     be harder to find than one that never does. */
-  .advanced-btn {
-    flex-shrink: 0;
-    margin-left: auto;
-    display: inline-flex;
+  /* On the group headings' line, at the tab's right edge (.lang-tools): a
+     setting of the whole tab, since a recognition server replaces the
+     recogniser as well as the engine. Fixed there, so it never moves with
+     the engine's rows. */
+  .lang-tools {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: calc(var(--text-sm) * 1.5);
+    display: flex;
     align-items: center;
-    gap: var(--space-1);
-    anchor-name: --advanced-anchor;
-
-    /* Lit while a server is in use, so a setting tucked away in the popover
-       cannot be forgotten about. */
-    &[data-active="true"] {
-      background: color-mix(in oklab, var(--color-accent) 22%, transparent);
-      border-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
-      color: var(--color-text);
-    }
   }
 
-  /* Opens upward from the bottom row, over the preview: the panel has no room
-     below the button, and the popover is taller than the row. */
+  /* A quiet text button — glyph, label — not a filled chip: it is rarely
+     needed and must not compete with the cards' controls. */
+  .advanced-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    color: var(--color-text-dim);
+    white-space: nowrap;
+    anchor-name: --advanced-anchor;
+    transition: background 0.15s, color 0.15s;
+
+    &:hover { background: var(--fill-1); color: var(--color-text); }
+    &:has(+ .advanced-popover:popover-open) { background: var(--fill-1); color: var(--color-text); }
+
+    /* Lit while a server is in use, so a setting tucked away in the popover
+       cannot be forgotten about; the recognition server's connection rides
+       along as the dot after the label. */
+    &[data-active="true"] { color: var(--color-accent-hover); font-weight: 600; }
+  }
+
+  /* Opens upward from the button, over the preview: the panel has no room
+     below it, and the popover is taller than the panel. */
   .advanced-popover {
     position-anchor: --advanced-anchor;
     position-area: top span-left;

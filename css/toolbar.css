@@ -290,26 +290,17 @@
     }
   }
 
-  /* --- tab-audio button (settings track; js/ui-mic.js) ---
-     The mic button's chip (styles.css), lit while sharing in the accent the
-     subtitle-window button wears while its window is open. */
-  .tab-audio-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    white-space: nowrap;
-
-    &[aria-pressed="true"],
-    &[aria-pressed="true"]:hover {
-      background: var(--color-accent-soft);
-      color: var(--color-accent-hover);
-    }
+  /* --- source switch (first row of the mic panel; js/ui-mic.js) ---
+     Microphone | tab audio. The tab half waits on the browser's share dialog
+     while it is open. */
+  .mic-source-switch button {
+    font-size: var(--text-md);
     &:disabled { opacity: 0.45; cursor: progress; }
   }
 
   /* --- tab-share badge (toolbar; js/ui-mic.js) ---
-     Stands in for the tab-audio button while the panel is collapsed and the
-     settings track with it. A label, not a button: no fill of its own to read
+     Stands in for the source button while the panel is collapsed and the
+     button with it. A label, not a button: no fill of its own to read
      as pressable. [hidden] still wins (utilities) when nothing is shared. */
   .tab-share-badge {
     display: none;

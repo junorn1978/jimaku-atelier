@@ -126,6 +126,12 @@ const LINK_ICON = `
                 <path class="link-off" d="M8 2v3M2 8h3M16 22v-3M22 16h-3"/>
               </svg>`;
 
+/* The Languages tab's group headings carry a small glyph each, in the
+   heading's own dim colour: a way to tell the groups apart at a glance
+   without giving either card a colour of its own. */
+const ICON_LINES = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>`;
+const ICON_ENGINE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>`;
+
 function linkHead(labelKey, linkKey, extraClass = '') {
   return `
           <span class="link-head ${extraClass}">
@@ -245,7 +251,13 @@ function engineStatusLine(container, engine) {
   };
 }
 
-export function mountLanguagesTab(container) {
+/**
+ * Fills two tabs: the Languages tab (`container`) and the Appearance tab
+ * (`appearance`). They are mounted together because the engine and the line
+ * matrix were one tab until recently and still share setup (the presets, the
+ * slider links, the language names the matrix shows).
+ */
+export function mountLanguagesTab(container, appearance) {
   if (!container) return;
 
   const langs = getAllLanguages();
@@ -257,13 +269,284 @@ export function mountLanguagesTab(container) {
     langs.map(l => `<option value="${l.id}" data-i18n="lang.name.${l.id}">${escapeAttr(l.label)}</option>`).join('');
 
   container.innerHTML = `
+    <div class="lang-layout">
+      <!-- Two grouped cards of equal width, the way grouped settings are laid
+           out: a small heading above each card, rows of "name on the left,
+           control on the right" divided by hairlines. On the left what the
+           three subtitle lines say (and the offline recognition pack, about
+           the source line), on the right how the translations are made. Both
+           cards share one surface: colour is kept for state (the status dot,
+           the red delete), not for telling the groups apart. Each line's
+           appearance is the Appearance tab (the second template below). -->
+      <section class="lang-group lang-lines" aria-labelledby="lang-lines-title">
+        <h3 class="group-title" id="lang-lines-title">${ICON_LINES}<span data-i18n="lang.lines">字幕の言語</span></h3>
+        <div class="group-card">
+          <div class="group-row lang-line-row">
+            <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
+            <select class="select select-compact" data-bind="sourceLangId">${sourceOptions}</select>
+          </div>
+          <div class="group-row lang-line-row">
+            <span class="lang-field-label" data-i18n="lang.target1">翻訳 1</span>
+            <select class="select select-compact" data-bind="target1LangId">${targetOptions}</select>
+          </div>
+          <div class="group-row lang-line-row">
+            <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
+            <select class="select select-compact" data-bind="target2LangId">${targetOptions}</select>
+          </div>
+
+      <!-- Offline recognition pack, under the language pickers since it is
+           about recognising the source line. Chrome-only, and behind the
+           experimental switch in the settings dialog, so for most people this
+           row does not exist. Heading inline with the button. -->
+      <section class="group-row lang-sub" id="offline-pack-row" hidden>
+        <div class="col-head">
+          <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
+          <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
+
+          <!-- Removal instructions live in a popover rather than as standing
+               text: they only matter once a pack is installed, and as a
+               permanent paragraph they were the tallest thing in the tab.
+               A popover (not a tooltip) stays open while the user follows the
+               steps in the browser's own settings. -->
+          <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
+                  popovertarget="popover-offline-help"
+                  data-i18n="lang.offline.help" hidden>削除方法</button>
+
+          <div class="help-popover offline-popover" id="popover-offline-help" popover>
+            <p class="offline-pack-info" id="offline-pack-info"></p>
+          </div>
+
+          <!-- Download result. In the top layer rather than in the column:
+               this section sits on the panel's bottom edge with no room left
+               under it, and as a paragraph the message was clipped away by
+               .tab-panel's overflow — it was never actually visible. Anchored
+               to the download button so it appears where the user just
+               clicked, costs the layout nothing, and fades rather than
+               blinking in. -->
+          <div class="help-popover offline-status-popover" id="offline-pack-status"
+               popover role="status" aria-live="polite"></div>
+        </div>
+      </section>
+        </div>
+      </section>
+
+      <!-- How to translate, as the second group: the picker, the chosen
+           engine's state and what it needs, then its settings. It used to be
+           the matrix's last row, squeezed into the width the appearance
+           columns left. -->
+      <section class="lang-group lang-engine" aria-labelledby="engine-card-title">
+        <h3 class="group-title" id="engine-card-title">${ICON_ENGINE}<span data-i18n="lang.engine">翻訳エンジン</span></h3>
+        <div class="group-card">
+        <div class="group-row engine-picker-row">
+            <span class="lang-field-label" data-i18n="lang.engine.picker">エンジン</span>
+            <!-- A pop-up button rather than a segmented switch: with three
+                 engines and a fourth behind a setting, of uneven name lengths,
+                 picked once and then left, the switch only took the width the
+                 status line and its buttons beside it need. An engine that
+                 cannot run is a disabled option; the status line says why.
+                 The last option is never offered: it only names the
+                 translation server (lang.advanced) while that is on, so the
+                 picker shows what is actually translating. Picking an engine
+                 from here turns the server off, as before. -->
+            <select class="select select-compact engine-select" id="engine-select" data-bind="translationMode"
+                    data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
+              <option value="gtx" data-i18n="lang.engine.gtx">Google 翻訳</option>
+              <option value="translator" id="engine-translator-option" data-i18n="lang.engine.translator">ブラウザ翻訳</option>
+              <option value="prompt" id="engine-prompt-option" data-i18n="lang.engine.prompt">ブラウザ AI</option>
+              <option value="plamo" id="engine-plamo-option" data-i18n="lang.engine.plamo">AI 翻訳（PLaMo 3・GPU）</option>
+              <option value="link" hidden disabled data-i18n="lang.advanced.link">翻訳サーバー</option>
+            </select>
+            <!-- Stands in for the picker while the recognition server
+                 translates (lang.advanced): no engine is used then, not even
+                 the translation server, so there is nothing to pick. A second
+                 select rather than an option of the first, which is bound to
+                 translationMode and would be set back to the engine. -->
+            <select class="select select-compact engine-select" id="engine-stt-select" disabled hidden
+                    data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
+              <option data-i18n="lang.engine.stt.active">音声認識サーバーの翻訳を使用中</option>
+            </select>
+        </div>
+
+          <!-- Row 2: the chosen engine's state (a chip, or progress written out)
+               and what it needs beside it — the model size, a download. Empty
+               for Google, so the row goes (CSS :has). -->
+            <div class="group-row engine-inline">
+              <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>${statusChip('translator')}
+              <!-- Downloads are the user's to start, so a missing model is
+                   offered here instead of fetched on the pick. -->
+              <button type="button" class="btn" id="engine-translator-download" data-i18n="lang.engine.translator.download" hidden>ダウンロード</button>
+              <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>${statusChip('prompt')}
+              <!-- PLaMo: the size picker shows on the pick, since it decides
+                   what the download button fetches. The credit is the
+                   license's "Built with PLaMo" notice (art. 4), linked to
+                   the license itself. -->
+              <p class="manual-status" id="engine-plamo-status" role="status" aria-live="polite" hidden></p>${statusChip('plamo')}
+              <select class="select select-compact plamo-model-select" id="engine-plamo-model" data-bind="plamoModel"
+                      data-i18n-aria-label="lang.engine.plamo.model" aria-label="PLaMo モデル" hidden>
+                ${PLAMO_MODELS.map(m => `<option value="${m.value}">${m.label}</option>`).join('')}
+              </select>
+              <!-- Labelled from code: "download" or "resume". -->
+              <button type="button" class="btn" id="engine-plamo-download" hidden></button>
+              <!-- While the translation server is on, the picker beside has
+                   nothing selected; this says where the lines go instead.
+                   Picking an engine turns the server off. -->
+              <p class="manual-status" id="engine-link-note" data-i18n="lang.engine.link.active" hidden>上級者向けの翻訳サーバーで翻訳しています</p>
+            </div>
+
+            <!-- Row 3: the engine's settings, then removing the model at the
+                 far end — apart from the everyday buttons and quiet (red text),
+                 since it means downloading gigabytes again, but in plain sight:
+                 it is also the way out of a model that will not load. -->
+            <div class="group-row engine-actions">
+              <!-- The options only mean something to a loaded model, so they
+                   show with the delete button rather than on the pick. -->
+              <button type="button" class="btn ai-options-btn" id="engine-ai-options"
+                      popovertarget="popover-ai-options"
+                      data-i18n="lang.engine.plamo.options" hidden>AI 翻訳オプション</button>
+              <div class="help-popover ai-options-popover" id="popover-ai-options" popover>
+                <section class="advanced-section ai-glossary">
+                  <h4 class="advanced-title" data-i18n="lang.engine.plamo.glossary.title">用語の訳し方</h4>
+                  <p class="advanced-desc" data-i18n="lang.engine.plamo.glossary.desc"></p>
+                  <div class="filter-list-wrap">
+                    <div class="filter-list" id="ai-glossary-list"></div>
+                    <button type="button" class="btn filter-add" id="ai-glossary-add" data-i18n="filter.add">+ 追加</button>
+                  </div>
+                </section>
+              </div>
+
+              <button type="button" class="text-btn danger" id="engine-plamo-delete" data-i18n="lang.engine.plamo.delete" hidden>モデルを削除</button>
+            </div>
+        </div>
+        <!-- The license's "Built with PLaMo" notice (art. 4), linked to the
+             license itself: a footnote under the card, the way grouped
+             settings carry their small print. -->
+        <p class="group-foot">
+          <a class="plamo-credit" id="engine-plamo-credit" target="_blank" rel="noopener" hidden>Built with PLaMo</a>
+        </p>
+      </section>
+
+      <!-- On the headings' line, at the right edge: a setting of the whole
+           tab, not of either group. -->
+      <div class="lang-tools">
+              <!-- Servers of the user's own, for recognition and translation.
+                   Tab-wide rather than in the engine card: a recognition server
+                   replaces the recogniser too, so it belongs to neither group.
+                   Kept behind a button because only someone who runs a server can
+                   use either, and their fields and notes crowded the tab for
+                   everyone else. The button carries the state the popover hides:
+                   lit while either is on, with the recognition server's
+                   connection as a dot — a stream going silent because that
+                   server is down has to be visible without opening anything. -->
+              <button type="button" class="advanced-btn" id="btn-advanced"
+                      popovertarget="popover-advanced" data-active="false"
+                      data-i18n-title="lang.advanced.hint" title="上級者向け">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
+                <span data-i18n="lang.advanced">自前のサーバー</span>
+                <span class="stt-status-dot" aria-hidden="true" hidden></span>
+              </button>
+
+              <div class="help-popover advanced-popover" id="popover-advanced" popover>
+                <section class="advanced-section">
+                  <div class="advanced-head">
+                    <h4 class="advanced-title" data-i18n="lang.advanced.stt">音声認識サーバー</h4>
+                    <label class="toggle">
+                      <input type="checkbox" id="adv-stt-toggle">
+                      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                  </div>
+                  <p class="advanced-desc" data-i18n="lang.advanced.stt.desc"></p>
+                  <!-- Masked like the translation URL below: a server reached
+                       from outside usually carries its token in the query. -->
+                  <div class="secret-input-wrap" data-secret-visible="false"
+                       data-secret-show="lang.engine.link.url.show"
+                       data-secret-hide="lang.engine.link.url.hide">
+                    <input type="url" class="text-input secret-input" placeholder="ws://127.0.0.1:9000"
+                           data-bind="customSttUrl" autocomplete="off" spellcheck="false">
+                    <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
+                      <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                        <path d="M1 1l22 22"/>
+                      </svg>
+                      <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <label class="advanced-option">
+                    <span data-i18n="lang.advanced.stt.useTranslations">サーバーが返した翻訳を使う</span>
+                    <span class="toggle toggle-compact">
+                      <input type="checkbox" data-bind="useSttTranslations">
+                      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </span>
+                  </label>
+                  <div class="advanced-foot">
+                    <p class="stt-status" id="stt-status" role="status" aria-live="polite" data-phase="idle">
+                      <span class="stt-status-dot" aria-hidden="true"></span>
+                      <span class="stt-status-text"></span>
+                    </p>
+                    <a class="advanced-link" href="docs/custom-stt.html"
+                       target="_blank" rel="noopener" data-i18n="lang.advanced.stt.spec">接続仕様とサンプル</a>
+                  </div>
+                </section>
+
+                <!-- Inert while the recognition server translates: nothing is
+                     sent here then, so it shows as off without being switched
+                     off, and is back as it was once that ends. -->
+                <section class="advanced-section" id="adv-link-section">
+                  <div class="advanced-head">
+                    <h4 class="advanced-title" data-i18n="lang.advanced.link">翻訳サーバー</h4>
+                    <label class="toggle">
+                      <input type="checkbox" id="adv-link-toggle">
+                      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    </label>
+                  </div>
+                  <p class="advanced-desc" data-i18n="lang.advanced.link.desc"></p>
+                  <!-- Masked by default: this URL usually carries an API key in its
+                       path or query, and the panel is on screen while streaming.
+                       Not type="password" on purpose — see js/ui-secret-input.js. -->
+                  <div class="secret-input-wrap" data-secret-visible="false"
+                       data-secret-show="lang.engine.link.url.show"
+                       data-secret-hide="lang.engine.link.url.hide">
+                    <input type="url" class="text-input secret-input" placeholder="https://..."
+                           data-bind="customTranslateUrl" autocomplete="off" spellcheck="false">
+                    <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
+                      <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                        <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                        <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                        <path d="M1 1l22 22"/>
+                      </svg>
+                      <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                        <circle cx="12" cy="12" r="3"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="format-help-examples">
+                    <span data-i18n="lang.engine.link.help.examples">そのまま使えるサンプル：</span>
+                    <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
+                    <button type="button" class="btn" data-example="openai">OpenAI</button>
+                    <button type="button" class="btn" data-example="gemini">Gemini</button>
+                    <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">形式の説明</button>
+                  </div>
+                </section>
+              </div>
+      </div>
+    </div>
+  `;
+
+  if (appearance) appearance.innerHTML = `
     <div class="lang-grid">
-      <!-- One row per subtitle line, carrying BOTH its language and its
-           appearance. They describe the same object, so splitting them across
-           two tabs meant setting up a single line required switching back and
-           forth. Column headers are written once; each row is a
-           display:contents wrapper so its cells join the outer grid and every
-           control of the same kind lines up vertically. -->
+      <!-- One row per subtitle line, carrying its appearance. The line's
+           language is set on the Languages tab and named here, read-only, at
+           the head of its row, so a row still says which line it is drawing.
+           A line that is not translated has nothing to style: its row says
+           so and links back to the Languages tab. Column headers are written
+           once; each row is a display:contents wrapper so its cells join the
+           outer grid and every control of the same kind lines up vertically. -->
       <div class="lang-top">
       <div class="lang-matrix">
         <div class="lang-matrix-head">
@@ -296,218 +579,36 @@ export function mountLanguagesTab(container) {
           </span>
         </div>
 
-        <div class="lang-matrix-row">
+        <div class="lang-matrix-row" data-line="source">
           <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
-          <div class="lang-control">
-            <select class="select select-compact" data-bind="sourceLangId">${sourceOptions}</select>
-          </div>
+          <span class="lang-name" data-lang-of="sourceLangId"></span>
           ${styleCells('source')}
+          <p class="line-unused-note">
+            <span data-i18n="style.lineUnused">翻訳しない設定です。</span>
+            <button type="button" class="link-btn" data-goto-tab="languages" data-i18n="style.lineUnused.add">言語タブで追加</button>
+          </p>
         </div>
 
-        <div class="lang-matrix-row">
+        <div class="lang-matrix-row" data-line="target1">
           <span class="lang-field-label" data-i18n="lang.target1">翻訳 1</span>
-          <div class="lang-control">
-            <select class="select select-compact" data-bind="target1LangId">${targetOptions}</select>
-          </div>
+          <span class="lang-name" data-lang-of="target1LangId"></span>
           ${styleCells('target1')}
+          <p class="line-unused-note">
+            <span data-i18n="style.lineUnused">翻訳しない設定です。</span>
+            <button type="button" class="link-btn" data-goto-tab="languages" data-i18n="style.lineUnused.add">言語タブで追加</button>
+          </p>
         </div>
 
-        <div class="lang-matrix-row">
+        <div class="lang-matrix-row" data-line="target2">
           <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
-          <div class="lang-control">
-            <select class="select select-compact" data-bind="target2LangId">${targetOptions}</select>
-          </div>
+          <span class="lang-name" data-lang-of="target2LangId"></span>
           ${styleCells('target2')}
-        </div>
-
-        <!-- How to translate, as the matrix's last row: the label and picker in
-             the label and language columns, then whatever the chosen engine
-             needs (a status line, its buttons) and the advanced button across
-             the appearance columns, which a translation method has no use
-             for. Under the two translation lines it serves, rather than on a
-             footer row of its own that ran the full width of the card. -->
-        <div class="lang-matrix-row lang-engine">
-          <span class="lang-field-label" data-i18n="lang.engine">翻訳エンジン</span>
-          <div class="lang-control">
-            <!-- A pop-up button rather than a segmented switch: with three
-                 engines and a fourth behind a setting, of uneven name lengths,
-                 picked once and then left, the switch only took the width the
-                 status line and its buttons beside it need. An engine that
-                 cannot run is a disabled option; the status line says why.
-                 The last option is never offered: it only names the
-                 translation server (lang.advanced) while that is on, so the
-                 picker shows what is actually translating. Picking an engine
-                 from here turns the server off, as before. -->
-            <select class="select select-compact engine-select" id="engine-select" data-bind="translationMode"
-                    data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
-              <option value="gtx" data-i18n="lang.engine.gtx">Google 翻訳</option>
-              <option value="translator" id="engine-translator-option" data-i18n="lang.engine.translator">ブラウザ翻訳</option>
-              <option value="prompt" id="engine-prompt-option" data-i18n="lang.engine.prompt">ブラウザ AI</option>
-              <option value="plamo" id="engine-plamo-option" data-i18n="lang.engine.plamo">AI 翻訳（PLaMo 3・GPU）</option>
-              <option value="link" hidden disabled data-i18n="lang.advanced.link">翻訳サーバー</option>
-            </select>
-            <!-- Stands in for the picker while the recognition server
-                 translates (lang.advanced): no engine is used then, not even
-                 the translation server, so there is nothing to pick. A second
-                 select rather than an option of the first, which is bound to
-                 translationMode and would be set back to the engine. -->
-            <select class="select select-compact engine-select" id="engine-stt-select" disabled hidden
-                    data-i18n-aria-label="lang.engine" aria-label="翻訳エンジン">
-              <option data-i18n="lang.engine.stt.active">音声認識サーバーの翻訳を使用中</option>
-            </select>
-          </div>
-
-          <div class="engine-detail">
-            <!-- Whatever the selected engine needs — a status line, its
-                 buttons, or nothing — beside the picker, in the width the
-                 appearance columns leave. The status line wraps when that is
-                 too little; the buttons keep their size. -->
-            <div class="engine-inline">
-              <p class="manual-status" id="engine-translator-status" role="status" aria-live="polite" hidden></p>${statusChip('translator')}
-              <!-- Downloads are the user's to start, so a missing model is
-                   offered here instead of fetched on the pick. -->
-              <button type="button" class="btn" id="engine-translator-download" data-i18n="lang.engine.translator.download" hidden>ダウンロード</button>
-              <p class="manual-status" id="engine-prompt-status" role="status" aria-live="polite" hidden></p>${statusChip('prompt')}
-              <!-- PLaMo: the size picker shows on the pick, since it decides
-                   what the download button fetches. The credit is the
-                   license's "Built with PLaMo" notice (art. 4), linked to
-                   the license itself. -->
-              <p class="manual-status" id="engine-plamo-status" role="status" aria-live="polite" hidden></p>${statusChip('plamo')}
-              <select class="select select-compact plamo-model-select" id="engine-plamo-model" data-bind="plamoModel"
-                      data-i18n-aria-label="lang.engine.plamo.model" aria-label="PLaMo モデル" hidden>
-                ${PLAMO_MODELS.map(m => `<option value="${m.value}">${m.label}</option>`).join('')}
-              </select>
-              <!-- Labelled from code: "download" or "resume". -->
-              <button type="button" class="btn" id="engine-plamo-download" hidden></button>
-              <!-- The options only mean something to a loaded model, so they
-                   show with the delete button rather than on the pick. -->
-              <button type="button" class="btn ai-options-btn" id="engine-ai-options"
-                      popovertarget="popover-ai-options"
-                      data-i18n="lang.engine.plamo.options" hidden>AI 翻訳オプション</button>
-              <div class="help-popover ai-options-popover" id="popover-ai-options" popover>
-                <section class="advanced-section ai-glossary">
-                  <h4 class="advanced-title" data-i18n="lang.engine.plamo.glossary.title">用語の訳し方</h4>
-                  <p class="advanced-desc" data-i18n="lang.engine.plamo.glossary.desc"></p>
-                  <div class="filter-list-wrap">
-                    <div class="filter-list" id="ai-glossary-list"></div>
-                    <button type="button" class="btn filter-add" id="ai-glossary-add" data-i18n="filter.add">+ 追加</button>
-                  </div>
-                </section>
-              </div>
-              <button type="button" class="btn" id="engine-plamo-delete" data-i18n="lang.engine.plamo.delete" hidden>モデルを削除</button>
-              <a class="plamo-credit" id="engine-plamo-credit" target="_blank" rel="noopener" hidden>Built with PLaMo</a>
-              <!-- While the translation server is on, the picker beside has
-                   nothing selected; this says where the lines go instead.
-                   Picking an engine turns the server off. -->
-              <p class="manual-status" id="engine-link-note" data-i18n="lang.engine.link.active" hidden>上級者向けの翻訳サーバーで翻訳しています</p>
-            </div>
-
-            <!-- Servers of the user's own, for recognition and translation.
-                 Kept out of the row because only someone who runs a server can
-                 use either, and their fields and notes crowded the tab for
-                 everyone else. The button carries the state the popover hides:
-                 lit while either is on, with the recognition server's
-                 connection as a dot — a stream going silent because that
-                 server is down has to be visible without opening anything. -->
-            <button type="button" class="btn advanced-btn" id="btn-advanced"
-                    popovertarget="popover-advanced" data-active="false">
-              <span class="stt-status-dot" aria-hidden="true" hidden></span>
-              <span data-i18n="lang.advanced">上級者向け</span>
-            </button>
-
-            <div class="help-popover advanced-popover" id="popover-advanced" popover>
-              <section class="advanced-section">
-                <div class="advanced-head">
-                  <h4 class="advanced-title" data-i18n="lang.advanced.stt">音声認識サーバー</h4>
-                  <label class="toggle">
-                    <input type="checkbox" id="adv-stt-toggle">
-                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                  </label>
-                </div>
-                <p class="advanced-desc" data-i18n="lang.advanced.stt.desc"></p>
-                <!-- Masked like the translation URL below: a server reached
-                     from outside usually carries its token in the query. -->
-                <div class="secret-input-wrap" data-secret-visible="false"
-                     data-secret-show="lang.engine.link.url.show"
-                     data-secret-hide="lang.engine.link.url.hide">
-                  <input type="url" class="text-input secret-input" placeholder="ws://127.0.0.1:9000"
-                         data-bind="customSttUrl" autocomplete="off" spellcheck="false">
-                  <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
-                    <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                      <path d="M1 1l22 22"/>
-                    </svg>
-                    <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  </button>
-                </div>
-                <label class="advanced-option">
-                  <span data-i18n="lang.advanced.stt.useTranslations">サーバーが返した翻訳を使う</span>
-                  <span class="toggle toggle-compact">
-                    <input type="checkbox" data-bind="useSttTranslations">
-                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                  </span>
-                </label>
-                <div class="advanced-foot">
-                  <p class="stt-status" id="stt-status" role="status" aria-live="polite" data-phase="idle">
-                    <span class="stt-status-dot" aria-hidden="true"></span>
-                    <span class="stt-status-text"></span>
-                  </p>
-                  <a class="advanced-link" href="docs/custom-stt.html"
-                     target="_blank" rel="noopener" data-i18n="lang.advanced.stt.spec">接続仕様とサンプル</a>
-                </div>
-              </section>
-
-              <!-- Inert while the recognition server translates: nothing is
-                   sent here then, so it shows as off without being switched
-                   off, and is back as it was once that ends. -->
-              <section class="advanced-section" id="adv-link-section">
-                <div class="advanced-head">
-                  <h4 class="advanced-title" data-i18n="lang.advanced.link">翻訳サーバー</h4>
-                  <label class="toggle">
-                    <input type="checkbox" id="adv-link-toggle">
-                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
-                  </label>
-                </div>
-                <p class="advanced-desc" data-i18n="lang.advanced.link.desc"></p>
-                <!-- Masked by default: this URL usually carries an API key in its
-                     path or query, and the panel is on screen while streaming.
-                     Not type="password" on purpose — see js/ui-secret-input.js. -->
-                <div class="secret-input-wrap" data-secret-visible="false"
-                     data-secret-show="lang.engine.link.url.show"
-                     data-secret-hide="lang.engine.link.url.hide">
-                  <input type="url" class="text-input secret-input" placeholder="https://..."
-                         data-bind="customTranslateUrl" autocomplete="off" spellcheck="false">
-                  <button type="button" class="icon-btn secret-toggle" aria-pressed="false">
-                    <svg class="icon-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
-                      <path d="M1 1l22 22"/>
-                    </svg>
-                    <svg class="icon-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                      <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                  </button>
-                </div>
-                <div class="format-help-examples">
-                  <span data-i18n="lang.engine.link.help.examples">そのまま使えるサンプル：</span>
-                  <button type="button" class="btn" data-example="minimal" data-i18n="lang.engine.link.example.btn.minimal">最小</button>
-                  <button type="button" class="btn" data-example="openai">OpenAI</button>
-                  <button type="button" class="btn" data-example="gemini">Gemini</button>
-                  <button type="button" class="btn" id="btn-url-format" data-i18n="lang.engine.link.help.btn">形式の説明</button>
-                </div>
-              </section>
-            </div>
-          </div>
+          <p class="line-unused-note">
+            <span data-i18n="style.lineUnused">翻訳しない設定です。</span>
+            <button type="button" class="link-btn" data-goto-tab="languages" data-i18n="style.lineUnused.add">言語タブで追加</button>
+          </p>
         </div>
       </div>
-
       </div>
 
       <!-- The colour presets (js/subtitle-presets.js), under both the matrix
@@ -670,42 +771,6 @@ export function mountLanguagesTab(container) {
         </div>
         </div>
       </section>
-
-
-      <!-- Offline recognition pack, the one row left under the matrix once the
-           engine moved into it. Chrome-only, and behind the experimental switch
-           in the settings dialog, so for most people this row does not exist.
-           Heading inline with the button: stacked, the button fell below the
-           panel's bottom edge. -->
-      <section class="lang-sub" id="offline-pack-row" hidden>
-        <div class="col-head">
-          <h3 class="section-title" data-i18n="lang.offline.label">オフライン音声認識パック</h3>
-          <button type="button" class="btn offline-pack-btn" id="btn-offline-pack">ダウンロード</button>
-
-          <!-- Removal instructions live in a popover rather than as standing
-               text: they only matter once a pack is installed, and as a
-               permanent paragraph they were the tallest thing in the tab.
-               A popover (not a tooltip) stays open while the user follows the
-               steps in the browser's own settings. -->
-          <button type="button" class="btn offline-help-toggle" id="btn-offline-help"
-                  popovertarget="popover-offline-help"
-                  data-i18n="lang.offline.help" hidden>削除方法</button>
-
-          <div class="help-popover offline-popover" id="popover-offline-help" popover>
-            <p class="offline-pack-info" id="offline-pack-info"></p>
-          </div>
-
-          <!-- Download result. In the top layer rather than in the column:
-               this section sits on the panel's bottom edge with no room left
-               under it, and as a paragraph the message was clipped away by
-               .tab-panel's overflow — it was never actually visible. Anchored
-               to the download button so it appears where the user just
-               clicked, costs the layout nothing, and fades rather than
-               blinking in. -->
-          <div class="help-popover offline-status-popover" id="offline-pack-status"
-               popover role="status" aria-live="polite"></div>
-        </div>
-      </section>
     </div>
   `;
 
@@ -720,9 +785,12 @@ export function mountLanguagesTab(container) {
 
   wireExampleButtons(container);
   wireSecretInputs(container);
-  wireSubtitlePresets(container.querySelector('.sub-preset-row'));
-  wireDeco(container);
-  wireLinks(container);
+  if (appearance) {
+    wireSubtitlePresets(appearance.querySelector('.sub-preset-row'));
+    wireDeco(appearance);
+    wireLinks(appearance);
+    wireLineNames(appearance, langs);
+  }
   setupAdvanced(container);
   setupOfflinePack(container);
   markCloudOnlySources(container);
@@ -731,6 +799,43 @@ export function mountLanguagesTab(container) {
   const aiOptions = setupAiOptions(container);
   setupPlamoEngine(container, aiOptions);
   dropRetiredHymtCache();
+}
+
+/* The Appearance tab names each line's language at the head of its row,
+   read-only — the pickers are on the Languages tab. A translation line set to
+   "none" draws nothing, so its row hides its controls and offers the way to
+   the Languages tab instead (.is-unused). The names follow the store, and the
+   interface language for their wording. */
+function wireLineNames(appearance, langs) {
+  const labelOf = (id) => {
+    if (!id) return t('lang.choose');
+    if (id === 'none') return t('lang.none');
+    const key = `lang.name.${id}`;
+    const text = t(key);
+    return text !== key ? text : (langs.find(l => l.id === id)?.label ?? id);
+  };
+
+  const cells = [...appearance.querySelectorAll('.lang-name[data-lang-of]')];
+  const paint = () => {
+    for (const cell of cells) {
+      const id = settings[cell.dataset.langOf];
+      cell.textContent = labelOf(id);
+      const row = cell.closest('.lang-matrix-row');
+      row?.classList.toggle('is-unused', cell.dataset.langOf !== 'sourceLangId' && (!id || id === 'none'));
+    }
+  };
+  for (const key of ['sourceLangId', 'target1LangId', 'target2LangId', 'uiLang']) subscribe(key, paint);
+  paint();
+
+  appearance.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-goto-tab]');
+    if (!btn) return;
+    const line = btn.closest('.lang-matrix-row')?.dataset.line;
+    document.getElementById(`tab-btn-${btn.dataset.gotoTab}`)?.click();
+    /* Land on the picker that would bring this line back. */
+    const bind = { target1: 'target1LangId', target2: 'target2LangId' }[line];
+    if (bind) document.querySelector(`#tab-languages select[data-bind="${bind}"]`)?.focus();
+  });
 }
 
 /* The advanced popover's two switches are views of existing settings rather

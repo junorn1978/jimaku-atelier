@@ -1,6 +1,7 @@
 /**
  * @file ui-tabs.js
- * @description Settings-panel horizontal tab bar (言語 / スタイル / 単語置換 / OBS).
+ * @description Settings-panel horizontal tab bar (言語 / 外観 / 単語置換 / OBS),
+ * along the control card's top edge.
  * The tab buttons and panels are static markup in index.html; this module only
  * wires switching. Panels toggle via the plain `hidden` attribute (re-asserted
  * in the CSS utilities layer, so it wins over any display rule), buttons get
@@ -10,7 +11,7 @@
 
 import { settings } from './store.js';
 
-const TAB_NAMES = ['languages', 'filter', 'obs'];
+const TAB_NAMES = ['languages', 'appearance', 'filter', 'obs'];
 
 export function initSettingsTabs() {
   const tablist = document.querySelector('.settings-tabs');

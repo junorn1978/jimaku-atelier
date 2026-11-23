@@ -54,7 +54,7 @@ async function init() {
 
   /* Mount each settings tab into its own panel (static markup in index.html;
      switching is wired by initSettingsTabs below). */
-  mountLanguagesTab(document.getElementById('tab-languages'));
+  mountLanguagesTab(document.getElementById('tab-languages'), document.getElementById('tab-appearance'));
   mountFilterTab(document.getElementById('tab-filter'));
   mountObsTab(document.getElementById('tab-obs'));
   mountManualTranslate(document.getElementById('manual-translate-panel'));

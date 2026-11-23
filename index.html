@@ -150,32 +150,51 @@
         <p class="toolbar-status" id="toolbar-status"></p>
 
         <div class="toolbar-actions">
-          <!-- The setup controls, as two inset capsules: the audio input
-               (microphone, tab audio), then the settings tabs. Two capsules
-               rather than one track with a divider in it: the first opens
-               panels and starts shares, the second switches the body. -->
+          <!-- The audio input, as one inset capsule (microphone, tab audio).
+               The settings tabs that used to sit beside it moved to the card's
+               top edge (.settings-head), so this row holds actions only. -->
           <div class="settings-nav">
             <div class="settings-nav-group">
-              <!-- Microphone button and its panel (js/ui-mic.js). A capsule
-                   of the same material as the tabs: it is set up once per
-                   session, like what the tabs hold, and as a pill of its own
-                   it stood taller than the tabs beside it. Not a tab itself —
-                   it opens a popover — so it sits outside the tablist. Hidden
-                   with the tabs while the panel is collapsed: switching the
-                   input mid-stream should not be one stray click away.
-                   data-alert puts a dot on it. Labelled "settings" rather than
-                   just "microphone": an icon alone read as a mute toggle. The
-                   tooltip names the device in use. -->
+              <!-- The audio-source button and its panel (js/ui-mic.js): which
+                   input recognition hears (microphone or a shared tab), the
+                   device, a level test. Hidden while the panel is collapsed:
+                   switching the input mid-stream should not be one stray click
+                   away. data-alert puts a dot on it. Labelled with the source
+                   rather than an icon alone, which read as a mute toggle. The
+                   tooltip names the device or the shared tab. -->
               <button type="button" class="mic-btn" id="mic-btn" popovertarget="mic-panel">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <rect x="9" y="2" width="6" height="12" rx="3"/>
                   <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
                   <path d="M12 18v4"/>
                 </svg>
-                <span data-i18n="settings.mic.button">マイク設定</span>
+                <!-- "Source: microphone" or "Source: tab audio" (js/ui-mic.js),
+                     so what recognition hears is read off the toolbar without
+                     opening anything. -->
+                <span class="mic-btn-label">マイク</span>
               </button>
 
               <div class="mic-panel" id="mic-panel" popover>
+                <!-- Which input recognition listens to. The tab-audio share used
+                     to be a button of its own beside this one; as the panel's
+                     first row it is one choice with the microphone, and the
+                     toolbar keeps one button. Picking the tab puts up the
+                     browser's share dialog (a click is the gesture it needs);
+                     picking the microphone ends the share. Hidden where sharing
+                     does not work. -->
+                <div class="mic-panel-row mic-source" hidden>
+                  <h3 data-i18n="settings.source.title">音源</h3>
+                  <div class="seg-switch mic-source-switch" role="group"
+                       data-i18n-aria-label="settings.source.title" aria-label="音源">
+                    <button type="button" data-source="mic" aria-pressed="true">
+                      <span data-i18n="settings.source.mic">マイク</span>
+                    </button>
+                    <button type="button" data-source="tab" aria-pressed="false">
+                      <span data-i18n="settings.source.tab">タブの音声</span>
+                    </button>
+                  </div>
+                </div>
+
                 <div class="mic-panel-row mic-device">
                   <h3 data-i18n="settings.mic.title">マイク</h3>
                   <select class="select mic-select" data-i18n-aria-label="settings.mic.title" aria-label="マイク"></select>
@@ -233,41 +252,8 @@
                 </div>
               </div>
 
-              <!-- Shares a tab's (or window's) audio, or ends the share
-                   (js/ui-mic.js, js/audio-input.js). A button of its own rather
-                   than an entry in the device list:
-                   the share is opened and ended here, recognition listens to it
-                   whenever it is on, and the mic list is disabled meanwhile.
-                   After the panel, not before it: .mic-btn's open style looks
-                   for the panel right after it. Text, title and aria-pressed
-                   are set from JS. -->
-              <button type="button" class="tab-audio-btn" id="tab-audio-btn" aria-pressed="false" hidden>
-                <!-- speaker icon -->
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M11 5 6 9H2v6h4l5 4z"/>
-                  <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
-                  <path d="M19 5a10 10 0 0 1 0 14"/>
-                </svg>
-                <span class="tab-audio-label"></span>
-              </button>
             </div>
 
-            <!-- Settings are split across three tabs. Each tab panel is filled by
-                 its own module (js/ui-languages.js, js/ui-filter.js,
-                 js/ui-obs.js — mounted from js/main.js); switching is handled by
-                 js/ui-tabs.js and the active tab persists in the settings store. -->
-            <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
-                 aria-label="設定項目" aria-orientation="horizontal">
-              <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
-                      aria-selected="true" data-tab="languages" class="tab-btn is-active"
-                      data-i18n="tab.languages">言語</button>
-              <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
-                      aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
-                      data-i18n="tab.filter">単語置換</button>
-              <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
-                      aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
-                      data-i18n="tab.obs">OBS</button>
-            </div>
           </div>
 
           <button type="button" class="icon-btn" id="toggle-manual" aria-pressed="false"
@@ -351,8 +337,36 @@
           </button>
         </div>
       </div>
+      <!-- The settings tabs, along the card's top edge above the body they
+           switch. They used to share the toolbar row with the audio input and
+           the global actions, which left no room for a fourth tab. Up here they
+           are hidden with the body while the panel is collapsed — there is
+           nothing for them to switch then. Each tab panel is filled by its own
+           module (js/ui-languages.js fills both Languages and Appearance,
+           js/ui-filter.js, js/ui-obs.js — mounted from js/main.js); switching is
+           handled by js/ui-tabs.js and the active tab persists in the settings
+           store. After the toolbar in the DOM but placed first by grid row, so
+           tab order still runs tabs → their panel. -->
+      <div class="settings-head">
+        <div class="settings-tabs" role="tablist" data-i18n-aria-label="aria.settingsSections"
+             aria-label="設定項目" aria-orientation="horizontal">
+          <button type="button" role="tab" id="tab-btn-languages" aria-controls="tab-languages"
+                  aria-selected="true" data-tab="languages" class="tab-btn is-active"
+                  data-i18n="tab.languages">言語</button>
+          <button type="button" role="tab" id="tab-btn-appearance" aria-controls="tab-appearance"
+                  aria-selected="false" tabindex="-1" data-tab="appearance" class="tab-btn"
+                  data-i18n="tab.appearance">外観</button>
+          <button type="button" role="tab" id="tab-btn-filter" aria-controls="tab-filter"
+                  aria-selected="false" tabindex="-1" data-tab="filter" class="tab-btn"
+                  data-i18n="tab.filter">単語置換</button>
+          <button type="button" role="tab" id="tab-btn-obs" aria-controls="tab-obs"
+                  aria-selected="false" tabindex="-1" data-tab="obs" class="tab-btn"
+                  data-i18n="tab.obs">OBS</button>
+        </div>
+      </div>
       <div class="settings-body" id="settings-body">
         <div class="tab-panel" id="tab-languages" role="tabpanel" aria-labelledby="tab-btn-languages"></div>
+        <div class="tab-panel" id="tab-appearance" role="tabpanel" aria-labelledby="tab-btn-appearance" hidden></div>
         <div class="tab-panel" id="tab-filter" role="tabpanel" aria-labelledby="tab-btn-filter" hidden></div>
         <div class="tab-panel" id="tab-obs"    role="tabpanel" aria-labelledby="tab-btn-obs"    hidden></div>
       </div>

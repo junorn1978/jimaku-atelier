@@ -961,7 +961,7 @@ function onDeviceChanged() {
   switchInput('picked in settings');
 }
 
-/* The tab-audio button (js/ui-mic.js). Sharing mid-run moves recognition onto
+/* The source switch's tab half (js/ui-mic.js). Sharing mid-run moves recognition onto
    the tab; ending the share stops it, as the browser's "stop sharing" does
    (handleInputEnded) — falling back to the microphone would start subtitling
    the room, which is not what was being listened to. */

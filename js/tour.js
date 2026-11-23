@@ -42,6 +42,13 @@ const showTab = (name) => document.getElementById(`tab-btn-${name}`)?.click();
    which direction the user arrived from. */
 const inLanguages = () => { settings.panelCollapsed = false; showTab('languages'); };
 
+/* A language row on the Languages tab is display:contents (its label and
+   picker join the outer grid), so it has no box of its own: light its cells. */
+const lineCells = (bind) => {
+  const row = $(`#tab-languages [data-bind="${bind}"]`)?.closest('.lang-line-row');
+  return row ? [...row.children] : [];
+};
+
 /**
  * @typedef {object} Step
  * @property {string} key  i18n prefix: tour.<key>.title / tour.<key>.body
@@ -59,7 +66,7 @@ const inLanguages = () => { settings.panelCollapsed = false; showTab('languages'
 const STEPS = [
   {
     key: 'source',
-    target: () => $('[data-bind="sourceLangId"]')?.closest('.lang-matrix-row'),
+    target: () => lineCells('sourceLangId'),
     place: 'top',
     before: inLanguages,
   },
@@ -67,10 +74,7 @@ const STEPS = [
     key: 'targets',
     /* Both rows at once: the point of the step is that the second one is
        optional, which only reads if the pair is lit together. */
-    target: () => [
-      $('[data-bind="target1LangId"]')?.closest('.lang-matrix-row'),
-      $('[data-bind="target2LangId"]')?.closest('.lang-matrix-row'),
-    ],
+    target: () => [...lineCells('target1LangId'), ...lineCells('target2LangId')],
     place: 'top',
     before: inLanguages,
   },

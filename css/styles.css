@@ -451,10 +451,11 @@
        come before the panel they control in tab order. */
     position: relative;   /* anchors the height grip (.panel-resize) */
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-rows: auto minmax(0, 1fr) auto;
 
-    > .control-toolbar { grid-row: 2; }
-    > .settings-body   { grid-row: 1; }
+    > .settings-head   { grid-row: 1; }
+    > .settings-body   { grid-row: 2; }
+    > .control-toolbar { grid-row: 3; }
     width: min(100% - var(--card-inset) * 2, var(--panel-measure));
     height: var(--control-panel-h);
     margin: 0 auto var(--card-inset);
@@ -487,18 +488,66 @@
 
     &.is-arming { transform: scale(0.995); }
 
-    /* Two capsules side by side: the audio input (microphone, tab audio) and
-       the tab picker. Each is the same inset track as the .seg-switch
-       controls in the tab bodies, so every segmented control in the card is
-       one material; the gap between them, not a divider inside one track,
-       says that one opens panels and the other switches the body. */
+    /* The settings tabs along the card's top edge: plain labels over an
+       underline rather than the inset capsule the toolbar's audio input wears,
+       so the two no longer read as the same kind of control — one switches the
+       body below it, the other opens a panel. The top padding clears the
+       height grip, which sits on the card's edge above the labels. No
+       animation on switching — tabs are flipped dozens of times a day. */
+    .settings-head {
+      padding: var(--space-3) var(--space-4) 0;
+      border-bottom: 1px solid color-mix(in oklab, var(--color-border) 60%, transparent);
+    }
+
+    .settings-tabs {
+      display: flex;
+      align-items: flex-end;
+      gap: var(--space-1);
+
+      .tab-btn {
+        position: relative;
+        padding: 4px 12px 8px;
+        font-size: var(--text-md);
+        color: var(--color-text-dim);
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+        transition: color 0.15s, background 0.15s;
+
+        &:hover {
+          color: var(--color-text);
+          background: var(--fill-1);
+        }
+
+        /* Sits on the head's hairline, so the active tab reads as opening
+           onto the body below. */
+        &::after {
+          content: "";
+          position: absolute;
+          left: 8px;
+          right: 8px;
+          bottom: -1px;
+          height: 2px;
+          border-radius: 2px;
+          background: transparent;
+          transition: background 0.15s;
+        }
+
+        &.is-active {
+          color: var(--color-text);
+          font-weight: 600;
+          &::after { background: var(--color-accent); }
+        }
+      }
+    }
+
+    /* The audio input (microphone, tab audio) in the toolbar, as one inset
+       capsule — the same track as the .seg-switch controls in the tab bodies,
+       so every segmented control in the card is one material. */
     .settings-nav {
       display: flex;
       align-items: center;
       gap: var(--space-2);
 
-      .settings-nav-group,
-      .settings-tabs {
+      .settings-nav-group {
         display: flex;
         align-items: center;
         gap: 2px;
@@ -508,13 +557,8 @@
         border-radius: var(--radius-full);
       }
 
-      /* The active tab is a raised material chip, matching the segmented
-         switches beside it. No animation on switching — tabs are flipped
-         dozens of times a day. The microphone and tab-audio buttons wear the same chip so
-         the two capsules read as one row of equals. */
-      .tab-btn,
-      .mic-btn,
-      .tab-audio-btn {
+      /* The source button is a material chip that rises on hover. */
+      .mic-btn {
         padding: 3px 12px;
         font-size: var(--text-md);
         color: var(--color-text-dim);
@@ -538,12 +582,10 @@
     .settings-body {
       min-height: 0;
       overflow: hidden;
-      /* No divider below: the card's own edge does the separating, and a rule
-         between the tabs and their panel would say the two are unrelated.
-         The full step on top clears the height grip on the card's edge; the
-         one below keeps the tab's last full-width row (the engine row, the
-         filter tab's add buttons) from running into the toolbar. */
-      padding: var(--space-4);
+      /* The tabs' hairline above does the separating. A step on every side;
+         the one below keeps the tab's last full-width row (the presets row,
+         the filter tab's add buttons) from running into the toolbar. */
+      padding: var(--space-3) var(--space-4) var(--space-4);
 
       /* Tabs are designed to fit without scrolling (the Filter tab scrolls
          inside its rule lists instead); overflow-y is a graceful fallback
@@ -1212,8 +1254,11 @@
   .panel-collapsed .control-card  { height: auto; }
   .panel-collapsed .panel-resize  { display: none; }
 
-  /* The tab picker would drive a body that is no longer displayed, so it hands
-     its cell to the read-only language readout. */
+  /* The tabs would drive a body that is no longer displayed, so they go with
+     it; the audio input hands its toolbar cell to the read-only language
+     readout (switching the input mid-stream should not be one stray click
+     away). */
+  .panel-collapsed .settings-head  { display: none; }
   .panel-collapsed .settings-nav   { display: none; }
   .panel-collapsed .toolbar-status { display: block; }
 
