@@ -57,6 +57,7 @@
   "lang.stt.status.failed": "網址格式不正確",
   "lang.advanced": "自架伺服器",
   "lang.advanced.hint": "進階：用自己的伺服器做語音辨識或翻譯",
+  "lang.advanced.note": "・進階",
   "lang.advanced.stt": "語音辨識伺服器",
   "lang.advanced.stt.desc": "把麥克風的聲音送到自己架設的伺服器（Whisper 等）辨識，取代瀏覽器的語音辨識。",
   "lang.advanced.stt.spec": "連接規範與範例",

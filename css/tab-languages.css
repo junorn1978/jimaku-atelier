@@ -1093,27 +1093,37 @@
     align-items: center;
   }
 
-  /* A quiet text button — glyph, label — not a filled chip: it is rarely
-     needed and must not compete with the cards' controls. */
+  /* An outlined pill — a hairline, no fill: plainly a button, yet quieter
+     than the cards' filled controls, since it is rarely needed. The label
+     says what it is; the faint note after it says who it is for. */
   .advanced-btn {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    padding: 2px 8px;
-    border-radius: var(--radius-sm);
+    padding: 2px 10px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-full);
     font-size: var(--text-sm);
     color: var(--color-text-dim);
     white-space: nowrap;
     anchor-name: --advanced-anchor;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+
+    .advanced-note {
+      font-size: var(--text-xs);
+      color: var(--color-text-faint);
+    }
 
     &:hover { background: var(--fill-1); color: var(--color-text); }
     &:has(+ .advanced-popover:popover-open) { background: var(--fill-1); color: var(--color-text); }
 
     /* Lit while a server is in use, so a setting tucked away in the popover
-       cannot be forgotten about; the recognition server's connection rides
-       along as the dot after the label. */
-    &[data-active="true"] { color: var(--color-accent-hover); font-weight: 600; }
+       cannot be forgotten about: the outline and label take the accent, and
+       the recognition server's connection rides along as the dot. */
+    &[data-active="true"] {
+      color: var(--color-accent-hover);
+      border-color: color-mix(in oklab, var(--color-accent) 60%, transparent);
+    }
   }
 
   /* Opens upward from the button, over the preview: the panel has no room

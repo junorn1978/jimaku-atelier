@@ -442,6 +442,7 @@ export function mountLanguagesTab(container, appearance) {
                       data-i18n-title="lang.advanced.hint" title="上級者向け">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"/><rect x="3" y="13" width="18" height="7" rx="2"/><path d="M7 7.5h.01M7 16.5h.01"/></svg>
                 <span data-i18n="lang.advanced">自前のサーバー</span>
+                <span class="advanced-note" data-i18n="lang.advanced.note">・上級者向け</span>
                 <span class="stt-status-dot" aria-hidden="true" hidden></span>
               </button>
 

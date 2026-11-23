@@ -57,6 +57,7 @@
   "lang.stt.status.failed": "Invalid URL",
   "lang.advanced": "Own servers",
   "lang.advanced.hint": "Advanced: recognition or translation on a server of your own",
+  "lang.advanced.note": "· Advanced",
   "lang.advanced.stt": "Recognition server",
   "lang.advanced.stt.desc": "Sends the microphone audio to a server of your own (Whisper, etc.) for recognition, in place of the browser's.",
   "lang.advanced.stt.spec": "Protocol & samples",
