@@ -612,18 +612,41 @@ export function mountLanguagesTab(container, appearance) {
       </div>
       </div>
 
-      <!-- The colour presets (js/subtitle-presets.js), under both the matrix
-           and the display settings, since a preset sets every line's colours
-           at once. Two buttons: the default set, which is the way back, and
-           the themes menu — every built-in set and the user's three saved
-           ones. Both are filled in by js/subtitle-presets.js. -->
+      <!-- The colour presets (js/subtitle-presets.js), under the matrix,
+           since a preset sets every line's colours at once. Nothing on the
+           row applies a set in one click — a stray click used to throw away
+           colours just tuned. The row shows the look in use (the themes
+           pop-up: its colours and name, "edited" once it matches no set);
+           applying goes through the menu, and is undoable for a moment;
+           saving to マイテーマ is its own button. -->
       <section class="sub-preset-row" aria-labelledby="sub-preset-label">
         <span class="lang-field-label" id="sub-preset-label" data-i18n="style.preset">配色</span>
-        <button type="button" class="sub-preset-default" data-preset="default"></button>
         <button type="button" class="btn sub-preset-themes" popovertarget="sub-preset-menu">
-          <span data-i18n="style.preset.themes">テーマ</span>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+          <span class="sub-preset-dots sub-preset-current-dots" aria-hidden="true"></span>
+          <span class="sub-preset-current-name"></span>
+          <span class="sub-preset-modified" data-i18n="style.preset.modified" hidden>・変更あり</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
         </button>
+
+        <!-- Saving the look in use to one of the three slots: two clicks, each
+             slot showing what it holds so an overwrite is seen before it is
+             made. Lit while the look is unsaved (matches no set). -->
+        <button type="button" class="sub-preset-save-btn" popovertarget="sub-preset-save-menu">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          <span data-i18n="style.preset.saveTo">マイテーマに保存</span>
+        </button>
+        <div class="sub-preset-save-menu" id="sub-preset-save-menu" popover
+             data-i18n-aria-label="style.preset.saveTo" aria-label="マイテーマに保存">
+          <span class="sub-preset-head" data-i18n="style.preset.saveTo.head">保存先（いまの配色で上書き）</span>
+          <div class="sub-preset-save-list"></div>
+        </div>
+
+        <!-- After a set is applied from the menu: what was applied, and the way
+             back to the colours it replaced, for a few seconds. -->
+        <p class="sub-preset-notice" role="status" aria-live="polite" hidden>
+          <span class="sub-preset-notice-text"></span>
+          <button type="button" class="link-btn sub-preset-undo" data-i18n="style.preset.undo">元に戻す</button>
+        </p>
         <div class="sub-preset-menu" id="sub-preset-menu" popover
              data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
           <!-- The outline setting itself, and the switch between the two lists
@@ -639,7 +662,7 @@ export function mountLanguagesTab(container, appearance) {
           </div>
           <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
           <div class="sub-preset-grid"></div>
-          <span class="sub-preset-head" data-i18n="style.preset.custom.head">マイテーマ</span>
+          <span class="sub-preset-head" data-i18n="style.preset.custom.menuHead">マイテーマ</span>
           <div class="sub-preset-mine"></div>
         </div>
 

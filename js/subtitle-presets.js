@@ -258,21 +258,69 @@ function paintItem(item, preset, name) {
   item.querySelector('.sub-preset-name').textContent = preset ? name : `${name}${t('style.preset.custom.empty')}`;
 }
 
+/* The link settings a set writes besides its values (see apply). */
+const LINK_KEYS = ['subStrokeWLinked', 'subStrokeRimLinked', 'subBubbleWLinked', 'subRimLinked'];
+
+/* Everything a set can change, as it is now — what undo puts back. */
+function snapshot() {
+  return Object.fromEntries([...LINK_KEYS, ...KEYS].map(k => [k, settings[k]]));
+}
+
+/* Links off first, so the translation lines are not pulled to the source
+   line's values while those are being written back; then the values; then
+   the links as they were (equal values under a link stay equal). */
+function restore(snap) {
+  for (const k of LINK_KEYS) settings[k] = false;
+  for (const k of KEYS) settings[k] = snap[k];
+  for (const k of LINK_KEYS) settings[k] = snap[k];
+}
+
+/* The slot saved to last, remembered per browser so repeated tune-and-save
+   rounds land on the same slot. A convenience only: losing it costs nothing. */
+const LAST_SLOT_KEY = 'jimaku.lastPresetSlot';
+function readLastSlot() {
+  try {
+    const n = Number(localStorage.getItem(LAST_SLOT_KEY));
+    return Number.isInteger(n) && n >= 0 && n < CUSTOM_SLOTS.length ? n : 0;
+  } catch { return 0; }
+}
+function writeLastSlot(n) {
+  try { localStorage.setItem(LAST_SLOT_KEY, String(n)); } catch { /* fine */ }
+}
+
+const dotsHtml = (preset) => LINES.map(([, slot]) =>
+  `<i style="--d-color:${preset[slot].color};--d-stroke:${preset[slot].stroke};--d-rim:${preset[slot].rim ?? ''}"></i>`).join('');
+
 /**
- * Wire the Languages tab's preset row (markup in js/ui-languages.js): the
- * default set's button, and the themes button with its menu — every built-in
- * set, then the user's three slots, each with a save button.
- * Two fixed buttons rather than a strip of chips: a strip's width followed the
- * names in each interface language, and cutting it to fit clipped chips at
- * one width or another. The menu has room to grow.
+ * Wire the Appearance tab's preset row (markup in js/ui-languages.js).
+ * - The themes button shows the look in use: its three lines' colours and the
+ *   name of the set it matches — or of the set it was last, marked "edited",
+ *   once a colour has been changed by hand. It opens the menu: every built-in
+ *   set for the outline in use, then the user's three slots. Picking one
+ *   applies it and offers undo for a few seconds: applying replaces colours
+ *   that may have just been tuned, and a confirmation would be asked every
+ *   time for the one time it matters.
+ * - The save button opens the three slots, each showing what it holds and
+ *   whether picking it overwrites; picking one stores the look in use there.
+ *   Lit while the look matches no set, i.e. is saved nowhere.
+ * Nothing on the row itself applies a set in one click: the default set's
+ * chip that used to sit there was one stray click from losing a look.
  */
 export function wireSubtitlePresets(row) {
   if (!row) return;
-  const defaultBtn = row.querySelector('.sub-preset-default');
   const themesBtn  = row.querySelector('.sub-preset-themes');
+  const curDots    = themesBtn.querySelector('.sub-preset-current-dots');
+  const curName    = themesBtn.querySelector('.sub-preset-current-name');
+  const modified   = themesBtn.querySelector('.sub-preset-modified');
   const menu       = row.querySelector('.sub-preset-menu');
   const grid       = menu.querySelector('.sub-preset-grid');
   const mine       = menu.querySelector('.sub-preset-mine');
+  const saveBtn    = row.querySelector('.sub-preset-save-btn');
+  const saveMenu   = row.querySelector('.sub-preset-save-menu');
+  const saveList   = saveMenu.querySelector('.sub-preset-save-list');
+  const notice     = row.querySelector('.sub-preset-notice');
+  const noticeText = notice.querySelector('.sub-preset-notice-text');
+  const undoBtn    = notice.querySelector('.sub-preset-undo');
 
   const builtIns = PRESETS.map(p => {
     const item = document.createElement('button');
@@ -287,37 +335,68 @@ export function wireSubtitlePresets(row) {
   for (const p of PRESETS) perOutline[outlineOf(p)] = (perOutline[outlineOf(p)] ?? 0) + 1;
   grid.style.setProperty('--preset-rows', String(Math.ceil(Math.max(...Object.values(perOutline)) / 3)));
 
-  const slots = CUSTOM_SLOTS.map((id, index) => {
+  const slots = CUSTOM_SLOTS.map((id) => {
     const item = document.createElement('button');
     item.type = 'button';
     item.dataset.preset = id;
-    const save = document.createElement('button');
-    save.type = 'button';
-    save.className = 'btn sub-preset-save';
-    /* The menu stays open, so what was just stored shows at once. */
-    save.addEventListener('click', () => saveCustom(index));
-    const cell = document.createElement('div');
-    cell.className = 'sub-preset-slot';
-    cell.append(item, save);
-    mine.append(cell);
-    return { item, save };
+    mine.append(item);
+    return item;
   });
 
-  const items = [defaultBtn, ...builtIns, ...slots.map(s => s.item)];
+  /* The notice after applying (with undo) or saving (without). */
+  let noticeTimer = 0;
+  let undoSnap = null;
+  const showNotice = (text, snap) => {
+    clearTimeout(noticeTimer);
+    undoSnap = snap;
+    noticeText.textContent = text;
+    undoBtn.hidden = !snap;
+    notice.hidden = false;
+    noticeTimer = setTimeout(() => { notice.hidden = true; undoSnap = null; }, snap ? 8000 : 3000);
+  };
+  undoBtn.addEventListener('click', () => {
+    if (undoSnap) restore(undoSnap);
+    clearTimeout(noticeTimer);
+    notice.hidden = true;
+    undoSnap = null;
+  });
 
-  /* Pressed is whichever preset the current values match, so a colour changed
-     by hand afterwards leaves none pressed. The themes button is lit while
-     the look in use is one of its sets other than the default, which has its
-     own button — so a theme in use is never left unmarked on the row. */
+  /* The save menu's three entries: the slot's colours and name, then
+     "overwrite" or "empty". */
+  const saveItems = CUSTOM_SLOTS.map((id, index) => {
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'sub-preset-save-item';
+    item.addEventListener('click', () => {
+      saveCustom(index);
+      writeLastSlot(index);
+      saveMenu.hidePopover();
+      showNotice(t('style.preset.saved').replace('{name}', presetName(id)), null);
+    });
+    saveList.append(item);
+    return item;
+  });
+
+  const items = [...builtIns, ...slots];
+
+  /* The set the look was in last, so an edited look can say what it was
+     edited from. Starts as whatever the look matches on load, if anything. */
+  let lastMatched = null;
+
   const sync = () => {
-    let themed = false;
+    let match = null;
     for (const item of items) {
       const preset = findPreset(item.dataset.preset);
       const on = !!preset && matches(preset);
       item.setAttribute('aria-pressed', String(on));
-      if (on && item.dataset.preset !== 'default') themed = true;
+      if (on && !match) match = item.dataset.preset;
     }
-    themesBtn.classList.toggle('has-pressed', themed);
+    if (match) lastMatched = match;
+    curDots.innerHTML = dotsHtml(currentPreset());
+    const shown = match ?? lastMatched;
+    curName.textContent = shown ? presetName(shown) : t('style.preset.customLook');
+    modified.hidden = !!match || !lastMatched;
+    saveBtn.classList.toggle('is-unsaved', !match);
   };
 
   /* The menu lists the sets for the outline in use; the slots stay, as they
@@ -327,25 +406,46 @@ export function wireSubtitlePresets(row) {
     for (const item of builtIns) item.hidden = outlineOf(findPreset(item.dataset.preset)) !== outline;
   };
 
-  /* Names and save labels follow the interface language; slots also follow
-     what is saved in them. */
-  const paint = () => {
-    paintItem(defaultBtn, findPreset('default'), presetName('default'));
-    for (const item of builtIns) paintItem(item, findPreset(item.dataset.preset), presetName(item.dataset.preset));
-    slots.forEach(({ item, save }, index) => {
-      paintItem(item, customPreset(index), presetName(CUSTOM_SLOTS[index]));
-      save.textContent = t('style.preset.save');
-      save.title = t('style.preset.save.title').replace('{name}', presetName(CUSTOM_SLOTS[index]));
+  const BLANK_DOTS = '<i class="is-blank"></i><i class="is-blank"></i><i class="is-blank"></i>';
+  const paintSaveItems = () => {
+    const last = readLastSlot();
+    saveItems.forEach((item, index) => {
+      const preset = customPreset(index);
+      item.classList.toggle('is-last', index === last);
+      item.innerHTML = `<span class="sub-preset-dots" aria-hidden="true">${preset ? dotsHtml(preset) : BLANK_DOTS}</span>`
+        + '<span class="sub-preset-save-name"></span><span class="sub-preset-save-state"></span>';
+      item.querySelector('.sub-preset-save-name').textContent = presetName(CUSTOM_SLOTS[index]);
+      item.querySelector('.sub-preset-save-state').textContent =
+        t(preset ? 'style.preset.slot.overwrite' : 'style.preset.slot.empty');
     });
+  };
+
+  /* Names follow the interface language; slots also follow what is saved
+     in them. */
+  const paint = () => {
+    for (const item of builtIns) paintItem(item, findPreset(item.dataset.preset), presetName(item.dataset.preset));
+    slots.forEach((item, index) => paintItem(item, customPreset(index), presetName(CUSTOM_SLOTS[index])));
+    paintSaveItems();
     sync();
   };
 
   for (const item of items) {
     item.addEventListener('click', () => {
+      if (item.getAttribute('aria-pressed') === 'true') { menu.hidePopover(); return; }
+      const before = snapshot();
       if (!applyPreset(item.dataset.preset)) return;
-      if (menu.contains(item)) menu.hidePopover();
+      menu.hidePopover();
+      showNotice(t('style.preset.applied').replace('{name}', presetName(item.dataset.preset)), before);
     });
   }
+
+  /* The slot saved to last is focused when the save menu opens, so Enter
+     repeats the last save. */
+  saveMenu.addEventListener('toggle', (e) => {
+    if (e.newState !== 'open') return;
+    paintSaveItems();
+    saveItems[readLastSlot()]?.focus();
+  });
 
   subscribe('uiLang', paint);
   subscribe('subCustomPresets', paint);
