@@ -271,8 +271,17 @@
   /* The source line is hidden, so these settings currently do nothing. Dimmed
      rather than disabled: they stay editable for setting up in advance. The
      heading holds the switch that brings them back, so it stays lit. */
-  .lang-extras-source:has(#lang-show-source:not(:checked)) > :not(.lang-extras-heading) {
+  /* The switch is the eye on the source row of the Appearance matrix now, so
+     the menu looks for it from the root. */
+  :root:has(#lang-show-source:not(:checked)) .lang-extras-source > :not(.lang-extras-heading) {
     opacity: 0.45;
+  }
+
+  /* Where the show-source switch went, under the group's title. */
+  .lang-extras-hint {
+    font-size: var(--text-xs);
+    font-weight: 400;
+    color: var(--color-text-faint);
   }
 
   /* The group's title with its show-source switch at the far end, like a
@@ -288,7 +297,6 @@
     font-size: var(--text-sm);
     font-weight: 600;
     color: var(--color-text);
-    cursor: pointer;
   }
 
   /* Whole-display pair on one row, each control at its natural width and the
@@ -887,13 +895,64 @@
   /* --- Appearance tab ---
      The theme row first, then the lines' matrix in a grouped card of the
      Languages tab's material. */
+  /* As wide as the Languages tab's two cards together, so the card fills the
+     panel instead of stopping at its content. */
   .appearance-layout {
     display: grid;
     gap: var(--space-3);
-    justify-content: start;
     align-content: start;
+    max-width: 960px;
     min-width: 0;
+  }
 
+  /* The card's spare width goes between the two header groups, not into the
+     sliders, which keep their length: colours on the left, size and widths
+     pushed to the right edge. Column 5 is that gap; the size column is told
+     to start after it. */
+  .appearance-group .lang-matrix {
+    grid-template-columns:
+      max-content max-content max-content max-content
+      minmax(var(--space-4), 1fr)
+      calc(100px + var(--space-2) + 28px) calc(100px + var(--space-2) + 28px)
+      calc(100px + var(--space-2) + 28px);
+  }
+  .appearance-group .lang-matrix .size-col { grid-column-start: 6; }
+  .appearance-group .lang-matrix .matrix-group.size-col { grid-column: 6 / span 3; }
+
+  /* The source row's eye (subShowSource), and the same width kept empty on
+     the translation rows so the three names line up. */
+  .line-eye,
+  .line-eye-spacer {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    align-self: center;
+  }
+  .line-eye {
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-accent-hover);
+    cursor: pointer;
+
+    &:hover { background: var(--fill-1); }
+    &:has(input:focus-visible) { box-shadow: var(--focus-ring); }
+    .eye-off { display: none; }
+    &:has(input:not(:checked)) {
+      color: var(--color-text-faint);
+      .eye-on  { display: none; }
+      .eye-off { display: block; }
+    }
+  }
+
+  /* The source line hidden: its row dims but stays editable, and says
+     "hidden" where its language was. */
+  .line-hidden { display: none; font-size: var(--text-xs); color: var(--color-text-faint); }
+  .lang-matrix-row[data-line="source"]:has(#lang-show-source:not(:checked)) {
+    > :not(.line-name) { opacity: 0.4; }
+    .lang-field-label { color: var(--color-text-faint); }
+    .lang-name   { display: none; }
+    .line-hidden { display: inline; }
   }
 
   /* On the card's heading line now: no separator above. */

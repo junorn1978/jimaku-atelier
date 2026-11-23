@@ -90,7 +90,7 @@ function styleCells(prefix) {
   /* (The follow text comes after the readout: js/ui-bind.js fills the
      <output> right after the input. CSS puts the text first.) */
   return `${colour('Color')}${colour('Stroke')}${colour('Rim')}
-          ${slider(SIZE_MIN, SIZE_MAX, key('Size'))}
+          ${slider(SIZE_MIN, SIZE_MAX, key('Size'), 'size-col')}
           <!-- One width per style; only the one in use shows, and a hidden
                grid item takes no cell, so the column is the same either way. -->
           ${slider(STROKE_MIN, STROKE_MAX, key('StrokeW'), 'outline-stroke-only')}
@@ -621,20 +621,18 @@ export function mountLanguagesTab(container, appearance) {
                  display. Laid out as four identical rows they read as one list of
                  unrelated odds and ends.
                  The source group is headed once, so its row labels drop the
-                 repeated "source" word. Its heading carries the show-source switch,
-                 the way a settings group is switched on from its own header; the
-                 rows under it dim while the line is hidden (CSS :has()) but stay
-                 editable, so they can be set up before the line is turned on.
+                 repeated "source" word. Whether the line shows is the eye on its
+                 row in the matrix (whether a line shows belongs with the line,
+                 not with how it is laid out); the heading says where that went.
+                 The rows under it dim while the line is hidden (CSS :has()) but
+                 stay editable, so they can be set up before the line is turned on.
                  A two-state picker rather than a bare toggle: it names both states
                  instead of leaving one implied. -->
             <div class="lang-extras-group lang-extras-source">
-            <label class="lang-extras-heading">
-              <span data-i18n="style.showSource">原文を表示</span>
-              <span class="toggle toggle-compact">
-                <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
-                <span class="toggle-track"><span class="toggle-thumb"></span></span>
-              </span>
-            </label>
+            <div class="lang-extras-heading">
+              <span data-i18n="style.sourceGroup">原文</span>
+              <span class="lang-extras-hint" data-i18n="style.showSource.where">表示・非表示は「各行の見た目」の目のアイコンで</span>
+            </div>
             <span class="lang-extras-label" data-i18n="style.sourceLines">行数</span>
             <div class="seg-switch" role="group">
               <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
@@ -735,7 +733,7 @@ export function mountLanguagesTab(container, appearance) {
         <div class="lang-matrix-head">
           <span></span>
           <span class="matrix-group" data-i18n="style.group.color">色</span>
-          <span class="matrix-group" data-i18n="style.group.size">サイズ・太さ</span>
+          <span class="matrix-group size-col" data-i18n="style.group.size">サイズ・太さ</span>
 
           <span></span>
           <span data-i18n="style.col.text">文字</span>
@@ -750,7 +748,7 @@ export function mountLanguagesTab(container, appearance) {
                translation lines take the source line's value. The width
                column holds one per outline style, as each keeps its own
                widths, and so does the rim column. -->
-          ${linkHead('style.col.size', 'subSizeLinked')}
+          ${linkHead('style.col.size', 'subSizeLinked', 'size-col')}
           <span>
             ${linkHead('style.col.stroke', 'subStrokeWLinked', 'outline-stroke-only')}
             ${linkHead('style.col.bubble', 'subBubbleWLinked', 'outline-cloud-only')}
@@ -763,8 +761,19 @@ export function mountLanguagesTab(container, appearance) {
 
         <div class="lang-matrix-row" data-line="source">
           <span class="line-name">
+            <!-- Whether the source line shows (subShowSource): an eye on its
+                 own row, where it is looked for. Off, the row dims but stays
+                 editable; the translation rows keep the eye's width empty so
+                 the three names line up. -->
+            <label class="line-eye" data-i18n-title="style.showSource" title="原文を表示">
+              <input type="checkbox" class="visually-hidden" id="lang-show-source" data-bind="subShowSource"
+                     data-i18n-aria-label="style.showSource" aria-label="原文を表示">
+              <svg class="eye-on" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+            </label>
             <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
             <span class="lang-name" data-lang-of="sourceLangId"></span>
+            <span class="line-hidden" data-i18n="style.lineHidden">非表示</span>
           </span>
           ${styleCells('source')}
           <p class="line-unused-note">
@@ -775,6 +784,7 @@ export function mountLanguagesTab(container, appearance) {
 
         <div class="lang-matrix-row" data-line="target1">
           <span class="line-name">
+            <span class="line-eye-spacer" aria-hidden="true"></span>
             <span class="lang-field-label"><span class="label-one" data-i18n="lang.target1">翻訳 1</span><span class="label-both" data-i18n="style.targetsBoth">翻訳 1・2</span></span>
             <span class="lang-name" data-lang-of="target1LangId"></span>
           </span>
@@ -787,6 +797,7 @@ export function mountLanguagesTab(container, appearance) {
 
         <div class="lang-matrix-row" data-line="target2">
           <span class="line-name">
+            <span class="line-eye-spacer" aria-hidden="true"></span>
             <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
             <span class="lang-name" data-lang-of="target2LangId"></span>
           </span>
