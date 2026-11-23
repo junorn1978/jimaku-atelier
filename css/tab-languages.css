@@ -884,18 +884,94 @@
     &.danger { color: var(--color-danger-text); }
   }
 
-  /* --- Appearance tab: the line's language, read-only, and unused lines --- */
-  .lang-name {
-    font-size: var(--text-md);
-    color: var(--color-text);
+  /* --- Appearance tab ---
+     The theme row first, then the lines' matrix in a grouped card of the
+     Languages tab's material. */
+  .appearance-layout {
+    display: grid;
+    gap: var(--space-3);
+    justify-content: start;
+    align-content: start;
+    min-width: 0;
+
+  }
+
+  /* On the card's heading line now: no separator above. */
+  .appearance-head > .sub-preset-row { margin-top: 0; padding-top: 0; border-top: 0; }
+
+  .appearance-group {
+    --group-surface: color-mix(in oklab, var(--color-surface-1) 94%, white);
+    :root[data-theme="light"] & { --group-surface: var(--fill-3); }
+
+    display: grid;
+    min-width: 0;
+
+    > .group-card { padding: var(--space-2) var(--space-3) var(--space-1); }
+    .lang-matrix { row-gap: 4px; }
+  }
+
+  /* The card's heading line: the title on the left, the theme row on the
+     right — one line instead of two, so three lines fit the panel. */
+  .appearance-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-bottom: 6px;
+
+    > .group-title { margin: 0 0 0 4px; }
+    > .sub-preset-row { flex-wrap: nowrap; }
+  }
+
+  /* The header's first tier: "colour" over the three swatch columns, "size
+     and width" over the three sliders, each with a rule under it. */
+  .lang-matrix-head > .matrix-group {
+    grid-column: span 3;
+    padding-bottom: 2px;
+    border-bottom: 1px solid color-mix(in oklab, var(--color-border) 80%, transparent);
+    text-align: center;
+  }
+
+  /* The swatches carry their colour; the hex is in the palette. */
+  .lang-matrix .color-value { display: none; }
+
+  /* A line's name, then its language, read-only and smaller, on the same
+     line (stacked, the rows grew past the panel's height). */
+  .line-name {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding-right: var(--space-2);
     white-space: nowrap;
+
+    > .lang-field-label { color: var(--color-text); }
+  }
+  .lang-name {
+    font-size: var(--text-xs);
+    color: var(--color-text-dim);
+    white-space: nowrap;
+  }
+
+  /* A translation slider following the source line's (wireLinks): "= source"
+     and the value, not a dimmed track. */
+  .slider-follow { display: none; }
+  .lang-matrix .slider-group:has(input:disabled) {
+    > input { display: none; }
+    > .slider-follow {
+      display: inline;
+      order: -1;   /* before the readout, though after it in the DOM */
+      flex: 1;
+      font-size: var(--text-sm);
+      color: var(--color-text-faint);
+      white-space: nowrap;
+    }
   }
 
   /* A translation line set to "none" draws nothing: its controls give way to
      a note across the appearance columns, linking to the Languages tab. */
   .line-unused-note {
     display: none;
-    grid-column: 3 / -1;
+    grid-column: 2 / -1;
     margin: 0;
     align-items: center;
     gap: var(--space-2);
@@ -904,11 +980,21 @@
   }
 
   .lang-matrix-row.is-unused {
-    > :not(.lang-field-label, .lang-name, .line-unused-note) { display: none; }
+    > :not(.line-name, .line-unused-note) { display: none; }
     > .line-unused-note { display: flex; }
-    > .lang-field-label,
-    > .lang-name { color: var(--color-text-faint, var(--color-text-dim)); }
+    .line-name > * { color: var(--color-text-faint, var(--color-text-dim)); }
   }
+
+  /* Both translation lines unused: the first row speaks for both ("翻訳 1・2"),
+     the second goes. */
+  .label-both { display: none; }
+  .lang-matrix-row.is-unused-both {
+    .label-one  { display: none; }
+    .label-both { display: inline; }
+    .lang-name  { display: none; }
+  }
+  /* :is() lifts this over .is-unused's note rule, which would show it. */
+  .lang-matrix-row.is-merged > :is(*, .line-unused-note) { display: none; }
 
   /* --- custom URL format help (Languages tab) --- */
   .format-help {

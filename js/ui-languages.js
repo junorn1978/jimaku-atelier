@@ -68,49 +68,38 @@ const BUBBLE_MAX = 15;
  */
 function styleCells(prefix) {
   const key = (suffix) => `sub${prefix.charAt(0).toUpperCase()}${prefix.slice(1)}${suffix}`;
-  return `
+  /* The three colours, one column each. Their hex readouts stay in the markup
+     (js/ui-bind.js writes them) but are not shown: the palette shows the
+     value, and on the row it only cost width. */
+  const colour = (suffix) => `
           <span class="color-cell">
-            <input type="color" class="visually-hidden" data-bind="${key('Color')}" list="palette-text">
+            <input type="color" class="visually-hidden" data-bind="${key(suffix)}" list="palette-text">
             <button type="button" class="color-swatch" data-color-trigger></button>
             <output class="color-value"></output>
-          </span>
-          <span class="outline-colors">
-            <span class="color-cell">
-              <input type="color" class="visually-hidden" data-bind="${key('Stroke')}" list="palette-text">
-              <button type="button" class="color-swatch" data-color-trigger></button>
-              <output class="color-value"></output>
-            </span>
-            <span class="color-cell">
-              <input type="color" class="visually-hidden" data-bind="${key('Rim')}" list="palette-text">
-              <button type="button" class="color-swatch" data-color-trigger></button>
-              <output class="color-value"></output>
-            </span>
-          </span>
-          <div class="slider-group">
-            <input type="range" min="${SIZE_MIN}" max="${SIZE_MAX}" data-bind="${key('Size')}">
-            <output class="slider-value"></output>
-          </div>
+          </span>`;
+  /* A translation line's slider can follow the source line's (wireLinks);
+     it then reads "= source" beside the value instead of showing a dimmed
+     track, which looked broken rather than linked. */
+  const follow = prefix === 'source' ? ''
+    : `<span class="slider-follow" data-i18n="style.followsSource">＝ 原文</span>`;
+  const slider = (min, max, bind, extra = '') => `
+          <div class="slider-group ${extra}">
+            <input type="range" min="${min}" max="${max}" data-bind="${bind}">
+            <output class="slider-value"></output>${follow}
+          </div>`;
+  /* (The follow text comes after the readout: js/ui-bind.js fills the
+     <output> right after the input. CSS puts the text first.) */
+  return `${colour('Color')}${colour('Stroke')}${colour('Rim')}
+          ${slider(SIZE_MIN, SIZE_MAX, key('Size'))}
           <!-- One width per style; only the one in use shows, and a hidden
                grid item takes no cell, so the column is the same either way. -->
-          <div class="slider-group outline-stroke-only">
-            <input type="range" min="${STROKE_MIN}" max="${STROKE_MAX}" data-bind="${key('StrokeW')}">
-            <output class="slider-value"></output>
-          </div>
-          <div class="slider-group outline-cloud-only">
-            <input type="range" min="${STROKE_MIN}" max="${BUBBLE_MAX}" data-bind="${key('BubbleW')}">
-            <output class="slider-value"></output>
-          </div>
+          ${slider(STROKE_MIN, STROKE_MAX, key('StrokeW'), 'outline-stroke-only')}
+          ${slider(STROKE_MIN, BUBBLE_MAX, key('BubbleW'), 'outline-cloud-only')}
           <!-- The rim width, one per style like the widths before it: px past
                the stroke for the plain outline, steps for the clouds. The
                cloud's source line setting is subRimW (js/store.js). -->
-          <div class="slider-group outline-stroke-only">
-            <input type="range" min="0" max="${STROKE_MAX}" data-bind="${key('StrokeRimW')}">
-            <output class="slider-value"></output>
-          </div>
-          <div class="slider-group outline-cloud-only">
-            <input type="range" min="0" max="${BUBBLE_MAX}" data-bind="${prefix === 'source' ? 'subRimW' : key('RimW')}">
-            <output class="slider-value"></output>
-          </div>`;
+          ${slider(0, STROKE_MAX, key('StrokeRimW'), 'outline-stroke-only')}
+          ${slider(0, BUBBLE_MAX, prefix === 'source' ? 'subRimW' : key('RimW'), 'outline-cloud-only')}`;
 }
 
 /* A slider column's header: its name, and the link that ties the two
@@ -131,6 +120,8 @@ const LINK_ICON = `
    without giving either card a colour of its own. */
 const ICON_LINES = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>`;
 const ICON_ENGINE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>`;
+
+const ICON_PALETTE = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22a10 10 0 1 1 10-10c0 2.8-2.2 4-4 4h-2a2 2 0 0 0-1.5 3.3A1.6 1.6 0 0 1 12 22z"/><circle cx="7.5" cy="10.5" r="1"/><circle cx="12" cy="7.5" r="1"/><circle cx="16.5" cy="10.5" r="1"/></svg>`;
 
 function linkHead(labelKey, linkKey, extraClass = '') {
   return `
@@ -540,49 +531,241 @@ export function mountLanguagesTab(container, appearance) {
   `;
 
   if (appearance) appearance.innerHTML = `
-    <div class="lang-grid">
-      <!-- One row per subtitle line, carrying its appearance. The line's
-           language is set on the Languages tab and named here, read-only, at
-           the head of its row, so a row still says which line it is drawing.
+    <div class="appearance-layout">
+      <!-- One row per subtitle line, carrying its appearance, in a grouped
+           card like the Languages tab's. The line's language is set on the
+           Languages tab and named here, read-only, under the line's name.
            A line that is not translated has nothing to style: its row says
-           so and links back to the Languages tab. Column headers are written
-           once; each row is a display:contents wrapper so its cells join the
-           outer grid and every control of the same kind lines up vertically. -->
-      <div class="lang-top">
+           so and links back to the Languages tab (both unused lines share one
+           row). The header comes in two tiers — the three colours, then the
+           size and the two widths — so each part's colour and width read
+           side by side. Rows are display:contents wrappers so their cells
+           join the outer grid and every control of the same kind lines up. -->
+      <section class="appearance-group" aria-labelledby="appearance-lines-title">
+        <div class="appearance-head">
+          <h3 class="group-title" id="appearance-lines-title">${ICON_PALETTE}<span data-i18n="style.lines">各行の見た目</span></h3>
+          <!-- The colour presets (js/subtitle-presets.js), on the card's heading
+               line, above the lines: a look is picked as a whole before its lines
+               are fine-tuned below. On that line rather than a row of its own,
+               so the three lines fit the panel's height without a scrollbar. Nothing on the
+               row applies a set in one click — a stray click used to throw away
+               colours just tuned. The row shows the look in use (the themes
+               pop-up: its colours and name, "edited" once it matches no set);
+               applying goes through the menu, and is undoable for a moment;
+               saving to マイテーマ is its own button. -->
+          <section class="sub-preset-row" aria-labelledby="sub-preset-label">
+            <span class="lang-field-label" id="sub-preset-label" data-i18n="style.preset">配色</span>
+            <button type="button" class="btn sub-preset-themes" popovertarget="sub-preset-menu">
+              <span class="sub-preset-dots sub-preset-current-dots" aria-hidden="true"></span>
+              <span class="sub-preset-current-name"></span>
+              <span class="sub-preset-modified" data-i18n="style.preset.modified" hidden>・変更あり</span>
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+            </button>
+
+            <!-- Saving the look in use to one of the three slots: two clicks, each
+                 slot showing what it holds so an overwrite is seen before it is
+                 made. Lit while the look is unsaved (matches no set). -->
+            <button type="button" class="sub-preset-save-btn" popovertarget="sub-preset-save-menu">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              <span data-i18n="style.preset.saveTo">マイテーマに保存</span>
+            </button>
+            <div class="sub-preset-save-menu" id="sub-preset-save-menu" popover
+                 data-i18n-aria-label="style.preset.saveTo" aria-label="マイテーマに保存">
+              <span class="sub-preset-head" data-i18n="style.preset.saveTo.head">保存先（いまの配色で上書き）</span>
+              <div class="sub-preset-save-list"></div>
+            </div>
+
+            <!-- After a set is applied from the menu: what was applied, and the way
+                 back to the colours it replaced, for a few seconds. -->
+            <p class="sub-preset-notice" role="status" aria-live="polite" hidden>
+              <span class="sub-preset-notice-text"></span>
+              <button type="button" class="link-btn sub-preset-undo" data-i18n="style.preset.undo">元に戻す</button>
+            </p>
+            <div class="sub-preset-menu" id="sub-preset-menu" popover
+                 data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
+              <!-- The outline setting itself, and the switch between the two lists
+                   of sets below (js/subtitle-presets.js). The rim width that sat
+                   beside it is each line's own now, in the matrix. -->
+              <div class="sub-outline-bar">
+                <div class="seg-switch sub-outline-switch" role="group"
+                     data-i18n-aria-label="style.outline" aria-label="縁取りの種類">
+                  <label><input type="radio" name="subOutline" value="stroke" data-bind="subOutline"><span data-i18n="style.outline.stroke">縁取り</span></label>
+                  <label><input type="radio" name="subOutline" value="bubble" data-bind="subOutline"><span data-i18n="style.outline.bubble">バブル</span></label>
+                  <label><input type="radio" name="subOutline" value="gooey" data-bind="subOutline"><span data-i18n="style.outline.gooey">もこもこ</span></label>
+                </div>
+              </div>
+              <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
+              <div class="sub-preset-grid"></div>
+              <span class="sub-preset-head" data-i18n="style.preset.custom.menuHead">マイテーマ</span>
+              <div class="sub-preset-mine"></div>
+            </div>
+
+            <!-- The layout menu: the source line's switch and settings, and the
+                 two that act on the whole display (alignment, chroma-key
+                 background), behind a button beside the themes rather than as a
+                 standing card beside the matrix: they are set once and judged by
+                 looking, and the card took the width the matrix needs. Same
+                 button, same menu dress as the themes, so the row has one way of
+                 opening things. Named for the layout — whether the source shows,
+                 its lines, alignment, background — rather than for the source
+                 line, since more layout settings will join it; the brackets and
+                 pictures, which are looks, may move to the themes later. -->
+            <button type="button" class="btn sub-source-btn" popovertarget="sub-source-menu">
+              <span data-i18n="style.displayMenu">レイアウト</span>
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
+            </button>
+            <div class="sub-source-menu lang-extras" id="sub-source-menu" popover
+                 data-i18n-aria-label="style.displayMenu" aria-label="レイアウト">
+            <!-- Two groups, because the four settings are two kinds of thing: the
+                 first pair only touches the source line, the second pair the whole
+                 display. Laid out as four identical rows they read as one list of
+                 unrelated odds and ends.
+                 The source group is headed once, so its row labels drop the
+                 repeated "source" word. Its heading carries the show-source switch,
+                 the way a settings group is switched on from its own header; the
+                 rows under it dim while the line is hidden (CSS :has()) but stay
+                 editable, so they can be set up before the line is turned on.
+                 A two-state picker rather than a bare toggle: it names both states
+                 instead of leaving one implied. -->
+            <div class="lang-extras-group lang-extras-source">
+            <label class="lang-extras-heading">
+              <span data-i18n="style.showSource">原文を表示</span>
+              <span class="toggle toggle-compact">
+                <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
+                <span class="toggle-track"><span class="toggle-thumb"></span></span>
+              </span>
+            </label>
+            <span class="lang-extras-label" data-i18n="style.sourceLines">行数</span>
+            <div class="seg-switch" role="group">
+              <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
+              <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
+            </div>
+
+            <span class="lang-extras-label" data-i18n="style.sourceWrap">囲み記号</span>
+            <div class="symbol-inputs">
+              <input type="text" class="text-input" data-bind="subSourcePrefix"
+                     data-i18n-placeholder="style.sourcePrefix.ph" data-i18n-title="style.sourcePrefix" title="左記号"
+                     autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
+              <input type="text" class="text-input" data-bind="subSourceSuffix"
+                     data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
+                     autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
+            </div>
+
+            <!-- Pictures on the first and last characters' top corners
+                 (js/subtitle-deco.js, js/ui-deco.js): a button per corner, each
+                 opening that corner's own picture, switch, angle and size. -->
+            ${decoControlsHtml()}
+            </div>
+
+            <!-- The whole-display pair shares one row: both controls are short, so
+                 stretching each across its own row only padded them with air. -->
+            <div class="lang-extras-group lang-extras-display">
+            <div class="lang-extras-pair">
+            <span class="lang-extras-label" data-i18n="style.align">横位置</span>
+            <div class="seg-switch seg-switch-icons style-align-control" role="group">
+              <label>
+                <input type="radio" name="subAlign" value="left" data-bind="subAlign">
+                <span data-i18n-title="style.align.left" title="左">
+                  <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                    <line x1="2" y1="3.5"  x2="10" y2="3.5"/>
+                    <line x1="2" y1="7"    x2="12" y2="7"/>
+                    <line x1="2" y1="10.5" x2="8"  y2="10.5"/>
+                  </svg>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="subAlign" value="center" data-bind="subAlign">
+                <span data-i18n-title="style.align.center" title="中">
+                  <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                    <line x1="3" y1="3.5"  x2="11" y2="3.5"/>
+                    <line x1="1" y1="7"    x2="13" y2="7"/>
+                    <line x1="4" y1="10.5" x2="10" y2="10.5"/>
+                  </svg>
+                </span>
+              </label>
+              <label>
+                <input type="radio" name="subAlign" value="right" data-bind="subAlign">
+                <span data-i18n-title="style.align.right" title="右">
+                  <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+                    <line x1="4" y1="3.5"  x2="12" y2="3.5"/>
+                    <line x1="2" y1="7"    x2="12" y2="7"/>
+                    <line x1="6" y1="10.5" x2="12" y2="10.5"/>
+                  </svg>
+                </span>
+              </label>
+            </div>
+            </div>
+
+            <!-- Opened from a plain button rather than a filled swatch: the swatch
+                 would be painted in exactly the chroma-key colour, so capturing the
+                 window with a key filter punches a hole straight through the
+                 control. The hex label carries the value instead — text survives the
+                 key. js/color-picker.js recognises .color-trigger-text and skips
+                 the swatch it paints on every other trigger for the same reason.
+                 The quick colours here are the three that make sense as a key
+                 (green / blue / magenta) plus black and white — a different list
+                 from the text colours, which is why each input names its own. -->
+            <div class="lang-extras-pair">
+            <span class="lang-extras-label" data-i18n="style.bg">背景色</span>
+            <span class="color-pick">
+              <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
+              <button type="button" class="btn color-trigger-text" data-color-trigger>
+                <output class="color-value"></output>
+              </button>
+            </span>
+            </div>
+
+            <!-- The space between the three lines, on a row of its own under the
+                 pair: a slider wants more width than half the row. Same slider
+                 and readout as the matrix's. -->
+            <div class="lang-extras-pair lang-extras-gap">
+            <span class="lang-extras-label" data-i18n="style.lineGap">行の間隔</span>
+            <div class="slider-group">
+              <input type="range" min="0" max="40" data-bind="subLineGap"
+                     data-i18n-aria-label="style.lineGap" aria-label="行の間隔">
+              <output class="slider-value"></output>
+            </div>
+            </div>
+            </div>
+            </div>
+          </section>
+        </div>
+        <div class="group-card">
       <div class="lang-matrix">
         <div class="lang-matrix-head">
-          <!-- The corner over the label and language columns is empty: the
-               show-source switch moved into the display menu, at the head of
-               the source settings it governs. -->
           <span></span>
+          <span class="matrix-group" data-i18n="style.group.color">色</span>
+          <span class="matrix-group" data-i18n="style.group.size">サイズ・太さ</span>
+
           <span></span>
-          <span data-i18n="style.textColor">文字色</span>
-          <!-- Two colours per line in every style: the outline (or, under a
-               cloud outline, js/subtitle-cloud.js, the cloud) and the rim
-               around it. The width sizes the stroke or the cloud: the headers
-               say which. -->
+          <span data-i18n="style.col.text">文字</span>
+          <!-- Under a cloud outline (js/subtitle-cloud.js) the outline is the
+               cloud: the headers say which. -->
           <span>
-            <span class="outline-stroke-only" data-i18n="style.strokeColors">縁取り / 外枠</span>
-            <span class="outline-cloud-only" data-i18n="style.bubbleColors">バブル / 外枠</span>
+            <span class="outline-stroke-only" data-i18n="style.col.stroke">縁取り</span>
+            <span class="outline-cloud-only" data-i18n="style.col.bubble">バブル</span>
           </span>
+          <span data-i18n="style.col.rim">外枠</span>
           <!-- Each slider column's header carries a link (linkHead): on, the
                translation lines take the source line's value. The width
                column holds one per outline style, as each keeps its own
                widths, and so does the rim column. -->
-          ${linkHead('style.fontSize', 'subSizeLinked')}
+          ${linkHead('style.col.size', 'subSizeLinked')}
           <span>
-            ${linkHead('style.strokeWidth', 'subStrokeWLinked', 'outline-stroke-only')}
-            ${linkHead('style.bubbleSize', 'subBubbleWLinked', 'outline-cloud-only')}
+            ${linkHead('style.col.stroke', 'subStrokeWLinked', 'outline-stroke-only')}
+            ${linkHead('style.col.bubble', 'subBubbleWLinked', 'outline-cloud-only')}
           </span>
           <span>
-            ${linkHead('style.rimWidth', 'subStrokeRimLinked', 'outline-stroke-only')}
-            ${linkHead('style.rimWidth', 'subRimLinked', 'outline-cloud-only')}
+            ${linkHead('style.col.rim', 'subStrokeRimLinked', 'outline-stroke-only')}
+            ${linkHead('style.col.rim', 'subRimLinked', 'outline-cloud-only')}
           </span>
         </div>
 
         <div class="lang-matrix-row" data-line="source">
-          <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
-          <span class="lang-name" data-lang-of="sourceLangId"></span>
+          <span class="line-name">
+            <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
+            <span class="lang-name" data-lang-of="sourceLangId"></span>
+          </span>
           ${styleCells('source')}
           <p class="line-unused-note">
             <span data-i18n="style.lineUnused">翻訳しない設定です。</span>
@@ -591,8 +774,10 @@ export function mountLanguagesTab(container, appearance) {
         </div>
 
         <div class="lang-matrix-row" data-line="target1">
-          <span class="lang-field-label" data-i18n="lang.target1">翻訳 1</span>
-          <span class="lang-name" data-lang-of="target1LangId"></span>
+          <span class="line-name">
+            <span class="lang-field-label"><span class="label-one" data-i18n="lang.target1">翻訳 1</span><span class="label-both" data-i18n="style.targetsBoth">翻訳 1・2</span></span>
+            <span class="lang-name" data-lang-of="target1LangId"></span>
+          </span>
           ${styleCells('target1')}
           <p class="line-unused-note">
             <span data-i18n="style.lineUnused">翻訳しない設定です。</span>
@@ -601,8 +786,10 @@ export function mountLanguagesTab(container, appearance) {
         </div>
 
         <div class="lang-matrix-row" data-line="target2">
-          <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
-          <span class="lang-name" data-lang-of="target2LangId"></span>
+          <span class="line-name">
+            <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
+            <span class="lang-name" data-lang-of="target2LangId"></span>
+          </span>
           ${styleCells('target2')}
           <p class="line-unused-note">
             <span data-i18n="style.lineUnused">翻訳しない設定です。</span>
@@ -610,189 +797,6 @@ export function mountLanguagesTab(container, appearance) {
           </p>
         </div>
       </div>
-      </div>
-
-      <!-- The colour presets (js/subtitle-presets.js), under the matrix,
-           since a preset sets every line's colours at once. Nothing on the
-           row applies a set in one click — a stray click used to throw away
-           colours just tuned. The row shows the look in use (the themes
-           pop-up: its colours and name, "edited" once it matches no set);
-           applying goes through the menu, and is undoable for a moment;
-           saving to マイテーマ is its own button. -->
-      <section class="sub-preset-row" aria-labelledby="sub-preset-label">
-        <span class="lang-field-label" id="sub-preset-label" data-i18n="style.preset">配色</span>
-        <button type="button" class="btn sub-preset-themes" popovertarget="sub-preset-menu">
-          <span class="sub-preset-dots sub-preset-current-dots" aria-hidden="true"></span>
-          <span class="sub-preset-current-name"></span>
-          <span class="sub-preset-modified" data-i18n="style.preset.modified" hidden>・変更あり</span>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
-        </button>
-
-        <!-- Saving the look in use to one of the three slots: two clicks, each
-             slot showing what it holds so an overwrite is seen before it is
-             made. Lit while the look is unsaved (matches no set). -->
-        <button type="button" class="sub-preset-save-btn" popovertarget="sub-preset-save-menu">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-          <span data-i18n="style.preset.saveTo">マイテーマに保存</span>
-        </button>
-        <div class="sub-preset-save-menu" id="sub-preset-save-menu" popover
-             data-i18n-aria-label="style.preset.saveTo" aria-label="マイテーマに保存">
-          <span class="sub-preset-head" data-i18n="style.preset.saveTo.head">保存先（いまの配色で上書き）</span>
-          <div class="sub-preset-save-list"></div>
-        </div>
-
-        <!-- After a set is applied from the menu: what was applied, and the way
-             back to the colours it replaced, for a few seconds. -->
-        <p class="sub-preset-notice" role="status" aria-live="polite" hidden>
-          <span class="sub-preset-notice-text"></span>
-          <button type="button" class="link-btn sub-preset-undo" data-i18n="style.preset.undo">元に戻す</button>
-        </p>
-        <div class="sub-preset-menu" id="sub-preset-menu" popover
-             data-i18n-aria-label="style.preset.title" aria-label="字幕の配色">
-          <!-- The outline setting itself, and the switch between the two lists
-               of sets below (js/subtitle-presets.js). The rim width that sat
-               beside it is each line's own now, in the matrix. -->
-          <div class="sub-outline-bar">
-            <div class="seg-switch sub-outline-switch" role="group"
-                 data-i18n-aria-label="style.outline" aria-label="縁取りの種類">
-              <label><input type="radio" name="subOutline" value="stroke" data-bind="subOutline"><span data-i18n="style.outline.stroke">縁取り</span></label>
-              <label><input type="radio" name="subOutline" value="bubble" data-bind="subOutline"><span data-i18n="style.outline.bubble">バブル</span></label>
-              <label><input type="radio" name="subOutline" value="gooey" data-bind="subOutline"><span data-i18n="style.outline.gooey">もこもこ</span></label>
-            </div>
-          </div>
-          <span class="sub-preset-head" data-i18n="style.preset.title">字幕の配色</span>
-          <div class="sub-preset-grid"></div>
-          <span class="sub-preset-head" data-i18n="style.preset.custom.menuHead">マイテーマ</span>
-          <div class="sub-preset-mine"></div>
-        </div>
-
-        <!-- The layout menu: the source line's switch and settings, and the
-             two that act on the whole display (alignment, chroma-key
-             background), behind a button beside the themes rather than as a
-             standing card beside the matrix: they are set once and judged by
-             looking, and the card took the width the matrix needs. Same
-             button, same menu dress as the themes, so the row has one way of
-             opening things. Named for the layout — whether the source shows,
-             its lines, alignment, background — rather than for the source
-             line, since more layout settings will join it; the brackets and
-             pictures, which are looks, may move to the themes later. -->
-        <button type="button" class="btn sub-source-btn" popovertarget="sub-source-menu">
-          <span data-i18n="style.displayMenu">レイアウト</span>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg>
-        </button>
-        <div class="sub-source-menu lang-extras" id="sub-source-menu" popover
-             data-i18n-aria-label="style.displayMenu" aria-label="レイアウト">
-        <!-- Two groups, because the four settings are two kinds of thing: the
-             first pair only touches the source line, the second pair the whole
-             display. Laid out as four identical rows they read as one list of
-             unrelated odds and ends.
-             The source group is headed once, so its row labels drop the
-             repeated "source" word. Its heading carries the show-source switch,
-             the way a settings group is switched on from its own header; the
-             rows under it dim while the line is hidden (CSS :has()) but stay
-             editable, so they can be set up before the line is turned on.
-             A two-state picker rather than a bare toggle: it names both states
-             instead of leaving one implied. -->
-        <div class="lang-extras-group lang-extras-source">
-        <label class="lang-extras-heading">
-          <span data-i18n="style.showSource">原文を表示</span>
-          <span class="toggle toggle-compact">
-            <input type="checkbox" id="lang-show-source" data-bind="subShowSource">
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </span>
-        </label>
-        <span class="lang-extras-label" data-i18n="style.sourceLines">行数</span>
-        <div class="seg-switch" role="group">
-          <label><input type="radio" name="subSourceSingleLine" value="false" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.all">制限なし</span></label>
-          <label><input type="radio" name="subSourceSingleLine" value="true" data-bind="subSourceSingleLine"><span data-i18n="style.sourceLines.one">1行</span></label>
-        </div>
-
-        <span class="lang-extras-label" data-i18n="style.sourceWrap">囲み記号</span>
-        <div class="symbol-inputs">
-          <input type="text" class="text-input" data-bind="subSourcePrefix"
-                 data-i18n-placeholder="style.sourcePrefix.ph" data-i18n-title="style.sourcePrefix" title="左記号"
-                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
-          <input type="text" class="text-input" data-bind="subSourceSuffix"
-                 data-i18n-placeholder="style.sourceSuffix.ph" data-i18n-title="style.sourceSuffix" title="右記号"
-                 autocomplete="off" spellcheck="false" autocorrect="off" maxlength="8">
-        </div>
-
-        <!-- Pictures on the first and last characters' top corners
-             (js/subtitle-deco.js, js/ui-deco.js): a button per corner, each
-             opening that corner's own picture, switch, angle and size. -->
-        ${decoControlsHtml()}
-        </div>
-
-        <!-- The whole-display pair shares one row: both controls are short, so
-             stretching each across its own row only padded them with air. -->
-        <div class="lang-extras-group lang-extras-display">
-        <div class="lang-extras-pair">
-        <span class="lang-extras-label" data-i18n="style.align">横位置</span>
-        <div class="seg-switch seg-switch-icons style-align-control" role="group">
-          <label>
-            <input type="radio" name="subAlign" value="left" data-bind="subAlign">
-            <span data-i18n-title="style.align.left" title="左">
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-                <line x1="2" y1="3.5"  x2="10" y2="3.5"/>
-                <line x1="2" y1="7"    x2="12" y2="7"/>
-                <line x1="2" y1="10.5" x2="8"  y2="10.5"/>
-              </svg>
-            </span>
-          </label>
-          <label>
-            <input type="radio" name="subAlign" value="center" data-bind="subAlign">
-            <span data-i18n-title="style.align.center" title="中">
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-                <line x1="3" y1="3.5"  x2="11" y2="3.5"/>
-                <line x1="1" y1="7"    x2="13" y2="7"/>
-                <line x1="4" y1="10.5" x2="10" y2="10.5"/>
-              </svg>
-            </span>
-          </label>
-          <label>
-            <input type="radio" name="subAlign" value="right" data-bind="subAlign">
-            <span data-i18n-title="style.align.right" title="右">
-              <svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
-                <line x1="4" y1="3.5"  x2="12" y2="3.5"/>
-                <line x1="2" y1="7"    x2="12" y2="7"/>
-                <line x1="6" y1="10.5" x2="12" y2="10.5"/>
-              </svg>
-            </span>
-          </label>
-        </div>
-        </div>
-
-        <!-- Opened from a plain button rather than a filled swatch: the swatch
-             would be painted in exactly the chroma-key colour, so capturing the
-             window with a key filter punches a hole straight through the
-             control. The hex label carries the value instead — text survives the
-             key. js/color-picker.js recognises .color-trigger-text and skips
-             the swatch it paints on every other trigger for the same reason.
-             The quick colours here are the three that make sense as a key
-             (green / blue / magenta) plus black and white — a different list
-             from the text colours, which is why each input names its own. -->
-        <div class="lang-extras-pair">
-        <span class="lang-extras-label" data-i18n="style.bg">背景色</span>
-        <span class="color-pick">
-          <input type="color" class="visually-hidden" data-bind="subBg" list="palette-bg">
-          <button type="button" class="btn color-trigger-text" data-color-trigger>
-            <output class="color-value"></output>
-          </button>
-        </span>
-        </div>
-
-        <!-- The space between the three lines, on a row of its own under the
-             pair: a slider wants more width than half the row. Same slider
-             and readout as the matrix's. -->
-        <div class="lang-extras-pair lang-extras-gap">
-        <span class="lang-extras-label" data-i18n="style.lineGap">行の間隔</span>
-        <div class="slider-group">
-          <input type="range" min="0" max="40" data-bind="subLineGap"
-                 data-i18n-aria-label="style.lineGap" aria-label="行の間隔">
-          <output class="slider-value"></output>
-        </div>
-        </div>
-        </div>
         </div>
       </section>
     </div>
@@ -840,13 +844,19 @@ function wireLineNames(appearance, langs) {
   };
 
   const cells = [...appearance.querySelectorAll('.lang-name[data-lang-of]')];
+  const rowOf = (line) => appearance.querySelector(`.lang-matrix-row[data-line="${line}"]`);
+  const unused = (key) => !settings[key] || settings[key] === 'none';
   const paint = () => {
     for (const cell of cells) {
       const id = settings[cell.dataset.langOf];
       cell.textContent = labelOf(id);
       const row = cell.closest('.lang-matrix-row');
-      row?.classList.toggle('is-unused', cell.dataset.langOf !== 'sourceLangId' && (!id || id === 'none'));
+      row?.classList.toggle('is-unused', cell.dataset.langOf !== 'sourceLangId' && unused(cell.dataset.langOf));
     }
+    /* Both translation lines unused: one row says so for the two. */
+    const both = unused('target1LangId') && unused('target2LangId');
+    rowOf('target1')?.classList.toggle('is-unused-both', both);
+    rowOf('target2')?.classList.toggle('is-merged', both);
   };
   for (const key of ['sourceLangId', 'target1LangId', 'target2LangId', 'uiLang']) subscribe(key, paint);
   paint();
