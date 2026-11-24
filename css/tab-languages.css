@@ -905,19 +905,30 @@
     min-width: 0;
   }
 
-  /* The card's spare width goes between the two header groups, not into the
-     sliders, which keep their length: colours on the left, size and widths
-     pushed to the right edge. Column 5 is that gap; the size column is told
-     to start after it. */
+  /* The card's spare width is split evenly into two gaps, one after the line
+     names and one between the two header groups, so the names, the colours
+     and the sizes sit at an even rhythm along each row whatever the interface
+     language makes the names' width. The sliders keep their length and the
+     size group stays on the card's right edge, in line with the theme row
+     above. Columns 2 and 6 are the gaps; the colour group is told to start at
+     3 and the size group at 7. */
   .appearance-group .lang-matrix {
     grid-template-columns:
-      max-content max-content max-content max-content
-      minmax(var(--space-4), 1fr)
+      max-content
+      minmax(0, 1fr)
+      max-content max-content max-content
+      minmax(0, 1fr)
       calc(100px + var(--space-2) + 28px) calc(100px + var(--space-2) + 28px)
       calc(100px + var(--space-2) + 28px);
   }
-  .appearance-group .lang-matrix .size-col { grid-column-start: 6; }
-  .appearance-group .lang-matrix .matrix-group.size-col { grid-column: 6 / span 3; }
+  .appearance-group .lang-matrix {
+    .lang-matrix-head > .matrix-group:not(.size-col) { grid-column: 3 / span 3; }
+    .lang-matrix-head > [data-i18n="style.col.text"],
+    .line-name + .color-cell { grid-column-start: 3; }
+    .size-col { grid-column-start: 7; }
+    .matrix-group.size-col { grid-column: 7 / span 3; }
+    .line-unused-note { grid-column: 3 / -1; }
+  }
 
   /* The source row's eye (subShowSource), and the same width kept empty on
      the translation rows so the three names line up. */
