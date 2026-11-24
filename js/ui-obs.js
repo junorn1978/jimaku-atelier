@@ -98,7 +98,12 @@ export function mountObsTab(container) {
 
     <p class="obs-mode-desc" id="obs-mode-desc"></p>
 
+    <!-- Read top to bottom: where the connection is set up, then how it is
+         doing. The status comes last so that, when a failure's text runs to
+         two lines and the box grows, nothing below it has to move. -->
     <div class="obs-body" id="obs-mode-websocket">
+      <p class="obs-inline-hint" data-i18n="obs.settings.note"></p>
+      <p class="obs-inline-hint" id="obs-scene-link-on" data-i18n="obs.sceneLink.onNote" hidden></p>
       <div class="obs-conn">
         <p class="obs-conn-status" role="status" aria-live="polite" data-phase="disabled">
           <span class="obs-conn-dot" aria-hidden="true"></span>
@@ -106,8 +111,6 @@ export function mountObsTab(container) {
         </p>
         <p class="obs-conn-hint"></p>
       </div>
-      <p class="obs-inline-hint" data-i18n="obs.settings.note"></p>
-      <p class="obs-inline-hint" id="obs-scene-link-on" data-i18n="obs.sceneLink.onNote" hidden></p>
     </div>
 
     <!-- The subtitle window's background is fixed green, not the background
