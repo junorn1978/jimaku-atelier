@@ -15,6 +15,10 @@
     ul { margin: var(--space-2) 0; padding-left: 1.4em; }
     li + li { margin-top: var(--space-1); }
     a { color: var(--color-accent); }
+    /* The registration link after the commercial-use terms starts a line of
+       its own: run on after that long sentence it broke across two lines in
+       Japanese, and a link reads best whole. */
+    li > a { display: block; width: fit-content; white-space: nowrap; }
     .plamo-license-note { color: var(--color-text-dim); font-size: 0.9em; }
   }
 
