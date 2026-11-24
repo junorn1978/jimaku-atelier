@@ -945,14 +945,11 @@
     }
   }
 
-  /* The source line hidden: its row dims but stays editable, and says
-     "hidden" where its language was. */
-  .line-hidden { display: none; font-size: var(--text-xs); color: var(--color-text-faint); }
+  /* The source line hidden: its row dims but stays editable; the crossed-out
+     eye says why. */
   .lang-matrix-row[data-line="source"]:has(#lang-show-source:not(:checked)) {
     > :not(.line-name) { opacity: 0.4; }
     .lang-field-label { color: var(--color-text-faint); }
-    .lang-name   { display: none; }
-    .line-hidden { display: inline; }
   }
 
   /* On the card's heading line now: no separator above. */
@@ -994,8 +991,9 @@
   /* The swatches carry their colour; the hex is in the palette. */
   .lang-matrix .color-value { display: none; }
 
-  /* A line's name, then its language, read-only and smaller, on the same
-     line (stacked, the rows grew past the panel's height). */
+  /* A line's name only. Its language used to follow it, which ran this
+     column wide enough in English (and close in Japanese) to push the slider
+     columns out of the card; the language is on the Languages tab. */
   .line-name {
     display: flex;
     align-items: baseline;
@@ -1004,11 +1002,6 @@
     white-space: nowrap;
 
     > .lang-field-label { color: var(--color-text); }
-  }
-  .lang-name {
-    font-size: var(--text-xs);
-    color: var(--color-text-dim);
-    white-space: nowrap;
   }
 
   /* A translation slider following the source line's (wireLinks): "= source"
@@ -1050,7 +1043,6 @@
   .lang-matrix-row.is-unused-both {
     .label-one  { display: none; }
     .label-both { display: inline; }
-    .lang-name  { display: none; }
   }
   /* :is() lifts this over .is-unused's note rule, which would show it. */
   .lang-matrix-row.is-merged > :is(*, .line-unused-note) { display: none; }

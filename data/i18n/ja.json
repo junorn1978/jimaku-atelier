@@ -258,7 +258,6 @@
   "style.showSource":       "原文を表示",
   "style.sourceGroup": "原文",
   "style.showSource.where": "表示・非表示は「各行の見た目」の目のアイコンで",
-  "style.lineHidden": "非表示",
   "style.group.source":     "原文",
   "style.displayMenu":      "レイアウト",
   "style.overflow":         "翻訳字幕の行数",

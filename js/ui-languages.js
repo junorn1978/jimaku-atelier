@@ -772,8 +772,6 @@ export function mountLanguagesTab(container, appearance) {
               <svg class="eye-off" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
             </label>
             <span class="lang-field-label" data-i18n="lang.source">音声認識</span>
-            <span class="lang-name" data-lang-of="sourceLangId"></span>
-            <span class="line-hidden" data-i18n="style.lineHidden">非表示</span>
           </span>
           ${styleCells('source')}
           <p class="line-unused-note">
@@ -786,7 +784,6 @@ export function mountLanguagesTab(container, appearance) {
           <span class="line-name">
             <span class="line-eye-spacer" aria-hidden="true"></span>
             <span class="lang-field-label"><span class="label-one" data-i18n="lang.target1">翻訳 1</span><span class="label-both" data-i18n="style.targetsBoth">翻訳 1・2</span></span>
-            <span class="lang-name" data-lang-of="target1LangId"></span>
           </span>
           ${styleCells('target1')}
           <p class="line-unused-note">
@@ -799,7 +796,6 @@ export function mountLanguagesTab(container, appearance) {
           <span class="line-name">
             <span class="line-eye-spacer" aria-hidden="true"></span>
             <span class="lang-field-label" data-i18n="lang.target2">翻訳 2</span>
-            <span class="lang-name" data-lang-of="target2LangId"></span>
           </span>
           ${styleCells('target2')}
           <p class="line-unused-note">
@@ -828,7 +824,7 @@ export function mountLanguagesTab(container, appearance) {
     wireSubtitlePresets(appearance.querySelector('.sub-preset-row'));
     wireDeco(appearance);
     wireLinks(appearance);
-    wireLineNames(appearance, langs);
+    wireLineState(appearance);
   }
   setupAdvanced(container);
   setupOfflinePack(container);
@@ -840,36 +836,24 @@ export function mountLanguagesTab(container, appearance) {
   dropRetiredHymtCache();
 }
 
-/* The Appearance tab names each line's language at the head of its row,
-   read-only — the pickers are on the Languages tab. A translation line set to
-   "none" draws nothing, so its row hides its controls and offers the way to
-   the Languages tab instead (.is-unused). The names follow the store, and the
-   interface language for their wording. */
-function wireLineNames(appearance, langs) {
-  const labelOf = (id) => {
-    if (!id) return t('lang.choose');
-    if (id === 'none') return t('lang.none');
-    const key = `lang.name.${id}`;
-    const text = t(key);
-    return text !== key ? text : (langs.find(l => l.id === id)?.label ?? id);
-  };
-
-  const cells = [...appearance.querySelectorAll('.lang-name[data-lang-of]')];
+/* The Appearance tab's rows are named by line only (音声認識 / 翻訳 1 / 翻訳 2),
+   not by language: the languages are picked on the Languages tab and show in
+   the preview, and a language name beside the label ran the table's first
+   column wide enough to push the slider columns out of the card. A
+   translation line set to "none" draws nothing, so its row hides its controls
+   and offers the way to the Languages tab instead (.is-unused). */
+function wireLineState(appearance) {
   const rowOf = (line) => appearance.querySelector(`.lang-matrix-row[data-line="${line}"]`);
   const unused = (key) => !settings[key] || settings[key] === 'none';
   const paint = () => {
-    for (const cell of cells) {
-      const id = settings[cell.dataset.langOf];
-      cell.textContent = labelOf(id);
-      const row = cell.closest('.lang-matrix-row');
-      row?.classList.toggle('is-unused', cell.dataset.langOf !== 'sourceLangId' && unused(cell.dataset.langOf));
-    }
+    rowOf('target1')?.classList.toggle('is-unused', unused('target1LangId'));
+    rowOf('target2')?.classList.toggle('is-unused', unused('target2LangId'));
     /* Both translation lines unused: one row says so for the two. */
     const both = unused('target1LangId') && unused('target2LangId');
     rowOf('target1')?.classList.toggle('is-unused-both', both);
     rowOf('target2')?.classList.toggle('is-merged', both);
   };
-  for (const key of ['sourceLangId', 'target1LangId', 'target2LangId', 'uiLang']) subscribe(key, paint);
+  for (const key of ['target1LangId', 'target2LangId']) subscribe(key, paint);
   paint();
 
   appearance.addEventListener('click', (e) => {
