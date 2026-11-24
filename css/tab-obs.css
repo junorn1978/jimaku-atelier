@@ -48,14 +48,15 @@
   }
 
   /* --- live connection status (js/ui-obs-status.js) --- */
-  /* Status line + hint share one fixed-height box that scrolls as a single
-     unit, so neither (both can wrap to several lines) ever pushes the rest of
-     the tab down. ~3 lines tall; anything beyond scrolls inside. */
+  /* Status line + hint share one box, ~3 lines tall at least, so the usual
+     one-line status and one-line hint appear and go without moving the rest
+     of the tab. Longer text grows it instead of scrolling inside: Japanese
+     wraps both to two lines on a failed connection, and a fixed box then cut
+     them off behind a scrollbar of its own. The tab has the room, and the
+     tab panel still scrolls as a whole if a window ever runs short. */
   .obs-conn {
     margin-top: var(--space-1);
-    height: calc(var(--text-sm) * 1.3 * 3);
-    overflow-y: auto;
-    scrollbar-gutter: stable;
+    min-height: calc(var(--text-sm) * 1.3 * 3);
   }
 
   .obs-conn-status {
